@@ -1,0 +1,333 @@
+#include "player.h"
+#include "settings.h"
+#include "binds.h"
+#include "raymath.h"
+
+#include <cmath>
+
+// Quake 1 movement values, scaled at 1 world unit = 32 Quake units (Quake's value in the comment)
+static const Vector3 PLAYER_MINS = { -0.5f, -0.75f, -0.5f };   // -16 -16 -24
+static const Vector3 PLAYER_MAXS = { 0.5f, 1.0f, 0.5f };       // 16 16 32
+static const float VIEW_HEIGHT = 0.6875f;                      // view_ofs 22
+static const float MAX_SPEED = 6.0f;                          // sv_maxspeed 320
+static const float ACCELERATE = 10.0f;                         // sv_accelerate 10
+static const float AIR_SPEED_CAP = 0.9375f;                    // 30 in SV_AirAccelerate
+static const float FRICTION = 4.0f;                            // sv_friction 4
+static const float STOP_SPEED = 3.125f;                        // sv_stopspeed 100
+static const float GRAVITY = 25.0f;                            // sv_gravity 800
+static const float JUMP_SPEED = 8.4375f;                       // 270 in PlayerJump
+static const float STEP_SIZE = 0.5625f;                        // STEPSIZE 18
+static const float STOP_EPSILON = 0.003f;                      // STOP_EPSILON 0.1
+static const float MIN_FLOOR_NORMAL = 0.7f;                    // Steeper than this is a wall
+
+static const float SENSITIVITY_SCALE = 0.001f;                 // Radians per pixel at sensitivity 1
+static const float MAX_PITCH = 89.0f*DEG2RAD;
+static const float KILL_HEIGHT = -50.0f;                       // Respawn when falling below this
+
+static const int BLOCKED_FLOOR = 1;
+static const int BLOCKED_STEP = 2;
+
+void InitPlayer(Player &player, Vector3 spawn, float yaw)
+{
+    player = {};
+    player.position = spawn;
+    player.spawn = spawn;
+    player.yaw = yaw;
+    player.spawnYaw = yaw;
+    player.jumpReleased = true;
+}
+
+// Removes the part of the velocity going into a plane
+static Vector3 ClipVelocity(Vector3 in, Vector3 normal, float overbounce)
+{
+    float backoff = Vector3DotProduct(in, normal)*overbounce;
+    Vector3 out = Vector3Subtract(in, Vector3Scale(normal, backoff));
+
+    if (fabsf(out.x) < STOP_EPSILON) out.x = 0.0f;
+    if (fabsf(out.y) < STOP_EPSILON) out.y = 0.0f;
+    if (fabsf(out.z) < STOP_EPSILON) out.z = 0.0f;
+
+    return out;
+}
+
+// Moves the player by a fixed offset, stopping at the first thing hit
+static Trace PushMove(Player &player, const World &world, Vector3 push)
+{
+    Trace trace = TraceBox(world, player.position, Vector3Add(player.position, push), PLAYER_MINS, PLAYER_MAXS);
+    player.position = trace.endPos;
+    return trace;
+}
+
+// Moves along the velocity, sliding along up to 4 surfaces (SV_FlyMove)
+static int FlyMove(Player &player, const World &world, float time)
+{
+    const int MAX_BUMPS = 4;
+    const int MAX_PLANES = 5;
+
+    Vector3 planes[MAX_PLANES];
+    int numPlanes = 0;
+    int blocked = 0;
+
+    Vector3 primalVelocity = player.velocity;
+    Vector3 originalVelocity = player.velocity;
+    float timeLeft = time;
+
+    for (int bump = 0; bump < MAX_BUMPS; bump++)
+    {
+        if (Vector3LengthSqr(player.velocity) == 0.0f) break;
+
+        Vector3 end = Vector3Add(player.position, Vector3Scale(player.velocity, timeLeft));
+        Trace trace = TraceBox(world, player.position, end, PLAYER_MINS, PLAYER_MAXS);
+
+        if (trace.fraction > 0.0f)
+        {
+            // Covered some distance, so the old clip planes no longer apply
+            player.position = trace.endPos;
+            originalVelocity = player.velocity;
+            numPlanes = 0;
+        }
+
+        if (trace.fraction == 1.0f) break;
+
+        if (trace.normal.y > MIN_FLOOR_NORMAL)
+        {
+            blocked |= BLOCKED_FLOOR;
+            player.onGround = true;
+        }
+        if (fabsf(trace.normal.y) < 0.001f) blocked |= BLOCKED_STEP;  // Vertical wall, might be a step
+
+        timeLeft -= timeLeft*trace.fraction;
+
+        if (numPlanes >= MAX_PLANES)
+        {
+            player.velocity = { 0.0f, 0.0f, 0.0f };
+            break;
+        }
+        planes[numPlanes++] = trace.normal;
+
+        // Find a velocity that slides along all the planes hit so far
+        int i, j;
+        Vector3 newVelocity = { 0 };
+        for (i = 0; i < numPlanes; i++)
+        {
+            newVelocity = ClipVelocity(originalVelocity, planes[i], 1.0f);
+            for (j = 0; j < numPlanes; j++)
+            {
+                if (j != i && Vector3DotProduct(newVelocity, planes[j]) < 0.0f) break;
+            }
+            if (j == numPlanes) break;
+        }
+
+        if (i != numPlanes)
+        {
+            player.velocity = newVelocity;
+        }
+        else
+        {
+            // Stuck in a corner: slide along the crease between two planes, or stop
+            if (numPlanes != 2)
+            {
+                player.velocity = { 0.0f, 0.0f, 0.0f };
+                break;
+            }
+            Vector3 dir = Vector3CrossProduct(planes[0], planes[1]);
+            player.velocity = Vector3Scale(dir, Vector3DotProduct(dir, player.velocity));
+        }
+
+        // Don't bounce back the way we came, to avoid jittering in corners
+        if (Vector3DotProduct(player.velocity, primalVelocity) <= 0.0f)
+        {
+            player.velocity = { 0.0f, 0.0f, 0.0f };
+            break;
+        }
+    }
+
+    return blocked;
+}
+
+// Moves the player, stepping up onto ledges no higher than STEP_SIZE (SV_WalkMove)
+static void WalkMove(Player &player, const World &world, float dt)
+{
+    bool wasOnGround = player.onGround;
+    player.onGround = false;
+
+    Vector3 oldPosition = player.position;
+    Vector3 oldVelocity = player.velocity;
+
+    int blocked = FlyMove(player, world, dt);
+
+    if (!(blocked & BLOCKED_STEP)) return;  // Didn't hit a wall
+    if (!wasOnGround) return;               // Don't climb steps while in the air
+
+    Vector3 noStepPosition = player.position;
+    Vector3 noStepVelocity = player.velocity;
+    bool noStepOnGround = player.onGround;
+
+    // Retry the move from STEP_SIZE higher, then drop back down
+    player.position = oldPosition;
+    PushMove(player, world, { 0.0f, STEP_SIZE, 0.0f });
+
+    player.velocity = { oldVelocity.x, 0.0f, oldVelocity.z };
+    FlyMove(player, world, dt);
+
+    Trace down = PushMove(player, world, { 0.0f, -STEP_SIZE + oldVelocity.y*dt, 0.0f });
+    if (down.normal.y > MIN_FLOOR_NORMAL)
+    {
+        player.onGround = true;
+    }
+    else
+    {
+        // Didn't land on solid ground, so use the move without the step
+        player.position = noStepPosition;
+        player.velocity = noStepVelocity;
+        player.onGround = noStepOnGround;
+    }
+}
+
+// Slows the player down. On the ground only horizontal speed is affected; when flying, all of it is
+static void ApplyFriction(Player &player, float dt, bool includeVertical)
+{
+    float verticalSq = includeVertical ? player.velocity.y*player.velocity.y : 0.0f;
+    float speed = sqrtf(player.velocity.x*player.velocity.x + verticalSq + player.velocity.z*player.velocity.z);
+    if (speed == 0.0f) return;
+
+    // Below STOP_SPEED, friction acts as if moving at STOP_SPEED, so the player comes to a full stop quickly
+    float control = (speed < STOP_SPEED) ? STOP_SPEED : speed;
+    float newSpeed = fmaxf(0.0f, speed - dt*control*FRICTION);
+
+    player.velocity.x *= newSpeed/speed;
+    player.velocity.z *= newSpeed/speed;
+    if (includeVertical) player.velocity.y *= newSpeed/speed;
+}
+
+static void Accelerate(Player &player, Vector3 wishDir, float wishSpeed, float dt)
+{
+    float currentSpeed = Vector3DotProduct(player.velocity, wishDir);
+    float addSpeed = wishSpeed - currentSpeed;
+    if (addSpeed <= 0.0f) return;
+
+    float accelSpeed = fminf(ACCELERATE*dt*wishSpeed, addSpeed);
+    player.velocity = Vector3Add(player.velocity, Vector3Scale(wishDir, accelSpeed));
+}
+
+// Same as Accelerate, but only caps the speed gained along wishDir, which is what allows air strafing
+static void AirAccelerate(Player &player, Vector3 wishDir, float wishSpeed, float dt)
+{
+    float cappedSpeed = fminf(wishSpeed, AIR_SPEED_CAP);
+    float currentSpeed = Vector3DotProduct(player.velocity, wishDir);
+    float addSpeed = cappedSpeed - currentSpeed;
+    if (addSpeed <= 0.0f) return;
+
+    float accelSpeed = fminf(ACCELERATE*wishSpeed*dt, addSpeed);
+    player.velocity = Vector3Add(player.velocity, Vector3Scale(wishDir, accelSpeed));
+}
+
+void UpdatePlayer(Player &player, const World &world, float dt)
+{
+    // Capturing the mouse moves the cursor to the middle of the window, and that jump shows up as mouse
+    // movement for a frame or two. Skip those, or the view spins away from where it was facing
+    bool cursorHidden = IsCursorHidden();
+    if (cursorHidden && !player.cursorWasHidden) player.mouseSettleFrames = 2;
+    player.cursorWasHidden = cursorHidden;
+
+    // Mouse look
+    if (cursorHidden && player.mouseSettleFrames > 0)
+    {
+        player.mouseSettleFrames--;
+    }
+    else if (cursorHidden)
+    {
+        Vector2 mouseDelta = GetMouseDelta();
+        float sensitivity = settings.mouseSensitivity*SENSITIVITY_SCALE;
+        float pitchDirection = settings.invertMouseY ? -1.0f : 1.0f;
+        player.yaw -= mouseDelta.x*sensitivity;
+        player.pitch = Clamp(player.pitch - pitchDirection*mouseDelta.y*sensitivity, -MAX_PITCH, MAX_PITCH);
+    }
+
+    // Buttons come from key binds, see binds.h
+    if (inputButtons.toggleFly)
+    {
+        inputButtons.toggleFly = false;
+        player.flying = !player.flying;
+        player.onGround = false;
+        player.jumpReleased = false;  // Jump held while flying up shouldn't jump right after landing
+    }
+
+    if (player.flying)
+    {
+        // Move along the full view direction, jump/moveup and movedown for straight up and down
+        Vector3 look = {
+            -sinf(player.yaw)*cosf(player.pitch),
+            sinf(player.pitch),
+            -cosf(player.yaw)*cosf(player.pitch)
+        };
+        Vector3 right = { cosf(player.yaw), 0.0f, -sinf(player.yaw) };
+        float forwardMove = (float)inputButtons.forward - (float)inputButtons.back;
+        float sideMove = (float)inputButtons.moveRight - (float)inputButtons.moveLeft;
+        float upMove = (float)(inputButtons.jump || inputButtons.moveUp) - (float)inputButtons.moveDown;
+
+        Vector3 wish = Vector3Add(Vector3Scale(look, forwardMove), Vector3Scale(right, sideMove));
+        wish.y += upMove;
+        Vector3 wishDir = Vector3Normalize(wish);
+        float wishSpeed = (Vector3LengthSqr(wishDir) > 0.0f) ? MAX_SPEED : 0.0f;
+
+        ApplyFriction(player, dt, true);
+        Accelerate(player, wishDir, wishSpeed, dt);
+        FlyMove(player, world, dt);
+        player.onGround = false;  // FlyMove flags floors it touches, but a flying player never stands
+        return;
+    }
+
+    // Jumping
+    if (!inputButtons.jump)
+    {
+        player.jumpReleased = true;
+    }
+    else if (player.onGround && player.jumpReleased)
+    {
+        player.jumpReleased = false;
+        player.onGround = false;
+        player.velocity.y += JUMP_SPEED;
+    }
+
+    // Movement input, on the horizontal plane only
+    Vector3 forward = { -sinf(player.yaw), 0.0f, -cosf(player.yaw) };
+    Vector3 right = { cosf(player.yaw), 0.0f, -sinf(player.yaw) };
+    float forwardMove = (float)inputButtons.forward - (float)inputButtons.back;
+    float sideMove = (float)inputButtons.moveRight - (float)inputButtons.moveLeft;
+
+    Vector3 wishDir = Vector3Normalize(Vector3Add(Vector3Scale(forward, forwardMove), Vector3Scale(right, sideMove)));
+    float wishSpeed = (Vector3LengthSqr(wishDir) > 0.0f) ? MAX_SPEED : 0.0f;
+
+    if (player.onGround)
+    {
+        ApplyFriction(player, dt, false);
+        Accelerate(player, wishDir, wishSpeed, dt);
+    }
+    else
+    {
+        AirAccelerate(player, wishDir, wishSpeed, dt);
+    }
+
+    player.velocity.y -= GRAVITY*dt;
+    WalkMove(player, world, dt);
+
+    if (player.position.y < KILL_HEIGHT) InitPlayer(player, player.spawn, player.spawnYaw);
+}
+
+Camera GetPlayerCamera(const Player &player)
+{
+    Vector3 look = {
+        -sinf(player.yaw)*cosf(player.pitch),
+        sinf(player.pitch),
+        -cosf(player.yaw)*cosf(player.pitch)
+    };
+
+    Camera camera = { 0 };
+    camera.position = Vector3Add(player.position, { 0.0f, VIEW_HEIGHT, 0.0f });
+    camera.target = Vector3Add(camera.position, look);
+    camera.up = { 0.0f, 1.0f, 0.0f };
+    camera.fovy = 60.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+    return camera;
+}

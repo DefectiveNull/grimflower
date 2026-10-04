@@ -1,0 +1,15 @@
+# Build output, made by build.bat
+/build/
+
+# Written by build.bat from the game's entity table on every build
+/entitylist.txt
+
+# Personal settings and logs the game and editor write next to themselves
+config.cfg
+autoexec.cfg
+editor.cfg
+console.log
+
+# Blender backups and map editor autosaves
+*.blend1
+model/autosave/

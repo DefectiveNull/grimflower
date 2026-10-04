@@ -1,0 +1,3 @@
+kloppenheim_06_2k.hdr
+    "Kloppenheim 06" by Greg Zaal, from Poly Haven: https://polyhaven.com/a/kloppenheim_06
+    License: CC0 (public domain). 2K .hdr version.
