@@ -12,6 +12,7 @@ Known gaps and loose ends, collected while building the game and the editor. Sec
 - [ ] **Sun shadow resolution**: one 2048×2048 shadow map covers the whole level, so big maps will get blocky shadows. Fit it to the area around the player, or use cascades.
 - [ ] **Point light shadows**: only the first 4 lights cast shadows (`MAX_SHADOW_LIGHTS`). Raising it also means changing the matching number in the shader in `lighting.cpp`.
 - [ ] **Cvars are numbers only**: string cvars would be needed for things like a map name.
+- [ ] Separate the rendering and engine specific code to a new folder `/engine` for better organization.
 - [ ] Add Ladders, Doors and level changes
 - [ ] Add a Crouching mechanic
 - [ ] Test SSAO and see how well it performs
