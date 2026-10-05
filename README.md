@@ -43,12 +43,17 @@ They also link against these Windows system libraries, which come with the Windo
 
 `build.bat` then:
 
-1. Compiles every `.cpp` in `src/game/` and `src/shared/` into `build/game.exe`
+1. Compiles every `.cpp` in `src/game/`, `src/engine/` and `src/shared/` into `build/game.exe`
 2. Runs `game.exe -exportentities` to write `entitylist.txt`, the list of entity types the editor reads
-3. Compiles every `.cpp` in `src/editor/` and `src/shared/` into `build/editor.exe`
+3. Compiles every `.cpp` in `src/editor/`, `src/engine/` and `src/shared/` into `build/editor.exe`
 4. Packs `cfg/`, `maps/`, `model/` and `textures/` into `build/gamedata.zip`
 
-Everything it makes goes in `build/`. There are no build settings to change. New `.cpp` files in `src/game/`, `src/editor/` or `src/shared/` are picked up automatically. `src/shared/` is for code both the game and the editor use, like loading levels, the world and lighting.
+Everything it makes goes in `build/`. There are no build settings to change. New `.cpp` files in any of these folders are picked up automatically. The source is split into:
+
+- `src/engine/`: the engine, which knows nothing about the game: rendering, the world and its collision, game data, the console, cvars, commands and key binds
+- `src/game/`: the game: the player, entities, menus, and its own console commands
+- `src/editor/`: the level editor
+- `src/shared/`: what the editor shares with the game or the engine, like the level file format
 
 ### Running
 

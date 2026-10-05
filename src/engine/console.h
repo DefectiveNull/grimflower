@@ -2,8 +2,10 @@
 
 // Quake 3 style drop-down console, toggled with the key left of 1 (` on US layouts)
 
-// Starts capturing raylib's log messages. Call before InitWindow so startup messages show up too
-void ConsoleInit();
+// Starts capturing raylib's log messages. Call before InitWindow so startup messages show up too.
+// name is the program's, like "Grimflower", shown in the console and by the about command
+void ConsoleInit(const char *name);
+const char *ConsoleAppName();
 
 // Handles the toggle key and typing. Returns true if the console took the keyboard this frame,
 // in which case the game should ignore its own input

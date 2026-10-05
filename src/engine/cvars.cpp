@@ -1,5 +1,6 @@
-// Every console command and cvar lives in this file.
-// To add a command: write a Cmd_ function below, then add a line for it to the commands table.
+// The engine's console commands and cvars. The game adds its own commands with AddCommands, see
+// src/game/gamecommands.cpp.
+// To add an engine command: write a Cmd_ function below, then add a line for it to the commands table.
 // To add a cvar: define it next to the others, declare it in cvars.h, then add it to the cvars table.
 
 // windows.h has to come before raylib.h, with the parts that clash with raylib's names left out
@@ -19,7 +20,6 @@
 #include "cvars.h"
 #include "binds.h"
 #include "console.h"
-#include "game.h"
 #include "gamedata.h"
 #include "keys.h"
 
@@ -32,13 +32,10 @@
 static void Cmd_About(const std::vector<std::string> &args);
 static void Cmd_Alias(const std::vector<std::string> &args);
 static void Cmd_Bind(const std::vector<std::string> &args);
-static void Cmd_Button(const std::vector<std::string> &args);
 static void Cmd_CfgSave(const std::vector<std::string> &args);
 static void Cmd_Clear(const std::vector<std::string> &args);
 static void Cmd_Exec(const std::vector<std::string> &args);
-static void Cmd_Fly(const std::vector<std::string> &args);
 static void Cmd_Help(const std::vector<std::string> &args);
-static void Cmd_Map(const std::vector<std::string> &args);
 static void Cmd_Toggle(const std::vector<std::string> &args);
 static void Cmd_ToggleCursor(const std::vector<std::string> &args);
 static void Cmd_Unbind(const std::vector<std::string> &args);
@@ -47,30 +44,27 @@ static void Cmd_WriteLogs(const std::vector<std::string> &args);
 
 static const ConsoleCommand commands[] =
 {
-    { "about", "Shows the game, library versions and hardware specs", Cmd_About },
+    { "about", "Shows the program, library versions and hardware specs", Cmd_About },
     { "alias", "Names a list of commands: alias <name> \"<command>; <command>\". No arguments lists aliases", Cmd_Alias },
     { "bind", "Binds a key to a command: bind <key> \"<command>\". Just a key shows its bind", Cmd_Bind },
     { "cfg_save", "Saves binds and cvars to config.cfg next to the game, or cfg_save <file>", Cmd_CfgSave },
     { "clear", "Clears the console text and command history", Cmd_Clear },
     { "exec", "Runs the commands in a .cfg file: exec <file>", Cmd_Exec },
-    { "fly", "Toggles fly mode", Cmd_Fly },
     { "help", "Lists all commands and cvars", Cmd_Help },
-    { "map", "Loads a level: map <name>, like map dev for maps/dev.json", Cmd_Map },
     { "toggle", "Flips a cvar between 0 and 1: toggle <cvar>", Cmd_Toggle },
     { "togglecursor", "Frees or captures the mouse cursor", Cmd_ToggleCursor },
     { "unbind", "Removes a key's bind: unbind <key>", Cmd_Unbind },
     { "unbindall", "Removes every bind", Cmd_UnbindAll },
-    { "writelogs", "Saves the console log to a file: writelogs [path], default console.log next to the game", Cmd_WriteLogs },
-
-    // Movement buttons: bind a key to the + one, and it's held while the key is
-    { "+forward", "Move forward", Cmd_Button }, { "-forward", "", Cmd_Button },
-    { "+back", "Move back", Cmd_Button }, { "-back", "", Cmd_Button },
-    { "+moveleft", "Strafe left", Cmd_Button }, { "-moveleft", "", Cmd_Button },
-    { "+moveright", "Strafe right", Cmd_Button }, { "-moveright", "", Cmd_Button },
-    { "+jump", "Jump, or fly up", Cmd_Button }, { "-jump", "", Cmd_Button },
-    { "+moveup", "Fly up", Cmd_Button }, { "-moveup", "", Cmd_Button },
-    { "+movedown", "Fly down", Cmd_Button }, { "-movedown", "", Cmd_Button },
+    { "writelogs", "Saves the console log to a file: writelogs [path], default console.log next to the program", Cmd_WriteLogs },
 };
+
+// Commands added with AddCommands, after the engine's own
+static std::vector<ConsoleCommand> addedCommands;
+
+void AddCommands(const ConsoleCommand *list, int count)
+{
+    addedCommands.insert(addedCommands.end(), list, list + count);
+}
 
 // { name, description, value, default value }
 Cvar r_showentities = { "r_showentities", "Shows markers and labels on world entities like the sun (0/1)", 0.0f, 0.0f };
@@ -100,6 +94,10 @@ static bool NamesMatch(const char *a, const std::string &name)
 const ConsoleCommand *FindCommand(const std::string &name)
 {
     for (const ConsoleCommand &command : commands)
+    {
+        if (NamesMatch(command.name, name)) return &command;
+    }
+    for (const ConsoleCommand &command : addedCommands)
     {
         if (NamesMatch(command.name, name)) return &command;
     }
@@ -357,43 +355,6 @@ static void Cmd_CfgSave(const std::vector<std::string> &args)
 // ---------------------------------------------------------------------------------------------
 // Controls
 
-static void Cmd_Button(const std::vector<std::string> &args)
-{
-    bool down = (args[0][0] == '+');
-    SetInputButton(args[0].substr(1), down);
-}
-
-static void Cmd_Fly(const std::vector<std::string> &args)
-{
-    (void)args;
-    inputButtons.toggleFly = true;
-}
-
-// ---------------------------------------------------------------------------------------------
-// Levels
-
-// "platforms", "platforms.json" and "maps/platforms.json" all mean the same level
-static void Cmd_Map(const std::vector<std::string> &args)
-{
-    if (args.size() < 2)
-    {
-        ConsolePrintf("Usage: map <name>, like map dev to load maps/dev.json");
-        return;
-    }
-
-    std::string path = args[1];
-    for (char &c : path) if (c == '\\') c = '/';
-    if (!IsFileExtension(path.c_str(), ".json")) path += ".json";
-    if (path.find('/') == std::string::npos) path = "maps/" + path;
-
-    if (!GameDataFileExists(path.c_str()))
-    {
-        ConsolePrintf("There's no level %s", path.c_str());
-        return;
-    }
-    RequestMap(path);
-}
-
 static void Cmd_Toggle(const std::vector<std::string> &args)
 {
     Cvar *cvar = (args.size() > 1) ? FindCvar(args[1]) : nullptr;
@@ -456,7 +417,7 @@ static void Cmd_About(const std::vector<std::string> &args)
     (void)args;
     int monitor = GetCurrentMonitor();
 
-    ConsolePrintf("Game: %s", GAME_NAME);
+    ConsolePrintf("Program: %s", ConsoleAppName());
     ConsolePrintf("raylib: %s", RAYLIB_VERSION);
     ConsolePrintf("raygui: %s", RAYGUI_VERSION);
     ConsolePrintf("OpenGL: %s", (const char *)glGetString(GL_VERSION));
@@ -480,7 +441,8 @@ static void Cmd_Help(const std::vector<std::string> &args)
 {
     (void)args;
     ConsolePrintf("Commands:");
-    for (const ConsoleCommand &command : commands)
+    for (const ConsoleCommand &command : commands) ConsolePrintf("  %s - %s", command.name, command.description);
+    for (const ConsoleCommand &command : addedCommands)
     {
         if (command.name[0] != '-') ConsolePrintf("  %s - %s", command.name, command.description);  // - commands just undo their + one
     }

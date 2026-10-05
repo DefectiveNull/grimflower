@@ -2,26 +2,11 @@
 #include "cvars.h"
 #include "keys.h"
 
-InputButtons inputButtons = {};
-
 static std::map<int, std::string> binds;
 
 // Keys whose + command ran, and the - command to run when they're released. Saved at press time,
 // so rebinding a held key still releases what it pressed
 static std::map<int, std::string> held;
-
-bool SetInputButton(const std::string &name, bool down)
-{
-    if (name == "forward") inputButtons.forward = down;
-    else if (name == "back") inputButtons.back = down;
-    else if (name == "moveleft") inputButtons.moveLeft = down;
-    else if (name == "moveright") inputButtons.moveRight = down;
-    else if (name == "jump") inputButtons.jump = down;
-    else if (name == "moveup") inputButtons.moveUp = down;
-    else if (name == "movedown") inputButtons.moveDown = down;
-    else return false;
-    return true;
-}
 
 void SetBind(int key, const std::string &command)
 {

@@ -37,6 +37,9 @@ bool ExecConfig(const char *path, bool quietIfMissing);
 // Splits one command into arguments on whitespace, keeping "quoted text" together
 std::vector<std::string> TokenizeCommand(const std::string &command);
 
+// Adds commands to the engine's own, like the game's. list has to stay around, so make it static
+void AddCommands(const ConsoleCommand *list, int count);
+
 // Looks up a command by name, ignoring case. Returns nullptr if there's no such command
 const ConsoleCommand *FindCommand(const std::string &name);
 

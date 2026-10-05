@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include "raygui.h"
 #include "binds.h"
+#include "gamecommands.h"
 #include "console.h"
 #include "entities.h"
 #include "cvars.h"
@@ -62,7 +63,8 @@ int main(int argc, char **argv)
         return ExportEntityList(path) ? 0 : 1;
     }
 
-    ConsoleInit();  // Before InitWindow, so the console also shows raylib's startup messages
+    ConsoleInit(GAME_NAME);  // Before InitWindow, so the console also shows raylib's startup messages
+    AddGameCommands();       // Before the configs, which bind keys to them
     InitWindow(1280, 720, GAME_NAME);
     InitAudioDevice();
     InitSettings();

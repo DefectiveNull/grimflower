@@ -1,6 +1,5 @@
 #include "console.h"
 #include "cvars.h"
-#include "game.h"
 #include "raylib.h"
 
 #include <cctype>
@@ -76,9 +75,17 @@ static void TraceLogToConsole(int logLevel, const char *format, va_list args)
     AddLines(std::string(prefix) + buffer, color);
 }
 
-void ConsoleInit()
+static std::string appName;
+
+void ConsoleInit(const char *name)
 {
+    appName = name;
     SetTraceLogCallback(TraceLogToConsole);
+}
+
+const char *ConsoleAppName()
+{
+    return appName.c_str();
 }
 
 void ConsoleClear()
@@ -196,8 +203,8 @@ void ConsoleDraw()
     DrawRectangle(0, 0, width, height, Fade(BLACK, 0.85f));
     DrawRectangle(0, height - 2, width, 2, Color{ 200, 60, 40, 255 });
 
-    // Game name in the bottom right corner
-    DrawText(GAME_NAME, width - MeasureText(GAME_NAME, 10) - PADDING, height - 16, 10, GRAY);
+    // Program name in the bottom right corner
+    DrawText(appName.c_str(), width - MeasureText(appName.c_str(), 10) - PADDING, height - 16, 10, GRAY);
 
     // Input line, with a blinking cursor
     const int inputY = height - LINE_HEIGHT - PADDING - 6;

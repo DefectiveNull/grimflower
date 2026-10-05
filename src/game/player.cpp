@@ -1,6 +1,6 @@
 #include "player.h"
 #include "settings.h"
-#include "binds.h"
+#include "gamecommands.h"
 #include "raymath.h"
 
 #include <cmath>
@@ -244,7 +244,7 @@ void UpdatePlayer(Player &player, const World &world, float dt)
         player.pitch = Clamp(player.pitch - pitchDirection*mouseDelta.y*sensitivity, -MAX_PITCH, MAX_PITCH);
     }
 
-    // Buttons come from key binds, see binds.h
+    // Buttons come from key binds running the + and - commands, see gamecommands.cpp
     if (inputButtons.toggleFly)
     {
         inputButtons.toggleFly = false;

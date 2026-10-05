@@ -7,24 +7,6 @@
 #include <map>
 #include <string>
 
-// What the player is being told to do, set by the +/- button commands (+forward, -forward...)
-struct InputButtons
-{
-    bool forward;
-    bool back;
-    bool moveLeft;
-    bool moveRight;
-    bool jump;       // Also flies up
-    bool moveUp;
-    bool moveDown;
-    bool toggleFly;  // Set by the "fly" command, cleared once the player handles it
-};
-
-extern InputButtons inputButtons;
-
-// Sets a button by its command name without the +/-, like "forward". False if there's no such button
-bool SetInputButton(const std::string &name, bool down);
-
 void SetBind(int key, const std::string &command);
 void RemoveBind(int key);
 void ClearBinds();
