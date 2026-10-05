@@ -1,6 +1,7 @@
 #include "player.h"
 #include "settings.h"
 #include "gamecommands.h"
+#include "volumes.h"
 #include "raymath.h"
 
 #include <cmath>
@@ -23,6 +24,16 @@ static const float MIN_FLOOR_NORMAL = 0.7f;                    // Steeper than t
 static const float SENSITIVITY_SCALE = 0.001f;                 // Radians per pixel at sensitivity 1
 static const float MAX_PITCH = 89.0f*DEG2RAD;
 static const float KILL_HEIGHT = -50.0f;                       // Respawn when falling below this
+
+// Crouching halves the hull's height, keeping the feet where they are, like Half-Life's duck hull
+static const Vector3 DUCK_MAXS = { 0.5f, 0.125f, 0.5f };
+static const float DUCK_VIEW_HEIGHT = 0.0f;
+static const float DUCK_SPEED_SCALE = 0.333f;                  // PLAYER_DUCKING_MULTIPLIER
+
+static const float SWIM_SPEED_SCALE = 0.8f;                    // Half-Life swims at 80% of the walking speed
+static const float SINK_SPEED = 1.875f;                        // 60, drifting down with no input
+static const float CLIMB_SPEED = 3.75f;                        // MAX_CLIMB_SPEED 200 at Half-Life's speeds
+static const float CLIMB_DOWN_PITCH = -30.0f*DEG2RAD;          // Looking further down than this, forward climbs down
 
 static const int BLOCKED_FLOOR = 1;
 static const int BLOCKED_STEP = 2;
@@ -50,10 +61,20 @@ static Vector3 ClipVelocity(Vector3 in, Vector3 normal, float overbounce)
     return out;
 }
 
+static Vector3 HullMaxs(const Player &player)
+{
+    return player.ducked ? DUCK_MAXS : PLAYER_MAXS;
+}
+
+BoundingBox GetPlayerBox(const Player &player)
+{
+    return { Vector3Add(player.position, PLAYER_MINS), Vector3Add(player.position, HullMaxs(player)) };
+}
+
 // Moves the player by a fixed offset, stopping at the first thing hit
 static Trace PushMove(Player &player, const World &world, Vector3 push)
 {
-    Trace trace = TraceBox(world, player.position, Vector3Add(player.position, push), PLAYER_MINS, PLAYER_MAXS);
+    Trace trace = TraceBox(world, player.position, Vector3Add(player.position, push), PLAYER_MINS, HullMaxs(player));
     player.position = trace.endPos;
     return trace;
 }
@@ -77,7 +98,7 @@ static int FlyMove(Player &player, const World &world, float time)
         if (Vector3LengthSqr(player.velocity) == 0.0f) break;
 
         Vector3 end = Vector3Add(player.position, Vector3Scale(player.velocity, timeLeft));
-        Trace trace = TraceBox(world, player.position, end, PLAYER_MINS, PLAYER_MAXS);
+        Trace trace = TraceBox(world, player.position, end, PLAYER_MINS, HullMaxs(player));
 
         if (trace.fraction > 0.0f)
         {
@@ -222,7 +243,107 @@ static void AirAccelerate(Player &player, Vector3 wishDir, float wishSpeed, floa
     player.velocity = Vector3Add(player.velocity, Vector3Scale(wishDir, accelSpeed));
 }
 
-void UpdatePlayer(Player &player, const World &world, float dt)
+static float ViewHeight(const Player &player)
+{
+    return player.ducked ? DUCK_VIEW_HEIGHT : VIEW_HEIGHT;
+}
+
+// How deep in water the player is, checking the feet, the waist (the origin) and the eyes (PM_CheckWater)
+static int WaterLevel(const Player &player, const Volumes &volumes)
+{
+    Vector3 feet = { player.position.x, player.position.y + PLAYER_MINS.y + 0.05f, player.position.z };
+    if (!(PointContents(volumes, feet) & CONTENTS_WATER)) return 0;
+    if (!(PointContents(volumes, player.position) & CONTENTS_WATER)) return 1;
+
+    Vector3 eyes = { player.position.x, player.position.y + ViewHeight(player), player.position.z };
+    return (PointContents(volumes, eyes) & CONTENTS_WATER) ? 3 : 2;
+}
+
+// Holding duck crouches. Letting go stands back up, but only once there's room above
+static void UpdateDuck(Player &player, const World &world, bool canDuck)
+{
+    if (inputButtons.duck && canDuck)
+    {
+        player.ducked = true;
+        return;
+    }
+    if (!player.ducked) return;
+
+    // Checked from a hair higher: standing exactly on the floor counts as being inside it otherwise,
+    // and the player could never stand up without jumping first
+    Vector3 checkFrom = Vector3Add(player.position, { 0.0f, 0.01f, 0.0f });
+    Trace room = TraceBox(world, checkFrom, checkFrom, PLAYER_MINS, PLAYER_MAXS);
+    if (!room.startSolid) player.ducked = false;
+}
+
+// On a ladder: no gravity, forward climbs (down while looking down), jump lets go (PM_LadderMove)
+static void LadderMove(Player &player, const World &world, float dt)
+{
+    Vector3 forward = { -sinf(player.yaw), 0.0f, -cosf(player.yaw) };
+    Vector3 right = { cosf(player.yaw), 0.0f, -sinf(player.yaw) };
+
+    if (!inputButtons.jump)
+    {
+        player.jumpReleased = true;
+    }
+    else if (player.jumpReleased)
+    {
+        // Push off backwards, and don't grab the ladder again straight away
+        player.jumpReleased = false;
+        player.velocity = Vector3Add(Vector3Scale(forward, -MAX_SPEED*0.5f), { 0.0f, JUMP_SPEED*0.5f, 0.0f });
+        player.ladderCooldown = 0.3f;
+        player.onGround = false;
+        FlyMove(player, world, dt);
+        return;
+    }
+
+    float forwardMove = (float)inputButtons.forward - (float)inputButtons.back;
+    float sideMove = (float)inputButtons.moveRight - (float)inputButtons.moveLeft;
+    float climb = (player.pitch < CLIMB_DOWN_PITCH) ? -forwardMove : forwardMove;
+
+    // Moving towards the ladder too, so climbing off the top carries the player onto the ledge
+    Vector3 across = Vector3Add(Vector3Scale(forward, forwardMove), Vector3Scale(right, sideMove));
+    player.velocity = Vector3Scale(across, CLIMB_SPEED*0.5f);
+    player.velocity.y = climb*CLIMB_SPEED;
+
+    player.onGround = false;
+    FlyMove(player, world, dt);
+}
+
+// Waist deep or more: swim where you look, jump up, duck down, and slowly sink without input (PM_WaterMove)
+static void WaterMove(Player &player, const World &world, float dt)
+{
+    Vector3 look = {
+        -sinf(player.yaw)*cosf(player.pitch),
+        sinf(player.pitch),
+        -cosf(player.yaw)*cosf(player.pitch)
+    };
+    Vector3 right = { cosf(player.yaw), 0.0f, -sinf(player.yaw) };
+    float forwardMove = (float)inputButtons.forward - (float)inputButtons.back;
+    float sideMove = (float)inputButtons.moveRight - (float)inputButtons.moveLeft;
+    float upMove = (float)(inputButtons.jump || inputButtons.moveUp) - (float)(inputButtons.duck || inputButtons.moveDown);
+
+    Vector3 wish = Vector3Add(Vector3Scale(look, forwardMove), Vector3Scale(right, sideMove));
+    wish.y += upMove;
+    Vector3 wishDir = Vector3Normalize(wish);
+    float wishSpeed = MAX_SPEED*SWIM_SPEED_SCALE;
+    if (Vector3LengthSqr(wishDir) == 0.0f)
+    {
+        wishDir = { 0.0f, -1.0f, 0.0f };
+        wishSpeed = SINK_SPEED;
+    }
+
+    ApplyFriction(player, dt, true);
+    Accelerate(player, wishDir, wishSpeed, dt);
+
+    // With the head above water, jump hops up, so the player can climb out onto a ledge
+    if (player.waterLevel == 2 && inputButtons.jump) player.velocity.y = fmaxf(player.velocity.y, JUMP_SPEED*0.8f);
+
+    player.onGround = false;
+    FlyMove(player, world, dt);
+}
+
+void UpdatePlayer(Player &player, const World &world, const Volumes &volumes, float dt)
 {
     // Capturing the mouse moves the cursor to the middle of the window, and that jump shows up as mouse
     // movement for a frame or two. Skip those, or the view spins away from where it was facing
@@ -264,17 +385,37 @@ void UpdatePlayer(Player &player, const World &world, float dt)
         Vector3 right = { cosf(player.yaw), 0.0f, -sinf(player.yaw) };
         float forwardMove = (float)inputButtons.forward - (float)inputButtons.back;
         float sideMove = (float)inputButtons.moveRight - (float)inputButtons.moveLeft;
-        float upMove = (float)(inputButtons.jump || inputButtons.moveUp) - (float)inputButtons.moveDown;
+        float upMove = (float)(inputButtons.jump || inputButtons.moveUp) - (float)(inputButtons.moveDown || inputButtons.duck);
 
         Vector3 wish = Vector3Add(Vector3Scale(look, forwardMove), Vector3Scale(right, sideMove));
         wish.y += upMove;
         Vector3 wishDir = Vector3Normalize(wish);
         float wishSpeed = (Vector3LengthSqr(wishDir) > 0.0f) ? MAX_SPEED : 0.0f;
 
+        UpdateDuck(player, world, false);  // Stands back up if crouching when fly was turned on
         ApplyFriction(player, dt, true);
         Accelerate(player, wishDir, wishSpeed, dt);
         FlyMove(player, world, dt);
         player.onGround = false;  // FlyMove flags floors it touches, but a flying player never stands
+        return;
+    }
+
+    // What the player is in: water, and whether they're touching a ladder
+    player.waterLevel = WaterLevel(player, volumes);
+    player.ladderCooldown = fmaxf(player.ladderCooldown - dt, 0.0f);
+    player.onLadder = player.ladderCooldown <= 0.0f && (BoxContents(volumes, GetPlayerBox(player)) & CONTENTS_LADDER);
+
+    // Duck means swim down in water, so only crouch out of it
+    UpdateDuck(player, world, player.waterLevel < 2 && !player.onLadder);
+
+    if (player.onLadder)
+    {
+        LadderMove(player, world, dt);
+        return;
+    }
+    if (player.waterLevel >= 2)
+    {
+        WaterMove(player, world, dt);
         return;
     }
 
@@ -298,6 +439,7 @@ void UpdatePlayer(Player &player, const World &world, float dt)
 
     Vector3 wishDir = Vector3Normalize(Vector3Add(Vector3Scale(forward, forwardMove), Vector3Scale(right, sideMove)));
     float wishSpeed = (Vector3LengthSqr(wishDir) > 0.0f) ? MAX_SPEED : 0.0f;
+    if (player.ducked) wishSpeed *= DUCK_SPEED_SCALE;
 
     if (player.onGround)
     {
@@ -324,7 +466,7 @@ Camera GetPlayerCamera(const Player &player)
     };
 
     Camera camera = { 0 };
-    camera.position = Vector3Add(player.position, { 0.0f, VIEW_HEIGHT, 0.0f });
+    camera.position = Vector3Add(player.position, { 0.0f, ViewHeight(player), 0.0f });
     camera.target = Vector3Add(camera.position, look);
     camera.up = { 0.0f, 1.0f, 0.0f };
     camera.fovy = 60.0f;

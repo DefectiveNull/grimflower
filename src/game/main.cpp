@@ -12,6 +12,7 @@
 #include "menu.h"
 #include "player.h"
 #include "settings.h"
+#include "volumes.h"
 #include "world.h"
 #include "worlddebug.h"
 
@@ -33,21 +34,27 @@ void RequestMap(const std::string &path)
 }
 
 // Loads and spawns a level in place of the current one. If it fails, the current one stays as it was
-static bool StartLevel(const std::string &path, Level &level, World &world, bool &worldLoaded, Player &player)
+static bool StartLevel(const std::string &path, Level &level, World &world, bool &worldLoaded, Player &player, Volumes &volumes)
 {
     Level newLevel;
     World newWorld = {};
     Player newPlayer = player;
-    if (!LoadLevel(newLevel, path.c_str()) || !SpawnLevel(newLevel, newWorld, newPlayer))
+    Volumes newVolumes = {};
+    if (!LoadLevel(newLevel, path.c_str()) || !SpawnLevel(newLevel, newWorld, newPlayer, newVolumes))
     {
         ConsolePrintf("Couldn't load the level %s, see the warnings above", path.c_str());
         return false;
     }
 
-    if (worldLoaded) UnloadWorld(world);
+    if (worldLoaded)
+    {
+        UnloadVolumes(volumes);
+        UnloadWorld(world);
+    }
     level = newLevel;
     world = newWorld;
     player = newPlayer;
+    volumes = newVolumes;
     worldLoaded = true;
 
     ConsolePrintf("Loaded level \"%s\" from %s", level.info.name.c_str(), path.c_str());
@@ -100,6 +107,7 @@ int main(int argc, char **argv)
     Scene scene = SCENE_MAIN_MENU;
     Level level;
     World world = {};
+    Volumes volumes = {};  // The level's water, ladders, triggers and doors
     bool worldLoaded = false;
     Player player = {};
     bool paused = false;
@@ -117,7 +125,7 @@ int main(int argc, char **argv)
         {
             std::string path = requestedMap;
             requestedMap.clear();
-            if (StartLevel(path, level, world, worldLoaded, player))
+            if (StartLevel(path, level, world, worldLoaded, player, volumes))
             {
                 scene = SCENE_GAME;
                 paused = false;
@@ -187,7 +195,8 @@ int main(int argc, char **argv)
             float dt = GetFrameTime();
             if (dt > 0.05f) dt = 0.05f;
 
-            UpdatePlayer(player, world, dt);
+            UpdateVolumes(volumes, world, GetPlayerBox(player), dt);  // Doors first, so the player collides with where they are now
+            UpdatePlayer(player, world, volumes, dt);
         }
         else
         {
@@ -205,14 +214,18 @@ int main(int argc, char **argv)
                 DrawSkybox(world.skybox, camera);  // First, so the world draws over it
                 DrawWorld(world, r_showcolliders.value != 0.0f);
                 DrawLightMarkers(world.lighting);
+                DrawVolumes(volumes, world, r_showcolliders.value != 0.0f);
             EndMode3D();
             DrawWorldEntityLabels(world, camera);
+
+            // Underwater, everything gets a blue tint. Water's faces aren't seen from inside it
+            if (PointContents(volumes, camera.position) & CONTENTS_WATER) DrawRectangle(0, 0, screenWidth, screenHeight, Fade(Color{ 30, 80, 160, 255 }, 0.45f));
 
             // Crosshair
             DrawLine(screenWidth/2 - 8, screenHeight/2, screenWidth/2 + 8, screenHeight/2, DARKGRAY);
             DrawLine(screenWidth/2, screenHeight/2 - 8, screenWidth/2, screenHeight/2 + 8, DARKGRAY);
 
-            DrawText("Default keys - WASD: move | Space: jump | X: fly | F1: colliders | Tab: cursor | Esc: pause | `: console", 10, 10, 20, DARKGRAY);
+            DrawText("Default keys - WASD: move | Space: jump | Ctrl: crouch | X: fly | F1: colliders | Tab: cursor | Esc: pause | `: console", 10, 10, 20, DARKGRAY);
             if (player.flying) DrawText("FLYING (Space/Ctrl: up/down)", 10, 36, 20, MAROON);
 
             if (paused)
@@ -242,7 +255,11 @@ int main(int argc, char **argv)
         EndDrawing();
     }
 
-    if (worldLoaded) UnloadWorld(world);
+    if (worldLoaded)
+    {
+        UnloadVolumes(volumes);
+        UnloadWorld(world);
+    }
     UnmountGameData();
     CloseAudio();
     CloseWindow();

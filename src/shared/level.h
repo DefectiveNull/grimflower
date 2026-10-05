@@ -47,3 +47,4 @@ bool SaveLevel(Level &level, const char *path);
 float EntityFloat(const LevelEntity &entity, const char *key, float fallback);
 Vector3 EntityVector(const LevelEntity &entity, const char *key, Vector3 fallback);
 Color EntityColor(const LevelEntity &entity, const char *key, Color fallback);
+std::string EntityText(const LevelEntity &entity, const char *key, const std::string &fallback);

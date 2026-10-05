@@ -23,6 +23,7 @@ struct World
 {
     Model model;
     std::vector<Brush> colliders;
+    std::vector<Brush> movers;  // Solids that move, like doors. Whoever moves them rebuilds this every frame
     BoundingBox bounds;   // Around all the level geometry
     Lighting lighting;    // Sun, point lights and shadows
     Skybox skybox;        // From the level's info.skybox, if it has one
@@ -47,8 +48,15 @@ void RenderWorldShadows(World &world);
 // Draws the level lit by the sun and point lights. With showColliders, also draws the collision brushes
 void DrawWorld(const World &world, bool showColliders);
 
+// A box-shaped brush, for movers
+Brush MakeBoxBrush(BoundingBox box);
+
+// Loads a texture through the game data, so it can come from gamedata.zip. TGAs work too, which the
+// prebuilt raylib can't read. Returns false if it couldn't be loaded
+bool LoadGameTexture(const char *path, Texture &texture);
+
 // Builds one convex brush per object ("o"/"g") in an OBJ file. Each object must be convex.
 std::vector<Brush> ComputeColliders(const char *objPath, float scale);
 
-// Sweeps a box with the given extents (relative to its origin) from start to end
+// Sweeps a box with the given extents (relative to its origin) from start to end, against the colliders and the movers
 Trace TraceBox(const World &world, Vector3 start, Vector3 end, Vector3 mins, Vector3 maxs);

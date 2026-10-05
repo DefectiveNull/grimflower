@@ -88,7 +88,7 @@ static const BindAction BIND_ACTIONS[] =
     { "+moveleft", "Move left" },
     { "+moveright", "Move right" },
     { "+jump", "Jump / fly up" },
-    { "+movedown", "Fly down" },
+    { "+duck", "Crouch / swim down" },
     { "fly", "Toggle fly" },
     { "togglecursor", "Free the mouse" },
     { "toggle r_showcolliders", "Show colliders" },

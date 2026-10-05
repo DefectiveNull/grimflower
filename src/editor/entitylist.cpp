@@ -172,12 +172,14 @@ const EntityParamInfo *FindEntityParamOfType(const EntityClassInfo &entityClass,
 
 nlohmann::ordered_json DefaultParamValue(const EntityParamInfo &param)
 {
+    if (param.type == "text") return param.defaultValue;
+
     std::vector<double> numbers;
     std::istringstream values(param.defaultValue);
     double value;
     while (values >> value) numbers.push_back(value);
 
-    if (param.type == "color" || param.type == "direction")
+    if (param.type == "color" || param.type == "direction" || param.type == "vector")
     {
         nlohmann::ordered_json array = nlohmann::ordered_json::array();
         for (double n : numbers)

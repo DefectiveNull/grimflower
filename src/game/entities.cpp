@@ -3,6 +3,7 @@
 #include "levellights.h"
 #include "lighting.h"
 #include "player.h"
+#include "volumes.h"
 #include "world.h"
 #include "raymath.h"
 
@@ -23,6 +24,49 @@ static void SpawnPlayerStart(const LevelEntity &entity, const EntityClass &entit
 
     InitPlayer(context.player, entity.origin, EntityParamNumber(entity, entityClass, "angle")*DEG2RAD);
     context.hasPlayerStart = true;
+}
+
+// A volume's box in world space, from its mins and maxs around its origin
+static BoundingBox VolumeBox(const LevelEntity &entity, const EntityClass &entityClass)
+{
+    Vector3 mins = EntityParamVector(entity, entityClass, "mins");
+    Vector3 maxs = EntityParamVector(entity, entityClass, "maxs");
+    return { Vector3Add(entity.origin, Vector3Min(mins, maxs)), Vector3Add(entity.origin, Vector3Max(mins, maxs)) };
+}
+
+// Volumes: what they do comes from the entity type, over the whole box
+static void SpawnVolume(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context, int contents)
+{
+    Volume volume = {};
+    volume.box = VolumeBox(entity, entityClass);
+    volume.contents = contents;
+    context.volumes.volumes.push_back(volume);
+}
+
+static void SpawnWater(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    SpawnVolume(entity, entityClass, context, CONTENTS_WATER);
+    AddWaterSurface(context.volumes, context.volumes.volumes.back());
+}
+
+static void SpawnLadder(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    SpawnVolume(entity, entityClass, context, CONTENTS_LADDER);
+}
+
+static void SpawnChangeLevel(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    SpawnVolume(entity, entityClass, context, CONTENTS_TRIGGER);
+    context.volumes.volumes.back().map = EntityParamText(entity, entityClass, "map");
+    if (context.volumes.volumes.back().map.empty()) TraceLog(LOG_WARNING, "LEVEL: trigger_changelevel has no map to load");
+}
+
+static void SpawnDoor(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    AddDoor(context.volumes, VolumeBox(entity, entityClass), EntityParamVector(entity, entityClass, "direction"),
+            EntityParamNumber(entity, entityClass, "lip"), EntityParamNumber(entity, entityClass, "speed"),
+            EntityParamNumber(entity, entityClass, "wait"), EntityParamText(entity, entityClass, "texture").c_str(),
+            context.world.lighting.shader);
 }
 
 // sun and light have no spawn function: ApplyLevelLights (src/shared/levellights.cpp) sets them up, the
@@ -81,6 +125,50 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         { "sphere", { 0 }, { 0 }, 0.2f, WHITE, "color", 1.0f },
         nullptr,  // ApplyLevelLights
     },
+
+    // Volumes: a box from mins to maxs around the origin, doing what its type says over the whole box (volumes.cpp)
+    {
+        "func_water", "Water the player swims in. Drawn see-through in the game",
+        {
+            { "mins", "vector", "-2 0 -2", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "2 1 2", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+        },
+        { "volume", { 0 }, { 0 }, 0.0f, { 40, 110, 200, 255 }, nullptr, 0.0f },
+        SpawnWater,
+    },
+    {
+        "func_ladder", "A ladder the player climbs while touching it. Invisible in the game, so put it in front of a ladder in the world model",
+        {
+            { "mins", "vector", "-0.5 0 -0.125", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "0.5 3 0.125", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+        },
+        { "volume", { 0 }, { 0 }, 0.0f, { 230, 150, 40, 255 }, nullptr, 0.0f },
+        SpawnLadder,
+    },
+    {
+        "trigger_changelevel", "Loads another level when the player walks in. Invisible in the game",
+        {
+            { "mins", "vector", "-1 0 -1", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "1 2 1", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "map", "text", "", "The level to load, like dev for maps/dev.json", 0.0f, 0.0f },
+        },
+        { "volume", { 0 }, { 0 }, 0.0f, { 240, 200, 40, 255 }, nullptr, 0.0f },
+        SpawnChangeLevel,
+    },
+    {
+        "func_door", "A solid door that slides open when the player walks into it, then closes again",
+        {
+            { "mins", "vector", "-1 0 -0.125", "Corner of the door, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "1 2.5 0.125", "Opposite corner of the door, relative to the origin", 0.0f, 0.0f },
+            { "direction", "direction", "0 1 0", "Which way it slides open. It moves its own size that way, minus the lip", 0.0f, 0.0f },
+            { "lip", "number", "0.125", "How much of it stays in the frame when open", 0.0f, 1.0f },
+            { "speed", "number", "3", "World units per second", 0.5f, 10.0f },
+            { "wait", "number", "3", "Seconds it stays open before closing. -1 stays open", -1.0f, 10.0f },
+            { "texture", "text", "textures/dev/wall64.tga", "Texture it's drawn with, as a game data path", 0.0f, 0.0f },
+        },
+        { "volume", { 0 }, { 0 }, 0.0f, { 140, 220, 90, 255 }, nullptr, 0.0f },
+        SpawnDoor,
+    },
 };
 
 const std::vector<EntityClass> &GetEntityClasses()
@@ -97,12 +185,12 @@ const EntityClass *FindEntityClass(const std::string &classname)
     return nullptr;
 }
 
-bool SpawnLevel(const Level &level, World &world, Player &player)
+bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volumes)
 {
     if (!LoadWorld(world, level.worldModel.c_str(), level.worldScale)) return false;
 
     // Each entity type spawns itself, see the table above
-    SpawnContext context = { world, player, false };
+    SpawnContext context = { world, player, volumes, false };
     for (const LevelEntity &entity : level.entities)
     {
         const EntityClass *entityClass = FindEntityClass(entity.classname);
@@ -196,6 +284,12 @@ Color EntityParamColor(const LevelEntity &entity, const EntityClass &entityClass
     return EntityColor(entity, name, { (unsigned char)values[0], (unsigned char)values[1], (unsigned char)values[2], 255 });
 }
 
+std::string EntityParamText(const LevelEntity &entity, const EntityClass &entityClass, const char *name)
+{
+    const EntityParam *param = FindParam(entityClass, name);
+    return EntityText(entity, name, param ? param->defaultValue : "");
+}
+
 // ---------------------------------------------------------------------------------------------
 // entitylist.txt
 
@@ -207,10 +301,10 @@ bool ExportEntityList(const char *path)
         "// change the entity table in src/game/entities.cpp instead.\n"
         "//\n"
         "// entity <classname> \"<description>\"\n"
-        "//     marker box <min x y z> <max x y z>   or   marker sphere <radius>\n"
+        "//     marker box <min x y z> <max x y z>   or   marker sphere <radius>   or   marker volume (its own mins and maxs)\n"
         "//     color <r g b>   or   color param <color parameter>\n"
         "//     placement <how far off a surface new ones go>\n"
-        "//     param <name> <type> \"<default>\" \"<description>\" [<min> <max>]   (types: number angle direction color radius)\n"
+        "//     param <name> <type> \"<default>\" \"<description>\" [<min> <max>]   (types: number angle direction color radius vector text)\n"
         "//         min and max are the range of the editor's slider, for single numbers\n"
         "// end\n";
 
@@ -222,6 +316,10 @@ bool ExportEntityList(const char *path)
         if (strcmp(marker.shape, "box") == 0)
         {
             text += TextFormat("    marker box %g %g %g %g %g %g\n", marker.mins.x, marker.mins.y, marker.mins.z, marker.maxs.x, marker.maxs.y, marker.maxs.z);
+        }
+        else if (strcmp(marker.shape, "volume") == 0)
+        {
+            text += "    marker volume\n";
         }
         else
         {
