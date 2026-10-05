@@ -1,3 +1,5 @@
+![Grimflower logo](docs/grimflower-logo.svg)
+
 # Grimflower
 
 This project exists out of both my fascination with quake and quake derived game engines, and my frustrations with how the various tools in those engines (and in most big engines too for that matter) are designed.
