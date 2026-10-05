@@ -2,7 +2,6 @@
 #include "raymath.h"
 #include "config.h"
 #include "entitylist.h"
-#include "levellights.h"
 #include "style.h"
 
 #include <cmath>
@@ -373,7 +372,7 @@ void DrawViewport(EditorState &editor)
     if (editor.worldLoaded)
     {
         // Lights come from the level's entities every frame, so edits in the details panel show up right away
-        ApplyLevelLights(editor.level, editor.world.lighting, editor.defaultSun);
+        ApplyLevelLights(editor.level, editor.world.lighting, editor.defaultSun, GetEntityListParamReader());
         RenderWorldShadows(editor.world);
     }
 

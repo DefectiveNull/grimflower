@@ -1,5 +1,6 @@
 #include "entities.h"
 #include "level.h"
+#include "levellights.h"
 #include "lighting.h"
 #include "player.h"
 #include "world.h"
@@ -24,32 +25,25 @@ static void SpawnPlayerStart(const LevelEntity &entity, const EntityClass &entit
     context.hasPlayerStart = true;
 }
 
-// LoadWorld puts a default sun above a corner of the level; a sun entity replaces it
-static void SpawnSun(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
-{
-    if (context.hasSun)
-    {
-        TraceLog(LOG_WARNING, "LEVEL: More than one sun, using the first");
-        return;
-    }
+// sun and light have no spawn function: ApplyLevelLights (src/shared/levellights.cpp) sets them up, the
+// same way the editor previews them. These read their parameters with the defaults from the table below
 
-    Sun &sun = context.world.lighting.sun;
-    sun.position = entity.origin;
-    sun.direction = Vector3Normalize(EntityParamVector(entity, entityClass, "direction"));
-    sun.color = EntityParamColor(entity, entityClass, "color");
-    sun.intensity = EntityParamNumber(entity, entityClass, "intensity");
-    sun.ambient = EntityParamNumber(entity, entityClass, "ambient");
-    context.hasSun = true;
+static float TableParamNumber(const LevelEntity &entity, const char *name)
+{
+    const EntityClass *entityClass = FindEntityClass(entity.classname);
+    return entityClass ? EntityParamNumber(entity, *entityClass, name) : EntityFloat(entity, name, 0.0f);
 }
 
-static void SpawnLight(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+static Vector3 TableParamVector(const LevelEntity &entity, const char *name)
 {
-    PointLight light;
-    light.position = entity.origin;
-    light.color = EntityParamColor(entity, entityClass, "color");
-    light.intensity = EntityParamNumber(entity, entityClass, "intensity");
-    light.radius = EntityParamNumber(entity, entityClass, "radius");
-    context.world.lighting.lights.push_back(light);
+    const EntityClass *entityClass = FindEntityClass(entity.classname);
+    return entityClass ? EntityParamVector(entity, *entityClass, name) : EntityVector(entity, name, { 0.0f, 0.0f, 0.0f });
+}
+
+static Color TableParamColor(const LevelEntity &entity, const char *name)
+{
+    const EntityClass *entityClass = FindEntityClass(entity.classname);
+    return entityClass ? EntityParamColor(entity, *entityClass, name) : EntityColor(entity, name, WHITE);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -75,7 +69,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
             { "ambient", "number", "0.35", "Light every surface gets, so shadows aren't black", 0.0f, 1.0f },
         },
         { "sphere", { 0 }, { 0 }, 0.5f, { 253, 249, 0, 255 }, nullptr, 1.0f },
-        SpawnSun,
+        nullptr,  // ApplyLevelLights
     },
     {
         "light", "Point light with a color and a radius. The first 4 cast shadows",
@@ -85,7 +79,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
             { "radius", "radius", "5", "Distance where the light has faded out completely", 0.0f, 30.0f },
         },
         { "sphere", { 0 }, { 0 }, 0.2f, WHITE, "color", 1.0f },
-        SpawnLight,
+        nullptr,  // ApplyLevelLights
     },
 };
 
@@ -108,7 +102,7 @@ bool SpawnLevel(const Level &level, World &world, Player &player)
     if (!LoadWorld(world, level.worldModel.c_str(), level.worldScale)) return false;
 
     // Each entity type spawns itself, see the table above
-    SpawnContext context = { world, player, false, false };
+    SpawnContext context = { world, player, false };
     for (const LevelEntity &entity : level.entities)
     {
         const EntityClass *entityClass = FindEntityClass(entity.classname);
@@ -126,7 +120,14 @@ bool SpawnLevel(const Level &level, World &world, Player &player)
             if (!known) TraceLog(LOG_WARNING, "LEVEL: %s has a \"%s\" parameter, which it doesn't use", entity.classname.c_str(), property.key().c_str());
         }
 
-        entityClass->spawn(entity, *entityClass, context);
+        if (entityClass->spawn != nullptr) entityClass->spawn(entity, *entityClass, context);
+    }
+
+    // LoadWorld put a default sun above a corner of the level; a sun entity replaces it
+    const EntityParamReader tableParams = { TableParamNumber, TableParamVector, TableParamColor };
+    if (ApplyLevelLights(level, world.lighting, world.lighting.sun, tableParams) > 0)
+    {
+        TraceLog(LOG_WARNING, "LEVEL: More than one sun, using the first");
     }
 
     if (!context.hasPlayerStart)

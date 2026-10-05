@@ -48,7 +48,6 @@ struct SpawnContext
     World &world;
     Player &player;
     bool hasPlayerStart;
-    bool hasSun;
 };
 
 struct EntityClass
@@ -57,7 +56,7 @@ struct EntityClass
     const char *description;
     std::vector<EntityParam> params;
     EntityMarker marker;
-    void (*spawn)(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context);
+    void (*spawn)(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context);  // nullptr for lights, see ApplyLevelLights
 };
 
 const std::vector<EntityClass> &GetEntityClasses();

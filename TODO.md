@@ -24,7 +24,7 @@ Known gaps and loose ends, collected while building the game and the editor.
 - [X] **Preferences dialog**: it's a placeholder. Camera speed and sensitivity can only be changed in `editor.cfg`.
 - [ ] **`editor.cfg` is overwritten on exit**: hand edits made while the editor is open are lost.
 - [X] **Reload the entity list**: `entitylist.txt` and the level's world model are reloaded when they change on disk (`src/editor/hotreload.cpp`), so rebuilding the game or re-exporting from Blender doesn't need a restart. Textures and `.mtl` files aren't watched yet: use Reload World Model for those.
-- [ ] **Light preview duplicates game code**: `ApplyLevelLights` in `src/editor/levellights.cpp` copies how the game spawns `sun` and `light`. New light types need adding there too.
+- [X] **Light preview duplicates game code**: `ApplyLevelLights` in `src/shared/levellights.cpp` now sets up `sun` and `light` for both the game and the editor's preview, each taking parameter defaults from its own copy of the entity table. A new light type goes there, plus its parameters in `src/game/entities.cpp`.
 - [ ] **Undo history**: resets when opening or creating a level, and keeps the last 200 steps.
 
 ## Code

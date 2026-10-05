@@ -6,6 +6,7 @@
 
 #include "raylib.h"
 #include "json.hpp"
+#include "levellights.h"
 
 #include <string>
 #include <vector>
@@ -57,3 +58,6 @@ nlohmann::ordered_json DefaultParamValue(const EntityParamInfo &param);
 float EntityNumberOrDefault(const LevelEntity &entity, const char *name, float fallback);
 Vector3 EntityVectorOrDefault(const LevelEntity &entity, const char *name, Vector3 fallback);
 Color EntityColorOrDefault(const LevelEntity &entity, const char *name, Color fallback);
+
+// The same, for ApplyLevelLights (src/shared/levellights.h)
+const EntityParamReader &GetEntityListParamReader();

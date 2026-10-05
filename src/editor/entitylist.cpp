@@ -230,6 +230,17 @@ Color EntityColorOrDefault(const LevelEntity &entity, const char *name, Color fa
     return EntityColor(entity, name, fallback);
 }
 
+// Fallbacks for when entitylist.txt doesn't have the parameter either
+static float ListParamNumber(const LevelEntity &entity, const char *name) { return EntityNumberOrDefault(entity, name, 0.0f); }
+static Vector3 ListParamVector(const LevelEntity &entity, const char *name) { return EntityVectorOrDefault(entity, name, { 0.0f, -1.0f, 0.0f }); }
+static Color ListParamColor(const LevelEntity &entity, const char *name) { return EntityColorOrDefault(entity, name, WHITE); }
+
+const EntityParamReader &GetEntityListParamReader()
+{
+    static const EntityParamReader reader = { ListParamNumber, ListParamVector, ListParamColor };
+    return reader;
+}
+
 void GetParamRange(const EntityParamInfo &param, float &min, float &max)
 {
     if (param.hasRange)
