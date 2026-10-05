@@ -42,7 +42,7 @@ struct EntityClassInfo
     float placement;           // How far off a surface new ones go
 };
 
-// Reads the list. Returns false if the file is missing or empty
+// Reads the list. Returns false if the file is missing or empty, and keeps the list it had
 bool LoadEntityList(const char *path);
 
 const std::vector<EntityClassInfo> &GetEntityClassList();

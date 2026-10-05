@@ -103,7 +103,7 @@ static void DrawCreateEntityDialog(EditorState &editor)
     if (classes.empty())
     {
         GuiLabel({ bounds.x + PADDING, layout.y, bounds.width - 2*PADDING, 20 }, "No entity types: entitylist.txt is missing or empty.");
-        GuiLabel({ bounds.x + PADDING, layout.y + 24, bounds.width - 2*PADDING, 20 }, "Build the game with build.bat to write it, then restart the editor.");
+        GuiLabel({ bounds.x + PADDING, layout.y + 24, bounds.width - 2*PADDING, 20 }, "Build the game with build.bat to write it. The editor picks it up by itself.");
     }
     else
     {

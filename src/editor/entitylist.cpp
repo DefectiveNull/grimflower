@@ -46,8 +46,6 @@ static unsigned char Channel(const std::vector<std::string> &tokens, size_t inde
 
 bool LoadEntityList(const char *path)
 {
-    classes.clear();
-
     char *text = LoadFileText(path);
     if (text == nullptr)
     {
@@ -57,6 +55,8 @@ bool LoadEntityList(const char *path)
     std::istringstream file(text);
     UnloadFileText(text);
 
+    // Read into a new list, so a reload that finds nothing keeps the current one
+    std::vector<EntityClassInfo> loaded;
     EntityClassInfo *current = nullptr;
     std::string line;
     int lineNumber = 0;
@@ -77,8 +77,8 @@ bool LoadEntityList(const char *path)
             entityClass.radius = 0.25f;
             entityClass.color = MAGENTA;
             entityClass.placement = 1.0f;
-            classes.push_back(entityClass);
-            current = &classes.back();
+            loaded.push_back(entityClass);
+            current = &loaded.back();
         }
         else if (current == nullptr)
         {
@@ -127,8 +127,15 @@ bool LoadEntityList(const char *path)
         }
     }
 
+    if (loaded.empty())
+    {
+        TraceLog(LOG_WARNING, "ENTITYLIST: [%s] No entity types in it", path);
+        return false;
+    }
+
+    classes = loaded;
     TraceLog(LOG_INFO, "ENTITYLIST: [%s] %d entity types", path, (int)classes.size());
-    return !classes.empty();
+    return true;
 }
 
 const std::vector<EntityClassInfo> &GetEntityClassList()

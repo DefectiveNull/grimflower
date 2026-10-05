@@ -6,6 +6,7 @@
 #include "config.h"
 #include "editor.h"
 #include "entitylist.h"
+#include "hotreload.h"
 #include "style.h"
 
 // The project folder, which has maps/ and model/ in it. The editor runs from build/, so it looks
@@ -79,6 +80,7 @@ int main()
     {
         if (WindowShouldClose()) RequestAction(editor, ACTION_EXIT);
         UpdateConfigSaving();
+        UpdateHotReload(editor);  // entitylist.txt and the world model, when they change on disk
 
         // Keys are off while typing or in a dialog
         if (editor.dialog == DIALOG_NONE && !editor.textEditing) HandleKeys(editor);
