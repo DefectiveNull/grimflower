@@ -26,6 +26,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <map>
 #include <thread>
 
@@ -78,6 +79,22 @@ static Cvar *const cvars[] =
     &r_showcolliders,
 };
 
+// Cvars added with AddCvars, after the engine's own
+static std::vector<Cvar *> addedCvars;
+
+void AddCvars(Cvar *const *list, int count)
+{
+    addedCvars.insert(addedCvars.end(), list, list + count);
+}
+
+// The engine's cvars and the added ones, in that order
+static std::vector<Cvar *> AllCvars()
+{
+    std::vector<Cvar *> all(std::begin(cvars), std::end(cvars));
+    all.insert(all.end(), addedCvars.begin(), addedCvars.end());
+    return all;
+}
+
 // alias name -> the commands it runs
 static std::map<std::string, std::string> aliases;
 
@@ -106,7 +123,7 @@ const ConsoleCommand *FindCommand(const std::string &name)
 
 Cvar *FindCvar(const std::string &name)
 {
-    for (Cvar *cvar : cvars)
+    for (Cvar *cvar : AllCvars())
     {
         if (NamesMatch(cvar->name, name)) return cvar;
     }
@@ -338,17 +355,23 @@ static std::string Quoted(const std::string &text)
     return "\"" + text + "\"";
 }
 
+bool SaveConfig(const char *path)
+{
+    if (path == nullptr) path = CONFIG_FILE;
+
+    // Like Quake's config.cfg: unbindall first, so binds removed since default.cfg stay removed
+    std::string text = "// Written by the options menu and cfg_save. It's overwritten every time, so put your own commands and aliases in autoexec.cfg\n";
+    text += "unbindall\n";
+    for (const auto &bind : GetBinds()) text += "bind " + Quoted(KeyToName(bind.first)) + " " + Quoted(bind.second) + "\n";
+    for (const Cvar *cvar : AllCvars()) text += std::string(cvar->name) + " " + Quoted(TextFormat("%g", cvar->value)) + "\n";
+
+    return SaveFileText(path, text.c_str());
+}
+
 static void Cmd_CfgSave(const std::vector<std::string> &args)
 {
     const char *path = (args.size() > 1) ? args[1].c_str() : CONFIG_FILE;
-
-    // Like Quake's config.cfg: unbindall first, so binds removed since default.cfg stay removed
-    std::string text = "// Written by cfg_save. It's overwritten every time, so put your own commands and aliases in autoexec.cfg\n";
-    text += "unbindall\n";
-    for (const auto &bind : GetBinds()) text += "bind " + Quoted(KeyToName(bind.first)) + " " + Quoted(bind.second) + "\n";
-    for (const Cvar *cvar : cvars) text += std::string(cvar->name) + " " + Quoted(TextFormat("%g", cvar->value)) + "\n";
-
-    if (SaveFileText(path, text.c_str())) ConsolePrintf("Saved %d binds and %d cvars to %s", (int)GetBinds().size(), (int)(sizeof(cvars)/sizeof(cvars[0])), path);
+    if (SaveConfig(path)) ConsolePrintf("Saved %d binds and %d cvars to %s", (int)GetBinds().size(), (int)AllCvars().size(), path);
     else ConsolePrintf("Couldn't save %s", path);
 }
 
@@ -447,7 +470,7 @@ static void Cmd_Help(const std::vector<std::string> &args)
         if (command.name[0] != '-') ConsolePrintf("  %s - %s", command.name, command.description);  // - commands just undo their + one
     }
     ConsolePrintf("Cvars (type the name to see the value, or the name and a value to set it):");
-    for (const Cvar *cvar : cvars) ConsolePrintf("  %s - %s", cvar->name, cvar->description);
+    for (const Cvar *cvar : AllCvars()) ConsolePrintf("  %s - %s", cvar->name, cvar->description);
 }
 
 // "C:\...", "C:/...", "\\server\..." or "/..."

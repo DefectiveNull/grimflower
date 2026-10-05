@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "raygui.h"
+#include "audio.h"
 #include "binds.h"
 #include "gamecommands.h"
 #include "console.h"
@@ -66,9 +67,8 @@ int main(int argc, char **argv)
     ConsoleInit(GAME_NAME);  // Before InitWindow, so the console also shows raylib's startup messages
     AddGameCommands();       // Before the configs, which bind keys to them
     InitWindow(1280, 720, GAME_NAME);
-    InitAudioDevice();
-    InitSettings();
-    ApplyAudioSettings();
+    InitAudio();  // Before the configs, which set the volumes
+    InitSettings();  // Before the configs, which set the settings cvars
 
     // Load assets relative to the executable, not wherever it was launched from
     ChangeDirectory(GetApplicationDirectory());
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
     UseProjectFolder();  // Running from inside the project: its loose files win over the zip, so editor saves show up right away
 
     // Configs, in the same order as Quake's quake.rc: the default binds from the game data, then the
-    // player's saved binds and cvars (written by cfg_save), then their own commands
+    // player's saved binds and options (written by the options menu and cfg_save), then their own commands
     ExecConfig("cfg/default.cfg", false);
     ExecConfig("config.cfg", true);
     ExecConfig("autoexec.cfg", true);
@@ -90,6 +90,9 @@ int main(int argc, char **argv)
         else if (!commandLine.empty()) commandLine += " \"" + std::string(argv[i]) + "\"";
     }
     if (!commandLine.empty()) ExecuteCommandText(commandLine);
+
+    // The configs and command line have set the options by now
+    ApplyVideoSettings();
 
     SetTargetFPS(200);
     SetExitKey(KEY_NULL); // Esc opens the pause menu instead of closing the window
@@ -126,12 +129,13 @@ int main(int argc, char **argv)
 
         // While the console is open it gets the keyboard, and the game ignores input
         bool consoleFocused = ConsoleUpdate();
+        UpdateAudio();  // Streams the music and applies volume changes
 
-        // Esc backs out of the options screen first
+        // Esc backs out of the options screen first, unless it's waiting for a key to bind: then Esc cancels that
         bool escapePressed = !consoleFocused && IsKeyPressed(KEY_ESCAPE);
         if (escapePressed && showOptions)
         {
-            showOptions = false;
+            if (!IsOptionsMenuCapturingKey()) showOptions = false;
             escapePressed = false;
         }
 
@@ -240,7 +244,7 @@ int main(int argc, char **argv)
 
     if (worldLoaded) UnloadWorld(world);
     UnmountGameData();
-    CloseAudioDevice();
+    CloseAudio();
     CloseWindow();
     return 0;
 }

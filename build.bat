@@ -40,8 +40,12 @@ if errorlevel 1 exit /b 1
 
 rem Pack the assets into gamedata.zip next to the executable, keeping the same folder layout.
 rem Uses the tar.exe that comes with Windows, which can write zips
+rem sound\ (world sounds) and music\ are only packed once they exist
 if exist build\gamedata.zip del build\gamedata.zip
-"%SystemRoot%\System32\tar.exe" -a -c -f build\gamedata.zip cfg\*.cfg maps\*.json model\*.obj model\*.mtl textures
+set ASSETS=cfg\*.cfg maps\*.json model\*.obj model\*.mtl textures
+if exist sound set ASSETS=%ASSETS% sound
+if exist music set ASSETS=%ASSETS% music
+"%SystemRoot%\System32\tar.exe" -a -c -f build\gamedata.zip %ASSETS%
 if errorlevel 1 exit /b 1
 
 endlocal

@@ -40,6 +40,13 @@ std::vector<std::string> TokenizeCommand(const std::string &command);
 // Adds commands to the engine's own, like the game's. list has to stay around, so make it static
 void AddCommands(const ConsoleCommand *list, int count);
 
+// Adds cvars to the engine's own, like the game's settings. The cvars have to stay around
+void AddCvars(Cvar *const *list, int count);
+
+// Writes every bind and cvar to a .cfg file, like cfg_save. nullptr writes config.cfg next to the
+// program, which runs at startup. Returns false if it couldn't be written
+bool SaveConfig(const char *path);
+
 // Looks up a command by name, ignoring case. Returns nullptr if there's no such command
 const ConsoleCommand *FindCommand(const std::string &name);
 

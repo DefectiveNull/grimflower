@@ -238,10 +238,10 @@ void UpdatePlayer(Player &player, const World &world, float dt)
     else if (cursorHidden)
     {
         Vector2 mouseDelta = GetMouseDelta();
-        float sensitivity = settings.mouseSensitivity*SENSITIVITY_SCALE;
-        float pitchDirection = settings.invertMouseY ? -1.0f : 1.0f;
-        player.yaw -= mouseDelta.x*sensitivity;
-        player.pitch = Clamp(player.pitch - pitchDirection*mouseDelta.y*sensitivity, -MAX_PITCH, MAX_PITCH);
+        float lookSpeed = sensitivity.value*SENSITIVITY_SCALE;
+        float pitchDirection = (m_invert.value != 0.0f) ? -1.0f : 1.0f;
+        player.yaw -= mouseDelta.x*lookSpeed;
+        player.pitch = Clamp(player.pitch - pitchDirection*mouseDelta.y*lookSpeed, -MAX_PITCH, MAX_PITCH);
     }
 
     // Buttons come from key binds running the + and - commands, see gamecommands.cpp
