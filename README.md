@@ -34,8 +34,8 @@ They also link against these Windows system libraries, which come with the Windo
 
 1. Clone the repo:
    ```
-   git clone https://gitlab.com/null-group4204540/raylib-quake-clone.git
-   cd raylib-quake-clone
+   git clone https://gitlab.com/null-group4204540/grimflower.git
+   cd grimflower
    ```
 2. Run `build.bat`, either by double-clicking it or from a terminal. It works from a plain Command Prompt or PowerShell. If `cl.exe` isn't already on your PATH, it finds your Visual Studio install and sets up the 64-bit compiler itself.
 
