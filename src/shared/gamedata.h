@@ -11,5 +11,6 @@ bool GameDataFileExists(const char *fileName);
 
 // When the game runs from inside the project (build/game.exe), uses the project's own maps/, model/,
 // textures/ and cfg/ before gamedata.zip, so saving in the editor or re-exporting a model shows up without
-// rebuilding. A shipped game has no project folder around it, so it just uses the zip. Returns true if found
+// rebuilding. A shipped game has no project folder around it, so it just uses the zip. Returns true if found.
+// The editor doesn't call this: it already runs from the project folder
 bool UseProjectFolder();

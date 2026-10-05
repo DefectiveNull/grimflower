@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+struct Level;
 struct LevelEntity;
 struct Player;
 struct World;
@@ -61,6 +62,9 @@ struct EntityClass
 
 const std::vector<EntityClass> &GetEntityClasses();
 const EntityClass *FindEntityClass(const std::string &classname);
+
+// Loads the level's world model, then places the player and sets up the lights from its entities
+bool SpawnLevel(const Level &level, World &world, Player &player);
 
 // An entity's parameter, or its default from the table if the level file doesn't set it
 float EntityParamNumber(const LevelEntity &entity, const EntityClass &entityClass, const char *name);

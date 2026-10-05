@@ -24,12 +24,12 @@ Known gaps and loose ends, collected while building the game and the editor.
 - [ ] **Preferences dialog**: it's a placeholder. Camera speed and sensitivity can only be changed in `editor.cfg`.
 - [ ] **`editor.cfg` is overwritten on exit**: hand edits made while the editor is open are lost.
 - [ ] **Reload the entity list**: `entitylist.txt` is only read at startup, so the editor needs a restart after rebuilding the game.
-- [ ] **Light preview duplicates game code**: `ApplyLevelLights` in `src/editor/level.cpp` copies how the game spawns `sun` and `light`. New light types need adding there too.
+- [ ] **Light preview duplicates game code**: `ApplyLevelLights` in `src/editor/levellights.cpp` copies how the game spawns `sun` and `light`. New light types need adding there too.
 - [ ] **Undo history**: resets when opening or creating a level, and keeps the last 200 steps.
 
 ## Code
 
-- [ ] **Files copied between game and editor**: `lighting`, `world`, `level`, `gamedata` and `keys` exist in both `src/game` and `src/editor`, so fixes don't carry over. Consider a shared `src/common` for the parts that should stay identical.
+- [X] **Files copied between game and editor**: `lighting`, `world`, `level`, `gamedata`, `keys` and `skybox` now live once in `src/shared`, which both build.
 
 ## Build
 

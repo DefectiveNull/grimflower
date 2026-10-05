@@ -103,6 +103,48 @@ const EntityClass *FindEntityClass(const std::string &classname)
     return nullptr;
 }
 
+bool SpawnLevel(const Level &level, World &world, Player &player)
+{
+    if (!LoadWorld(world, level.worldModel.c_str(), level.worldScale)) return false;
+
+    // Each entity type spawns itself, see the table above
+    SpawnContext context = { world, player, false, false };
+    for (const LevelEntity &entity : level.entities)
+    {
+        const EntityClass *entityClass = FindEntityClass(entity.classname);
+        if (entityClass == nullptr)
+        {
+            TraceLog(LOG_WARNING, "LEVEL: Unknown entity classname \"%s\", ignored", entity.classname.c_str());
+            continue;
+        }
+
+        // Parameters the game doesn't read are most likely typos
+        for (auto &property : entity.properties.items())
+        {
+            bool known = false;
+            for (const EntityParam &param : entityClass->params) known = known || property.key() == param.name;
+            if (!known) TraceLog(LOG_WARNING, "LEVEL: %s has a \"%s\" parameter, which it doesn't use", entity.classname.c_str(), property.key().c_str());
+        }
+
+        entityClass->spawn(entity, *entityClass, context);
+    }
+
+    if (!context.hasPlayerStart)
+    {
+        // Drop the player in from above the middle of the level
+        BoundingBox b = world.bounds;
+        TraceLog(LOG_WARNING, "LEVEL: No info_player_start, spawning above the middle of the level");
+        InitPlayer(player, { (b.min.x + b.max.x)*0.5f, b.max.y + 2.0f, (b.min.z + b.max.z)*0.5f }, 0.0f);
+    }
+
+    if (!level.info.skybox.empty() && !LoadSkybox(world.skybox, level.info.skybox.c_str()))
+    {
+        TraceLog(LOG_WARNING, "LEVEL: Couldn't load the skybox \"%s\", using the plain background", level.info.skybox.c_str());
+    }
+
+    return true;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Parameters
 

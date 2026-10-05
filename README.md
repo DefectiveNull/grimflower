@@ -13,7 +13,7 @@ The project is at a very early stage and as a result i've not done anything to s
 ### Requirements (Windows)
 
 - Windows 10 or 11, 64-bit
-- [Visual Studio 2022](https://visualstudio.microsoft.com/) (the free Community edition works, or just the Build Tools) with the **Desktop development with C++** workload, which includes the MSVC compiler and the Windows SDK
+- [Visual Studio 2022 or newer](https://visualstudio.microsoft.com/) (the free Community edition works, or just the Build Tools) with the **Desktop development with C++** workload, which includes the MSVC compiler and the Windows SDK
 - [Git](https://git-scm.com/), to clone the repo
 
 ### Libraries
@@ -41,12 +41,12 @@ They also link against these Windows system libraries, which come with the Windo
 
 `build.bat` then:
 
-1. Compiles every `.cpp` in `src/game/` into `build/game.exe`
+1. Compiles every `.cpp` in `src/game/` and `src/shared/` into `build/game.exe`
 2. Runs `game.exe -exportentities` to write `entitylist.txt`, the list of entity types the editor reads
-3. Compiles every `.cpp` in `src/editor/` into `build/editor.exe`
+3. Compiles every `.cpp` in `src/editor/` and `src/shared/` into `build/editor.exe`
 4. Packs `cfg/`, `maps/`, `model/` and `textures/` into `build/gamedata.zip`
 
-Everything it makes goes in `build/`. There are no build settings to change. New `.cpp` files in `src/game/` or `src/editor/` are picked up automatically.
+Everything it makes goes in `build/`. There are no build settings to change. New `.cpp` files in `src/game/`, `src/editor/` or `src/shared/` are picked up automatically. `src/shared/` is for code both the game and the editor use, like loading levels, the world and lighting.
 
 ### Running
 

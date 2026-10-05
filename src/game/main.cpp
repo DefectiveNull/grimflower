@@ -11,6 +11,7 @@
 #include "player.h"
 #include "settings.h"
 #include "world.h"
+#include "worlddebug.h"
 
 #include <cstring>
 
@@ -143,6 +144,7 @@ int main(int argc, char **argv)
         }
 
         BeginDrawing();
+            world.lighting.pointShadows = r_use_pointlight_shadows.value != 0.0f;
             RenderWorldShadows(world);  // Its own render pass, so it has to come before BeginMode3D
             ClearBackground(RAYWHITE);
 
@@ -150,6 +152,7 @@ int main(int argc, char **argv)
             BeginMode3D(camera);
                 DrawSkybox(world.skybox, camera);  // First, so the world draws over it
                 DrawWorld(world, r_showcolliders.value != 0.0f);
+                DrawLightMarkers(world.lighting);
             EndMode3D();
             DrawWorldEntityLabels(world, camera);
 

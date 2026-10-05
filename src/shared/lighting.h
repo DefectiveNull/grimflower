@@ -17,7 +17,7 @@ struct Sun
 };
 
 // A light that shines in all directions from a point and fades out at its radius.
-// The first MAX_SHADOW_LIGHTS cast shadows while r_use_pointlight_shadows is on
+// The first MAX_SHADOW_LIGHTS cast shadows while Lighting::pointShadows is on
 struct PointLight
 {
     Vector3 position;
@@ -32,6 +32,7 @@ struct Lighting
 {
     Sun sun;
     std::vector<PointLight> lights;  // Only the first MAX_POINT_LIGHTS are used
+    bool pointShadows;               // Point lights cast shadows. InitLighting turns it on, the game sets it from r_use_pointlight_shadows
 
     Shader shader;           // Assign to the materials of anything that should be lit
     Shader depthShader;      // Renders depth only, for the shadow map
@@ -67,6 +68,3 @@ void RenderShadowMap(Lighting &lighting, const Model &model);
 // Sends the lights to the shader and binds the shadow map. Call before drawing lit models, inside BeginMode3D
 void BeginLighting(const Lighting &lighting);
 void EndLighting();
-
-// With r_showentities on: a marker for the sun and each point light
-void DrawLightMarkers(const Lighting &lighting);

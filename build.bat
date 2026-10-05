@@ -10,16 +10,17 @@ for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -property ins
 call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" >nul
 
 :build
-rem The game and the editor have files with the same names, so each gets its own folder of .obj files
+rem The game and the editor both build src\shared, so each gets its own folder of .obj files
 if not exist build\obj\game mkdir build\obj\game
 if not exist build\obj\editor mkdir build\obj\editor
 
-set INCLUDES=/Ivendor\raylib\include /Ivendor\raygui /Ivendor\stb /Ivendor\miniz /Ivendor\json
+rem src\shared has the code the game and the editor both use (levels, world, lighting, skybox, game data, keys)
+set INCLUDES=/Isrc\shared /Ivendor\raylib\include /Ivendor\raygui /Ivendor\stb /Ivendor\miniz /Ivendor\json
 set LIBS=/LIBPATH:vendor\raylib\lib raylib.lib winmm.lib gdi32.lib user32.lib shell32.lib opengl32.lib
 
-rem Game: every .cpp in src\game, so new files get built without editing this
+rem Game: every .cpp in src\game and src\shared, so new files get built without editing this
 echo Building game...
-cl /nologo /std:c++17 /EHsc /O2 /MD %INCLUDES% src\game\*.cpp vendor\miniz\miniz.c /Fobuild\obj\game\ /Febuild\game.exe ^
+cl /nologo /std:c++17 /EHsc /O2 /MD %INCLUDES% src\game\*.cpp src\shared\*.cpp vendor\miniz\miniz.c /Fobuild\obj\game\ /Febuild\game.exe ^
     /link %LIBS% /SUBSYSTEM:CONSOLE
 if errorlevel 1 exit /b 1
 
@@ -29,9 +30,9 @@ echo Exporting entitylist.txt...
 build\game.exe -exportentities entitylist.txt >nul
 if errorlevel 1 (echo Couldn't export entitylist.txt & exit /b 1)
 
-rem Editor: every .cpp in src\editor. comdlg32 is for the Open/Save file dialogs
+rem Editor: every .cpp in src\editor and src\shared. comdlg32 is for the Open/Save file dialogs
 echo Building editor...
-cl /nologo /std:c++17 /EHsc /O2 /MD %INCLUDES% src\editor\*.cpp vendor\miniz\miniz.c /Fobuild\obj\editor\ /Febuild\editor.exe ^
+cl /nologo /std:c++17 /EHsc /O2 /MD %INCLUDES% src\editor\*.cpp src\shared\*.cpp vendor\miniz\miniz.c /Fobuild\obj\editor\ /Febuild\editor.exe ^
     /link %LIBS% comdlg32.lib /SUBSYSTEM:CONSOLE
 if errorlevel 1 exit /b 1
 

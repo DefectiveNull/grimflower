@@ -1,5 +1,4 @@
 #include "world.h"
-#include "cvars.h"
 #include "gamedata.h"
 #include "raymath.h"
 #include "rlgl.h"
@@ -161,8 +160,6 @@ void DrawWorld(const World &world, bool showColliders)
         DrawModelWires(world.model, { 0.0f, 0.0f, 0.0f }, 1.0f, Fade(BLACK, 0.6f));
     EndLighting();
 
-    DrawLightMarkers(world.lighting);
-
     if (showColliders)
     {
         for (const Brush &brush : world.colliders)
@@ -172,41 +169,6 @@ void DrawWorld(const World &world, bool showColliders)
                 for (size_t i = 0; i < face.size(); i++) DrawLine3D(face[i], face[(i + 1)%face.size()], LIME);
             }
         }
-    }
-}
-
-std::vector<WorldEntity> GetWorldEntities(const World &world)
-{
-    std::vector<WorldEntity> entities;
-    entities.push_back({ "sun", world.lighting.sun.position });
-    for (size_t i = 0; i < world.lighting.lights.size(); i++)
-    {
-        entities.push_back({ "light " + std::to_string(i), world.lighting.lights[i].position });
-    }
-    return entities;
-}
-
-void DrawWorldEntityLabels(const World &world, Camera camera)
-{
-    if (r_showentities.value == 0.0f) return;
-
-    const int fontSize = 20;
-    const int padding = 4;
-    Vector3 forward = Vector3Subtract(camera.target, camera.position);
-
-    for (const WorldEntity &entity : GetWorldEntities(world))
-    {
-        // Skip entities behind the camera, which would otherwise get projected onto the screen mirrored
-        if (Vector3DotProduct(Vector3Subtract(entity.position, camera.position), forward) <= 0.0f) continue;
-
-        Vector2 screen = GetWorldToScreen(entity.position, camera);
-        const char *label = TextFormat("%s (%.1f %.1f %.1f)", entity.name.c_str(), entity.position.x, entity.position.y, entity.position.z);
-        int width = MeasureText(label, fontSize);
-        int x = (int)screen.x - width/2;
-        int y = (int)screen.y - fontSize - 16;  // Just above the marker
-
-        DrawRectangle(x - padding, y - padding, width + 2*padding, fontSize + 2*padding, Fade(BLACK, 0.6f));
-        DrawText(label, x, y, fontSize, YELLOW);
     }
 }
 

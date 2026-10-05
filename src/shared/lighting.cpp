@@ -235,6 +235,7 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
 {
     lighting.bounds = bounds;
     lighting.lights.clear();
+    lighting.pointShadows = true;
 
     // Sun above one corner of the area, shining toward its center, so the light comes in at an angle
     Vector3 center = Vector3Scale(Vector3Add(bounds.min, bounds.max), 0.5f);
@@ -300,6 +301,7 @@ void UnloadLighting(Lighting &lighting)
 static void RenderPointShadows(Lighting &lighting, const Model &model)
 {
     for (int &slot : lighting.pointShadowSlots) slot = -1;
+    if (!lighting.pointShadows) return;
 
     // Looking down +X, -X, +Y, -Y, +Z, -Z, in the order the shader picks faces in
     const Vector3 directions[6] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };

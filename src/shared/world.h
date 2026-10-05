@@ -1,9 +1,8 @@
 #pragma once
 
-// Copied from src/game/world.h, keeping only loading and drawing: the editor doesn't need collision traces
-
 #include "raylib.h"
 #include "lighting.h"
+#include "skybox.h"
 #include <string>
 #include <vector>
 
@@ -26,6 +25,16 @@ struct World
     std::vector<Brush> colliders;
     BoundingBox bounds;   // Around all the level geometry
     Lighting lighting;    // Sun, point lights and shadows
+    Skybox skybox;        // From the level's info.skybox, if it has one
+};
+
+// Result of sweeping a box through the world, like Quake's trace_t
+struct Trace
+{
+    float fraction;   // How far along start->end the box got before hitting something (1 = no hit)
+    Vector3 endPos;   // Where the box stopped
+    Vector3 normal;   // Normal of the surface that was hit (zero if nothing was hit)
+    bool startSolid;  // The box started inside a collider
 };
 
 // scale converts the OBJ's units to world units, for both drawing and collision
@@ -40,3 +49,6 @@ void DrawWorld(const World &world, bool showColliders);
 
 // Builds one convex brush per object ("o"/"g") in an OBJ file. Each object must be convex.
 std::vector<Brush> ComputeColliders(const char *objPath, float scale);
+
+// Sweeps a box with the given extents (relative to its origin) from start to end
+Trace TraceBox(const World &world, Vector3 start, Vector3 end, Vector3 mins, Vector3 maxs);

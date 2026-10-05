@@ -2,6 +2,7 @@
 #include "raymath.h"
 #include "config.h"
 #include "entitylist.h"
+#include "levellights.h"
 #include "style.h"
 
 #include <cmath>
