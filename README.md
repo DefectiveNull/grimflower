@@ -63,4 +63,6 @@ This project primarily uses AI to write most of the code, this is a hobby projec
 
 A lot of the things used for this are still very much in development and i have no idea how much is left until i can confidently say there'll be no breaking changes. The level editor especially is the one tha might break the most between different builds and different iterations on the JSON map format. If you have any questions please feel free to add them here and i'll try my best to get to them.
 
+I've gone and build a roadmap to keep track of how far the project is from the V1 release. though there is still no release date
+
 Thank you for your time
