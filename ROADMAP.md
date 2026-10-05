@@ -4,7 +4,7 @@ We want to eventually have mostly stable binaries for the editor and game so tha
 
 ## Editor Stability improvements and bug fixes (Current)
 
-We're trying to make the editor feel stable enough for now so that when we add new content or new entities the thing doesn't just start falling apart
+I'm currently trying to make it so there's no potential crashes or breaking issues when updating from one version to another, or when adding new entities. I also want it to be performant throughout this project, preferably i can eventually create a scene with 2048 entities (Half life 2's maximum ammount) and still maintain 150+ FPS on a 1050 TI or similar card (which is what i own).
 
 ## Further game and engine development with a focus on some new features and organization
 
@@ -12,19 +12,19 @@ Need to catch up with some of the editor's quality of life features (an input sc
 
 ## Using materials and dealing with assets
 
-Both the editor and the game/engine are going to have to deal with materials, each has their own features to implement in this step but by this point i really want to bolster the engine and see just how pretty i can make a level look. As well as parsing other assets.
+The goal for this step is a material system for both the game and the editor, built from the textures folder: each texture gets paired with its `_normalmap` and `_specularmap` files when it has them. To show it off, this step ends with a small test scene with visual quality close to Source engine or Unreal Engine 2 games.
 
-## Adding weapons, enemies and NPC's. Dealing with more gameplay stuff in general. 
+## Adding weapons and enemies. building a vertical slice prototype. 
 
-Want to finally start implementing that quake prototype part of this whole deal since by this point the engine and editor should be feeling good enough for a first release, i just need a bit more for a full tech demo.
-
-## Adding a logo and doing some marketing.
-
-want to be able to have an extended showcase of what the engine can do as well as the existing mechanics of the game. Just more branding in general as well.
+In this phase i want to create a playable vertical slice of quake, specifically a demo that has the axe and the shotgun as usable weapons, and the Ogre and Knight as working enemies. All put together in a small demo level
 
 ## Bug testing and any last stability fixes
 
 want to do a big round of testing to see if there are any massive flaws or other problems that require setting the release back and going through another round of changes
+
+## Adding a logo and doing some marketing.
+
+want to be able to have an extended showcase of what the engine can do as well as the existing mechanics of the game. Just more branding in general as well.
 
 ## Release
 
