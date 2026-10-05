@@ -4,7 +4,7 @@
     "info": {
         "name": "Dev",
         "created": "2026-10-04T09:35:54Z",
-        "saved": "2026-10-05T01:32:16Z",
+        "saved": "2026-10-05T04:28:30Z",
         "skybox": "textures/sky/kloppenheim_06_2k.hdr",
         "entityCount": 5
     },
@@ -15,7 +15,7 @@
     "entities": [
         {
             "classname": "info_player_start",
-            "origin": [0.7839, 1.5, 6.6732],
+            "origin": [1.25, 1.5, 5.75],
             "angle": 0
         },
         {
