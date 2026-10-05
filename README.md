@@ -1,6 +1,6 @@
 # Raylib Quake Clone (Working title)
 
-This project exists out of both my fascination with quake and quake derived game engines, and my frustrations whith how the various tools in those engines (and in most big engines too for that matter) are designed.
+This project exists out of both my fascination with quake and quake derived game engines, and my frustrations with how the various tools in those engines (and in most big engines too for that matter) are designed.
 
 I'm someone who thinks a lot about the process of using any kind of tool, whether it be blender or just a simple sprite editor. To me there's a facet of creativity that is enhanced when the tool being used in that process is intuitive, even if it's intuitive in an uncommon way (see also: Quake Level Editors). So for a while now i've dealt with this thing of wanting to use and find more of those tools, tools that make development more enjoyable and less frustrating.
 
