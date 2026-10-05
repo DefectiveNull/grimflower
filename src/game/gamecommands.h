@@ -13,6 +13,7 @@ struct InputButtons
     bool jump;       // Also flies up
     bool moveUp;
     bool moveDown;
+    bool duck;       // Crouch, or swim and fly down
     bool toggleFly;  // Set by the "fly" command, cleared once the player handles it
 };
 

@@ -27,6 +27,7 @@ static float PickRadius(const LevelEntity &entity)
 {
     const EntityClassInfo *entityClass = FindEntityClass(entity.classname);
     if (entityClass == nullptr) return 0.35f;
+    if (entityClass->shape == "volume") return 0.35f;  // Just the handle at its origin, so a big volume doesn't block clicks on what's inside
     if (entityClass->shape == "box") return Vector3Length(Vector3Subtract(entityClass->maxs, entityClass->mins))*0.4f;
     return fmaxf(entityClass->radius*1.2f, 0.35f);
 }
@@ -282,6 +283,18 @@ static void DrawEntityMarker(const LevelEntity &entity, bool selected)
     {
         BoundingBox box = { Vector3Add(origin, entityClass->mins), Vector3Add(origin, entityClass->maxs) };
         DrawBoundingBox(box, selected ? WHITE : color);
+    }
+    else if (entityClass->shape == "volume")
+    {
+        // Its own box, from its mins and maxs parameters, see-through so what's inside still shows. The
+        // small cube at its origin is the handle for clicking and dragging it
+        Vector3 mins = EntityVectorOrDefault(entity, "mins", { -0.5f, -0.5f, -0.5f });
+        Vector3 maxs = EntityVectorOrDefault(entity, "maxs", { 0.5f, 0.5f, 0.5f });
+        BoundingBox box = { Vector3Add(origin, Vector3Min(mins, maxs)), Vector3Add(origin, Vector3Max(mins, maxs)) };
+        DrawCubeV(Vector3Scale(Vector3Add(box.min, box.max), 0.5f), Vector3Subtract(box.max, box.min), Fade(color, 0.15f));
+        DrawBoundingBox(box, selected ? WHITE : color);
+        DrawCube(origin, 0.25f, 0.25f, 0.25f, color);
+        if (selected) DrawCubeWires(origin, 0.35f, 0.35f, 0.35f, WHITE);
     }
     else
     {
