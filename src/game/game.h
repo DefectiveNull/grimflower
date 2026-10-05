@@ -1,3 +1,3 @@
 #pragma once
 
-#define GAME_NAME "Raylib Quake Clone"
+#define GAME_NAME "Grimflower"

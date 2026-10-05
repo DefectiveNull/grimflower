@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#define EDITOR_NAME "Raylib Quake Clone Editor"
+#define EDITOR_NAME "Grimflower Editor"
 #define EDITOR_VERSION "0.1"
 
 // Screen layout

@@ -1,4 +1,4 @@
-// Level editor for Raylib Quake Clone: a separate program from the game, built to build/editor.exe
+// Level editor for Grimflower: a separate program from the game, built to build/editor.exe
 
 #include "raylib.h"
 #include "raygui.h"

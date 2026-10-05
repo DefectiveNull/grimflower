@@ -427,7 +427,7 @@ static void DrawEditorInfoDialog(EditorState &editor)
     GuiLabel({ textX, layout.y + 74, textWidth, 20 }, "Created by Claude Opus 5.5");
 
     const char *about[] = {
-        "A level editor for Raylib Quake Clone. Levels are JSON files",
+        "A level editor for Grimflower. Levels are JSON files",
         "in maps/ that say which world model to use, where entities like",
         "the player start, the sun and lights go, and map-wide settings",
         "like the name and skybox. Levels are drawn with the game's lighting.",
