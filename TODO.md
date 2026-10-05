@@ -1,6 +1,6 @@
 # TODO
 
-Known gaps and loose ends, collected while building the game and the editor.
+Known gaps and loose ends, collected while building the game and the editor. Sections that are all done move to [TODO_ARCHIVE.md](TODO_ARCHIVE.md).
 
 ## Game
 
@@ -16,16 +16,6 @@ Known gaps and loose ends, collected while building the game and the editor.
 - [ ] Add a Crouching mechanic
 - [ ] Test SSAO and see how well it performs
 = [ ] Test an alternative lighting route with lightmapping and the embree library
-
-## Editor
-
-- [X] **Direction gizmo**: `direction` parameters (like the sun's) can only be typed as text. A drag handle in the viewport would help.
-- [X] **Move gizmo and snapping**: dragged and created entities snap to the grid, and `[` and `]` change its size, from 1/16 to 8 world units in powers of two. No gizmo, on purpose: dragging stays on a plane (Alt for vertical), which is quicker than axis handles. Snapping can be turned off in Preferences.
-- [X] **Preferences dialog**: it's a placeholder. Camera speed and sensitivity can only be changed in `editor.cfg`.
-- [ ] **`editor.cfg` is overwritten on exit**: hand edits made while the editor is open are lost.
-- [X] **Reload the entity list**: `entitylist.txt` and the level's world model are reloaded when they change on disk (`src/editor/hotreload.cpp`), so rebuilding the game or re-exporting from Blender doesn't need a restart. Textures and `.mtl` files aren't watched yet: use Reload World Model for those.
-- [X] **Light preview duplicates game code**: `ApplyLevelLights` in `src/shared/levellights.cpp` now sets up `sun` and `light` for both the game and the editor's preview, each taking parameter defaults from its own copy of the entity table. A new light type goes there, plus its parameters in `src/game/entities.cpp`.
-- [ ] **Undo history**: resets when opening or creating a level, and keeps the last 200 steps.
 
 ## Code
 
