@@ -341,6 +341,7 @@ void UnloadWorld(World &world)
     UnloadLighting(world.lighting);
     UnloadSkybox(world.skybox);
     world.colliders.clear();
+    world.movers.clear();
 }
 
 void RenderWorldShadows(World &world)
@@ -616,7 +617,27 @@ Trace TraceBox(const World &world, Vector3 start, Vector3 end, Vector3 mins, Vec
     Trace trace = { 1.0f, end, { 0.0f, 0.0f, 0.0f }, false };
 
     for (const Brush &brush : world.colliders) ClipBoxToBrush(trace, brush, start, end, mins, maxs);
+    for (const Brush &brush : world.movers) ClipBoxToBrush(trace, brush, start, end, mins, maxs);
 
     trace.endPos = Vector3Lerp(start, end, trace.fraction);
     return trace;
+}
+
+Brush MakeBoxBrush(BoundingBox box)
+{
+    Vector3 a = box.min, b = box.max;
+    const std::vector<std::vector<Vector3>> faces = {
+        { { a.x, a.y, a.z }, { a.x, a.y, b.z }, { a.x, b.y, b.z }, { a.x, b.y, a.z } },  // -X
+        { { b.x, a.y, a.z }, { b.x, b.y, a.z }, { b.x, b.y, b.z }, { b.x, a.y, b.z } },  // +X
+        { { a.x, a.y, a.z }, { b.x, a.y, a.z }, { b.x, a.y, b.z }, { a.x, a.y, b.z } },  // -Y
+        { { a.x, b.y, a.z }, { a.x, b.y, b.z }, { b.x, b.y, b.z }, { b.x, b.y, a.z } },  // +Y
+        { { a.x, a.y, a.z }, { a.x, b.y, a.z }, { b.x, b.y, a.z }, { b.x, a.y, a.z } },  // -Z
+        { { a.x, a.y, b.z }, { b.x, a.y, b.z }, { b.x, b.y, b.z }, { a.x, b.y, b.z } },  // +Z
+    };
+    return BuildBrush(faces, -1);
+}
+
+bool LoadGameTexture(const char *path, Texture &texture)
+{
+    return LoadWorldTexture(path, GetDirectoryPath(path), texture);
 }

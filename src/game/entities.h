@@ -12,6 +12,7 @@
 struct Level;
 struct LevelEntity;
 struct Player;
+struct Volumes;
 struct World;
 
 // A parameter an entity can have in a level file. The type tells the editor how to show and edit it:
@@ -20,6 +21,8 @@ struct World;
 //   direction   [x, y, z]. Drawn as an arrow, and can be rotated
 //   color       [r, g, b], from 0 to 255
 //   radius      A distance, drawn as a sphere around the entity
+//   vector      [x, y, z], typed in a text field. A volume's mins and maxs are these
+//   text        A name, like a texture or a level
 struct EntityParam
 {
     const char *name;
@@ -33,7 +36,7 @@ struct EntityParam
 // How the editor shows an entity. Only the editor uses this
 struct EntityMarker
 {
-    const char *shape;         // "box" (mins to maxs around the origin) or "sphere" (radius)
+    const char *shape;         // "box" (mins to maxs around the origin), "sphere" (radius), or "volume" (the entity's own mins and maxs parameters)
     Vector3 mins;
     Vector3 maxs;
     float radius;
@@ -47,6 +50,7 @@ struct SpawnContext
 {
     World &world;
     Player &player;
+    Volumes &volumes;
     bool hasPlayerStart;
 };
 
@@ -62,13 +66,14 @@ struct EntityClass
 const std::vector<EntityClass> &GetEntityClasses();
 const EntityClass *FindEntityClass(const std::string &classname);
 
-// Loads the level's world model, then places the player and sets up the lights from its entities
-bool SpawnLevel(const Level &level, World &world, Player &player);
+// Loads the level's world model, then places the player and sets up the lights, volumes and doors from its entities
+bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volumes);
 
 // An entity's parameter, or its default from the table if the level file doesn't set it
 float EntityParamNumber(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
 Vector3 EntityParamVector(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
 Color EntityParamColor(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
+std::string EntityParamText(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
 
 // Writes the table as entitylist.txt for the editor. Returns false if the file couldn't be written
 bool ExportEntityList(const char *path);

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <sstream>
 
 static const float PADDING = 10.0f;
 static const float ROW_HEIGHT = 28.0f;
@@ -177,6 +178,30 @@ static void DrawEntityDetails(EditorState &editor, Rectangle panel, float y)
                 if (active) CancelPointAt(editor);
                 else StartPointAt(editor, editor.selected, name);
             }
+        }
+        else if (type == "vector")
+        {
+            // Typed as three numbers, like "-1 0 -1". Brackets and commas are fine too
+            nlohmann::ordered_json current = isSet ? entity.properties[name] : DefaultParamValue(*param);
+            std::string numbers;
+            if (current.is_array()) for (const auto &n : current) numbers += (numbers.empty() ? "" : " ") + n.dump();
+            if (EditableField(fieldId, field, numbers))
+            {
+                std::string typed = editBuffer;
+                for (char &c : typed) if (c == '[' || c == ']' || c == ',') c = ' ';
+                std::istringstream values(typed);
+                double v[3];
+                std::string extra;
+                if (!(values >> v[0] >> v[1] >> v[2]) || (values >> extra)) SetStatus(editor, "%s is three numbers, like -1 0 -1", name.c_str());
+                else setParameter(name, nlohmann::ordered_json::array({ v[0], v[1], v[2] }), false);
+            }
+        }
+        else if (type == "text")
+        {
+            // Shown and typed without the quotes JSON would put around it
+            nlohmann::ordered_json current = isSet ? entity.properties[name] : DefaultParamValue(*param);
+            std::string text = current.is_string() ? current.get<std::string>() : current.dump();
+            if (EditableField(fieldId, field, text)) setParameter(name, std::string(editBuffer), false);
         }
         else if (EditableField(fieldId, field, shown))
         {

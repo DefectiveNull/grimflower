@@ -107,6 +107,11 @@ Color EntityColor(const LevelEntity &entity, const char *key, Color fallback)
     return { channel(0), channel(1), channel(2), (it->size() == 4) ? channel(3) : (unsigned char)255 };
 }
 
+std::string EntityText(const LevelEntity &entity, const char *key, const std::string &fallback)
+{
+    return GetString(entity.properties, key, fallback);
+}
+
 bool LoadLevel(Level &level, const char *path)
 {
     char *text = LoadFileText(path);

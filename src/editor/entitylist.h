@@ -16,7 +16,7 @@ struct LevelEntity;
 struct EntityParamInfo
 {
     std::string name;
-    std::string type;          // number, angle, direction, color or radius
+    std::string type;          // number, angle, direction, color, radius, vector or text
     std::string defaultValue;  // As written in the file: "5", or "255 255 255" for colors and vectors
     std::string description;
     bool hasRange;             // The game gave a range for the slider
@@ -34,7 +34,7 @@ struct EntityClassInfo
     std::vector<EntityParamInfo> params;
 
     // How the editor shows it
-    std::string shape;         // "box" or "sphere"
+    std::string shape;         // "box", "sphere", or "volume" (drawn from the entity's own mins and maxs)
     Vector3 mins;
     Vector3 maxs;
     float radius;

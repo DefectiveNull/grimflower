@@ -13,10 +13,12 @@ Known gaps and loose ends, collected while building the game and the editor. Sec
 - [ ] **Point light shadows**: only the first 4 lights cast shadows (`MAX_SHADOW_LIGHTS`). Raising it also means changing the matching number in the shader in `lighting.cpp`.
 - [ ] **Cvars are numbers only**: string cvars would be needed for things like a map name.
 - [X] Separate the rendering and engine specific code to a new folder `/engine` for better organization.
-- [ ] Add Ladders, Doors and level changes
-- [ ] Add a Crouching mechanic
+- [X] Add Ladders, Doors and level change triggers: `func_water`, `func_ladder` and `trigger_changelevel` are volumes, boxes that do what their entity type says while the player is inside them (`src/game/volumes.cpp`). `func_door` is a solid textured box that slides open when walked into. Their bounds are typed in the editor, and they move like other entities.
+- [X] Add a Crouching mechanic: hold Ctrl (`+duck`) for a half-height hull at a third of the speed, standing back up once there's room.
+- [X] Add a swimming mechanic: waist deep in a water volume, the player swims where they look, jump and crouch go up and down, and jump at the surface climbs out.
 - [ ] Test SSAO and see how well it performs
 = [ ] Test an alternative lighting route with lightmapping and the embree library
+- [ ] Test a simplified bounce lighting hack and see how it looks/performs
 
 ## Code
 

@@ -25,6 +25,7 @@ static void Cmd_Button(const std::vector<std::string> &args)
     else if (name == "jump") inputButtons.jump = down;
     else if (name == "moveup") inputButtons.moveUp = down;
     else if (name == "movedown") inputButtons.moveDown = down;
+    else if (name == "duck") inputButtons.duck = down;
 }
 
 static void Cmd_Fly(const std::vector<std::string> &args)
@@ -36,7 +37,15 @@ static void Cmd_Fly(const std::vector<std::string> &args)
 // ---------------------------------------------------------------------------------------------
 // Levels
 
-// "platforms", "platforms.json" and "maps/platforms.json" all mean the same level
+std::string MapPath(const std::string &name)
+{
+    std::string path = name;
+    for (char &c : path) if (c == '\\') c = '/';
+    if (!IsFileExtension(path.c_str(), ".json")) path += ".json";
+    if (path.find('/') == std::string::npos) path = "maps/" + path;
+    return path;
+}
+
 static void Cmd_Map(const std::vector<std::string> &args)
 {
     if (args.size() < 2)
@@ -45,11 +54,7 @@ static void Cmd_Map(const std::vector<std::string> &args)
         return;
     }
 
-    std::string path = args[1];
-    for (char &c : path) if (c == '\\') c = '/';
-    if (!IsFileExtension(path.c_str(), ".json")) path += ".json";
-    if (path.find('/') == std::string::npos) path = "maps/" + path;
-
+    std::string path = MapPath(args[1]);
     if (!GameDataFileExists(path.c_str()))
     {
         ConsolePrintf("There's no level %s", path.c_str());
@@ -73,6 +78,7 @@ static const ConsoleCommand GAME_COMMANDS[] =
     { "+jump", "Jump, or fly up", Cmd_Button }, { "-jump", "", Cmd_Button },
     { "+moveup", "Fly up", Cmd_Button }, { "-moveup", "", Cmd_Button },
     { "+movedown", "Fly down", Cmd_Button }, { "-movedown", "", Cmd_Button },
+    { "+duck", "Crouch, or swim and fly down", Cmd_Button }, { "-duck", "", Cmd_Button },
 };
 
 void AddGameCommands()
