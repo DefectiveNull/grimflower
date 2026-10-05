@@ -34,6 +34,8 @@ struct EditorSettings
     float moveSpeed;         // Camera speed, units per second
     bool showGrid;
     bool showLabels;         // Entity names over their markers
+    float gridSize;          // Grid spacing and snapping step, in world units. [ and ] step through GRID_SIZES in editor.cpp
+    bool snapToGrid;         // Dragged and created entities land on the grid
 
     // Input
     float lookSensitivity;   // Radians per pixel of mouse movement

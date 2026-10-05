@@ -1,4 +1,5 @@
 #include "editor.h"
+#include "config.h"
 #include "entitylist.h"
 #include "filedialog.h"
 #include "raymath.h"
@@ -10,6 +11,11 @@
 
 static const char *LEVEL_FILTER = "Level files (*.json)\0*.json\0All files (*.*)\0*.*\0";
 static const float DEFAULT_WORLD_SCALE = 1.0f/32.0f;  // Quake units to world units, same as the game uses
+
+// Grid sizes in world units, where the player is 1 wide and 1.75 tall (a Quake grid of 1 to 256 Quake
+// units would be 1/32 to 8 here). Powers of two, so every size lines up with all the bigger ones
+static const float GRID_SIZES[] = { 0.0625f, 0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f };
+static const int GRID_SIZE_COUNT = (int)(sizeof(GRID_SIZES)/sizeof(GRID_SIZES[0]));
 
 void SetStatus(EditorState &editor, const char *format, ...)
 {
@@ -306,6 +312,8 @@ void CreateEntity(EditorState &editor, const char *classname)
     LevelEntity entity;
     entity.classname = classname;
     entity.origin = PlacementPoint(editor, entityClass->placement);
+    entity.origin.x = SnapToGrid(entity.origin.x);  // Not the height, which keeps it just off the surface it's placed on
+    entity.origin.z = SnapToGrid(entity.origin.z);
     entity.properties = nlohmann::ordered_json::object();
     for (const EntityParamInfo &param : entityClass->params) entity.properties[param.name] = DefaultParamValue(param);
 
@@ -313,6 +321,31 @@ void CreateEntity(EditorState &editor, const char *classname)
     editor.level.entities.push_back(entity);
     editor.selected = (int)editor.level.entities.size() - 1;
     SetStatus(editor, "Created %s", classname);
+}
+
+void ChangeGridSize(EditorState &editor, int steps)
+{
+    // Start from the size nearest the current one, in case editor.cfg was edited to one that isn't in the list
+    int index = 0;
+    for (int i = 1; i < GRID_SIZE_COUNT; i++)
+    {
+        if (fabsf(GRID_SIZES[i] - editorSettings.gridSize) < fabsf(GRID_SIZES[index] - editorSettings.gridSize)) index = i;
+    }
+
+    index += steps;
+    if (index < 0) index = 0;
+    if (index > GRID_SIZE_COUNT - 1) index = GRID_SIZE_COUNT - 1;
+    editorSettings.gridSize = GRID_SIZES[index];
+    MarkSettingsChanged();
+
+    if (editorSettings.snapToGrid) SetStatus(editor, "Grid size %g", editorSettings.gridSize);
+    else SetStatus(editor, "Grid size %g. Snapping is off, see Edit > Preferences", editorSettings.gridSize);
+}
+
+float SnapToGrid(float value)
+{
+    if (!editorSettings.snapToGrid || editorSettings.gridSize <= 0.0f) return value;
+    return roundf(value/editorSettings.gridSize)*editorSettings.gridSize;
 }
 
 // Rounds to 4 decimals, so saved values read 0.4653 instead of 0.46530000123

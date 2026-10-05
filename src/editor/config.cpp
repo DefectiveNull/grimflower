@@ -13,7 +13,7 @@
 #include <vector>
 
 CameraButtons cameraButtons = {};
-EditorSettings editorSettings = { 200, 70.0f, 8.0f, true, true, 0.003f, false };
+EditorSettings editorSettings = { 200, 70.0f, 8.0f, true, true, 0.25f, true, 0.003f, false };
 
 static const char *CONFIG_FILE = "editor.cfg";
 
@@ -36,6 +36,10 @@ bind "ctrl+shift+z" "redo"
 bind "del" "delete_entity"
 bind "alt+q" "rotate_left"
 bind "alt+r" "rotate_right"
+
+// Grid
+bind "[" "grid_smaller"
+bind "]" "grid_bigger"
 
 // Camera, while holding the right mouse button
 bind "w" "+forward"
@@ -230,6 +234,8 @@ static void Cmd_ToggleDarkMode(const Args &) { ToggleDarkMode(); }
 static void Cmd_RotateLeft(const Args &) { RotateSelectedEntity(*current, 45.0f); }
 static void Cmd_RotateRight(const Args &) { RotateSelectedEntity(*current, -45.0f); }
 static void Cmd_ReloadWorld(const Args &) { ReloadWorld(*current); }
+static void Cmd_GridSmaller(const Args &) { ChangeGridSize(*current, -1); }
+static void Cmd_GridBigger(const Args &) { ChangeGridSize(*current, 1); }
 static void Cmd_Undo(const Args &) { Undo(*current); }
 static void Cmd_Redo(const Args &) { Redo(*current); }
 static void Cmd_UndoHistory(const Args &) { OpenDialog(*current, DIALOG_UNDO_HISTORY); }
@@ -271,6 +277,8 @@ static const Command commands[] =
     { "deselect", Cmd_Deselect, "Deselect" },
     { "rotate_left", Cmd_RotateLeft, "Rotate left 45 degrees" },
     { "rotate_right", Cmd_RotateRight, "Rotate right 45 degrees" },
+    { "grid_smaller", Cmd_GridSmaller, "Smaller grid" },
+    { "grid_bigger", Cmd_GridBigger, "Bigger grid" },
     { "create_world", Cmd_CreateWorld, "Create world" },
     { "reload_world", Cmd_ReloadWorld, "Reload world model" },
     { "world_settings", Cmd_WorldSettings, "World settings" },
@@ -302,6 +310,8 @@ static const Setting settings[] =
     { "ed_movespeed", &editorSettings.moveSpeed, nullptr, nullptr },
     { "ed_showgrid", nullptr, &editorSettings.showGrid, nullptr },
     { "ed_showlabels", nullptr, &editorSettings.showLabels, nullptr },
+    { "ed_gridsize", &editorSettings.gridSize, nullptr, nullptr },
+    { "ed_snap", nullptr, &editorSettings.snapToGrid, nullptr },
     { "ed_sensitivity", &editorSettings.lookSensitivity, nullptr, nullptr },
     { "ed_invertlook", nullptr, &editorSettings.invertLook, nullptr },
 };

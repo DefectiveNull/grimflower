@@ -128,6 +128,8 @@ void CreateEntity(EditorState &editor, const char *classname);
 void DeleteSelectedEntity(EditorState &editor);
 void RotateSelectedEntity(EditorState &editor, float degrees);  // Positive turns left, seen from above
 bool ReloadWorld(EditorState &editor);                           // Reads the world model's .obj from disk again
+void ChangeGridSize(EditorState &editor, int steps);             // Steps through the grid sizes: -1 smaller, 1 bigger
+float SnapToGrid(float value);                                   // The nearest grid line, or value as is with snapping off
 void StartPointAt(EditorState &editor, int entityIndex, const std::string &parameter);
 void CancelPointAt(EditorState &editor);
 bool RaycastWorld(const EditorState &editor, Ray ray, Vector3 &point, Vector3 *normal);  // Where a ray first hits the level

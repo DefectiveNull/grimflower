@@ -33,10 +33,10 @@ static void DrawStatusBar(const EditorState &editor)
     // Recent messages, then a reminder of the controls
     bool recent = !editor.status.empty() && GetTime() - editor.statusTime < 6.0;
     const char *text = recent ? editor.status.c_str()
-                              : "Hold right mouse: look around, with WASD/Q/E to move (Shift: faster) | Left click: select | Delete: delete entity";
+                              : "Hold right mouse: look around, with WASD/Q/E to move (Shift: faster) | Left click: select | Delete: delete entity | [ ]: grid size";
     DrawUIText(text, 8, (float)(y + (STATUS_BAR_HEIGHT - 16)/2), 16, recent ? UITextColor() : UIMutedTextColor());
 
-    const char *count = TextFormat("%d entities", (int)editor.level.entities.size());
+    const char *count = TextFormat("Grid %g%s  |  %d entities", editorSettings.gridSize, editorSettings.snapToGrid ? "" : " (no snap)", (int)editor.level.entities.size());
     DrawUIText(count, GetScreenWidth() - MeasureUIText(count, 16) - 8, (float)(y + (STATUS_BAR_HEIGHT - 16)/2), 16, UIMutedTextColor());
 }
 

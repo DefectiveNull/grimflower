@@ -296,6 +296,7 @@ static void DrawViewPreferences(Layout &layout)
     if (SliderRow(layout, "Field of view", &editorSettings.fieldOfView, 40.0f, 110.0f, "%.0f deg")) MarkSettingsChanged();
     if (SliderRow(layout, "Camera speed", &editorSettings.moveSpeed, 1.0f, 40.0f, "%.1f")) MarkSettingsChanged();
     if (CheckRow(layout, "Show grid", &editorSettings.showGrid)) MarkSettingsChanged();
+    if (CheckRow(layout, "Snap to grid", &editorSettings.snapToGrid)) MarkSettingsChanged();
     if (CheckRow(layout, "Show labels", &editorSettings.showLabels)) MarkSettingsChanged();
 }
 

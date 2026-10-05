@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "raymath.h"
+#include "rlgl.h"
 #include "config.h"
 #include "entitylist.h"
 #include "style.h"
@@ -160,12 +161,12 @@ static void UpdateDrag(EditorState &editor)
     Vector3 &origin = editor.level.entities[editor.selected].origin;
     if (editor.dragVertical)
     {
-        origin.y = target.y;
+        origin.y = SnapToGrid(target.y);
     }
     else
     {
-        origin.x = target.x;
-        origin.z = target.z;
+        origin.x = SnapToGrid(target.x);
+        origin.z = SnapToGrid(target.z);
     }
 }
 
@@ -355,6 +356,26 @@ static void SyncSkybox(EditorState &editor)
     else if (!LoadSkybox(editor.skybox, wanted.c_str())) SetStatus(editor, "Couldn't load the skybox %s", wanted.c_str());
 }
 
+// The ground grid at the current grid size. It's centred under the camera so a fine grid is still
+// around wherever you're working, moved in whole grid steps so its lines stay on the snapping points
+static void DrawEditorGrid(const EditorState &editor)
+{
+    float size = editorSettings.gridSize;
+    if (size <= 0.0f) return;
+
+    // About 64 units across for the big sizes, capped at 256 lines for the small ones. An even count,
+    // so there's a line through the centre
+    int slices = (int)(64.0f/size);
+    if (slices > 256) slices = 256;
+    if (slices < 16) slices = 16;
+    slices -= slices%2;
+
+    rlPushMatrix();
+        rlTranslatef(roundf(editor.camera.position.x/size)*size, 0.0f, roundf(editor.camera.position.z/size)*size);
+        DrawGrid(slices, size);
+    rlPopMatrix();
+}
+
 void DrawViewport(EditorState &editor)
 {
     Rectangle view = GetViewportRect();
@@ -381,7 +402,7 @@ void DrawViewport(EditorState &editor)
         BeginMode3D(editor.camera);
             DrawSkybox(editor.skybox, editor.camera);  // First, so the world draws over it
             if (editor.worldLoaded) DrawWorld(editor.world, false);
-            if (editorSettings.showGrid) DrawGrid(64, 1.0f);
+            if (editorSettings.showGrid) DrawEditorGrid(editor);
             for (size_t i = 0; i < editor.level.entities.size(); i++) DrawEntityMarker(editor.level.entities[i], (int)i == editor.selected);
             DrawPointAtPreview(editor);
         EndMode3D();

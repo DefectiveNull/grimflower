@@ -20,7 +20,7 @@ Known gaps and loose ends, collected while building the game and the editor.
 ## Editor
 
 - [X] **Direction gizmo**: `direction` parameters (like the sun's) can only be typed as text. A drag handle in the viewport would help.
-- [ ] **Move gizmo and snapping**: entities drag on a plane (Alt for vertical), with no axis handles or grid snapping.
+- [X] **Move gizmo and snapping**: dragged and created entities snap to the grid, and `[` and `]` change its size, from 1/16 to 8 world units in powers of two. No gizmo, on purpose: dragging stays on a plane (Alt for vertical), which is quicker than axis handles. Snapping can be turned off in Preferences.
 - [X] **Preferences dialog**: it's a placeholder. Camera speed and sensitivity can only be changed in `editor.cfg`.
 - [ ] **`editor.cfg` is overwritten on exit**: hand edits made while the editor is open are lost.
 - [X] **Reload the entity list**: `entitylist.txt` and the level's world model are reloaded when they change on disk (`src/editor/hotreload.cpp`), so rebuilding the game or re-exporting from Blender doesn't need a restart. Textures and `.mtl` files aren't watched yet: use Reload World Model for those.
