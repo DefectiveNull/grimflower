@@ -1,5 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 240 240" width="200" height="200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 500" width="280" height="250">
   <title>Grimflower</title>
+  <!-- The title font is Cinzel, by The Cinzel Project Authors, under the SIL Open Font License 1.1 (embedded as a subset) -->
+  <style>
+    @font-face { font-family: 'Cinzel'; font-weight: 600; src: url(data:font/woff2;base64,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) format('woff2'); }
+    .title { font-family: 'Cinzel', Georgia, serif; font-weight: 600; font-size: 40px; letter-spacing: 8px; }
+  </style>
   <defs>
     <radialGradient id="halo">
       <stop offset="0" stop-color="#F5A142" stop-opacity="0.75"/>
@@ -10,17 +15,18 @@
       <feGaussianBlur stdDeviation="3.5"/>
     </filter>
   </defs>
-  <rect x="-20" y="-20" width="240" height="240" fill="#15110E"/>
-  <g fill="#A4472F">
+  <rect width="560" height="500" fill="#15110E"/>
+  <g transform="translate(120 40) scale(1.6)" fill="#A4472F">
     <circle cx="100" cy="100" r="60" fill="none" stroke="#A4472F" stroke-width="16" stroke-linecap="round" stroke-dasharray="34 28.8 34 28.8 34 28.8 34 28.8 34 91.6" transform="rotate(105 100 100)"/>
     <path d="M64.1,155.4 L46.5,155.4 L56.7,149.8 Z M34.1,96.5 L25.3,81.4 L35.2,87.4 Z M70.0,41.2 L78.8,26.0 L78.5,37.6 Z M135.9,44.6 L153.5,44.6 L143.3,50.2 Z M165.9,103.5 L174.7,118.6 L164.8,112.6 Z M46.4,106.6 L55.8,108.6 L46.0,99.1 Z M121.1,50.3 L114.7,57.5 L127.8,53.7 Z M96.2,133 L96.3,124 L89,120 Z M103.2,164 L103.1,172 L110,160 Z"/>
     <path d="M96,113 L104,113 L103,176 L100,198 L97,176 Z"/>
     <path d="M102,146 C116,140 129,148 133,163 C120,161 109,157 102,154 Z"/>
     <path d="M150,170 C158,166 168,170 170,178 C162,180 154,177 150,170 Z"/>
     <ellipse cx="138" cy="191" rx="7" ry="3.5" transform="rotate(-25 138 191)"/>
+    <circle cx="100" cy="100" r="32" fill="url(#halo)"/>
+    <circle cx="100" cy="100" r="11" fill="none" stroke="#F5A142" stroke-width="10" filter="url(#blur)"/>
+    <circle cx="100" cy="100" r="11" fill="none" stroke="#F5A142" stroke-width="7"/>
+    <circle cx="100" cy="100" r="11" fill="none" stroke="#FFE7B3" stroke-width="2.5"/>
   </g>
-  <circle cx="100" cy="100" r="32" fill="url(#halo)"/>
-  <circle cx="100" cy="100" r="11" fill="none" stroke="#F5A142" stroke-width="10" filter="url(#blur)"/>
-  <circle cx="100" cy="100" r="11" fill="none" stroke="#F5A142" stroke-width="7"/>
-  <circle cx="100" cy="100" r="11" fill="none" stroke="#FFE7B3" stroke-width="2.5"/>
+  <text class="title" x="284" y="442" text-anchor="middle" fill="#D9CDB4">GRIMFLOWER</text>
 </svg>
