@@ -5,7 +5,7 @@ Known gaps and loose ends, collected while building the game and the editor.
 ## Game
 
 - [X] **Skybox**: levels store `info.skybox`, but nothing draws it yet. The game only logs that it's set.
-- [ ] **Map selection**: Play always loads `maps/dev.json`. A `map <name>` console command and/or a level picker would fix that.
+- [X] **Map selection**: the `map <name>` console command loads `maps/<name>.json`, also from the command line as `game.exe +map <name>`. Play on the main menu still loads `maps/dev.json`, and there's no level picker yet.
 - [ ] **Options aren't saved**: resolution, fullscreen, volume, mouse sensitivity and invert aim reset on every launch. They could go into `config.cfg` as cvars.
 - [ ] **Sounds**: the audio device and master volume work, but there are no sounds yet.
 - [X] **Multiple textures per map**: the world model is loaded by our own OBJ reader (`LoadWorldModel` in `src/shared/world.cpp`), one mesh per `usemtl` material, reading the `.mtl` and textures through the game data so it works from `gamedata.zip` too.

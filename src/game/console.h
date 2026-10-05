@@ -18,5 +18,8 @@ void ConsolePrintf(const char *format, ...);
 // Empties the log and the command history
 void ConsoleClear();
 
+// Closes the console if it's open, like after loading a level
+void ConsoleClose();
+
 // Writes the whole log to a text file. Returns the number of lines written, or -1 on failure
 int ConsoleSaveLog(const char *path);

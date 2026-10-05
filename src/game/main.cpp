@@ -21,6 +21,37 @@ enum Scene
     SCENE_GAME
 };
 
+static const char *DEFAULT_MAP = "maps/dev.json";  // What Play on the main menu loads
+
+static std::string requestedMap;  // Set by RequestMap, loaded at the start of the next frame
+
+void RequestMap(const std::string &path)
+{
+    requestedMap = path;
+}
+
+// Loads and spawns a level in place of the current one. If it fails, the current one stays as it was
+static bool StartLevel(const std::string &path, Level &level, World &world, bool &worldLoaded, Player &player)
+{
+    Level newLevel;
+    World newWorld = {};
+    Player newPlayer = player;
+    if (!LoadLevel(newLevel, path.c_str()) || !SpawnLevel(newLevel, newWorld, newPlayer))
+    {
+        ConsolePrintf("Couldn't load the level %s, see the warnings above", path.c_str());
+        return false;
+    }
+
+    if (worldLoaded) UnloadWorld(world);
+    level = newLevel;
+    world = newWorld;
+    player = newPlayer;
+    worldLoaded = true;
+
+    ConsolePrintf("Loaded level \"%s\" from %s", level.info.name.c_str(), path.c_str());
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     // game.exe -exportentities [file]: writes the entity table for the editor and quits, without
@@ -48,6 +79,16 @@ int main(int argc, char **argv)
     ExecConfig("config.cfg", true);
     ExecConfig("autoexec.cfg", true);
 
+    // Then commands from the command line, like Quake's: game.exe +map platforms runs "map platforms".
+    // Each + starts a new command, and the words after it are its arguments
+    std::string commandLine;
+    for (int i = 1; i < argc; i++)
+    {
+        if (argv[i][0] == '+') commandLine += (commandLine.empty() ? "" : "\n") + std::string(argv[i] + 1);
+        else if (!commandLine.empty()) commandLine += " \"" + std::string(argv[i]) + "\"";
+    }
+    if (!commandLine.empty()) ExecuteCommandText(commandLine);
+
     SetTargetFPS(200);
     SetExitKey(KEY_NULL); // Esc opens the pause menu instead of closing the window
 
@@ -55,7 +96,7 @@ int main(int argc, char **argv)
     Level level;
     World world = {};
     bool worldLoaded = false;
-    Player player;
+    Player player = {};
     bool paused = false;
     bool showOptions = false;  // Options screen, opened from either the main menu or the pause menu
     bool quit = false;
@@ -65,6 +106,21 @@ int main(int argc, char **argv)
         // The resolution can change from the options screen, so read it every frame
         const int screenWidth = GetScreenWidth();
         const int screenHeight = GetScreenHeight();
+
+        // A level asked for by the map command or the main menu. Loading one drops you straight into it
+        if (!requestedMap.empty())
+        {
+            std::string path = requestedMap;
+            requestedMap.clear();
+            if (StartLevel(path, level, world, worldLoaded, player))
+            {
+                scene = SCENE_GAME;
+                paused = false;
+                showOptions = false;
+                ConsoleClose();
+                DisableCursor();
+            }
+        }
 
         // While the console is open it gets the keyboard, and the game ignores input
         bool consoleFocused = ConsoleUpdate();
@@ -93,17 +149,7 @@ int main(int argc, char **argv)
                 {
                     switch (DrawMainMenu(GAME_NAME))
                     {
-                        case MENU_CONTINUE:
-                            // The level is only loaded once the game scene starts
-                            if (!LoadLevel(level, "maps/dev.json") || !SpawnLevel(level, world, player))
-                            {
-                                TraceLog(LOG_ERROR, "Failed to load level");
-                                break;
-                            }
-                            worldLoaded = true;
-                            DisableCursor();
-                            scene = SCENE_GAME;
-                            break;
+                        case MENU_CONTINUE: RequestMap(DEFAULT_MAP); break;
                         case MENU_OPTIONS: showOptions = true; break;
                         case MENU_QUIT: quit = true; break;
                         default: break;

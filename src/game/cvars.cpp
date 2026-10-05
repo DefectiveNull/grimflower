@@ -38,6 +38,7 @@ static void Cmd_Clear(const std::vector<std::string> &args);
 static void Cmd_Exec(const std::vector<std::string> &args);
 static void Cmd_Fly(const std::vector<std::string> &args);
 static void Cmd_Help(const std::vector<std::string> &args);
+static void Cmd_Map(const std::vector<std::string> &args);
 static void Cmd_Toggle(const std::vector<std::string> &args);
 static void Cmd_ToggleCursor(const std::vector<std::string> &args);
 static void Cmd_Unbind(const std::vector<std::string> &args);
@@ -54,6 +55,7 @@ static const ConsoleCommand commands[] =
     { "exec", "Runs the commands in a .cfg file: exec <file>", Cmd_Exec },
     { "fly", "Toggles fly mode", Cmd_Fly },
     { "help", "Lists all commands and cvars", Cmd_Help },
+    { "map", "Loads a level: map <name>, like map dev for maps/dev.json", Cmd_Map },
     { "toggle", "Flips a cvar between 0 and 1: toggle <cvar>", Cmd_Toggle },
     { "togglecursor", "Frees or captures the mouse cursor", Cmd_ToggleCursor },
     { "unbind", "Removes a key's bind: unbind <key>", Cmd_Unbind },
@@ -365,6 +367,31 @@ static void Cmd_Fly(const std::vector<std::string> &args)
 {
     (void)args;
     inputButtons.toggleFly = true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Levels
+
+// "platforms", "platforms.json" and "maps/platforms.json" all mean the same level
+static void Cmd_Map(const std::vector<std::string> &args)
+{
+    if (args.size() < 2)
+    {
+        ConsolePrintf("Usage: map <name>, like map dev to load maps/dev.json");
+        return;
+    }
+
+    std::string path = args[1];
+    for (char &c : path) if (c == '\\') c = '/';
+    if (!IsFileExtension(path.c_str(), ".json")) path += ".json";
+    if (path.find('/') == std::string::npos) path = "maps/" + path;
+
+    if (!GameDataFileExists(path.c_str()))
+    {
+        ConsolePrintf("There's no level %s", path.c_str());
+        return;
+    }
+    RequestMap(path);
 }
 
 static void Cmd_Toggle(const std::vector<std::string> &args)

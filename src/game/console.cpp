@@ -89,6 +89,11 @@ void ConsoleClear()
     scroll = 0;
 }
 
+void ConsoleClose()
+{
+    isOpen = false;
+}
+
 int ConsoleSaveLog(const char *path)
 {
     std::string text;
