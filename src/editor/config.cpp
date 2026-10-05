@@ -358,26 +358,27 @@ static void Execute(const std::string &text)
 
 // ---------------------------------------------------------------------------------------------
 
-static std::string ConfigPath()
+std::string GetEditorConfigPath()
 {
     return std::string(GetApplicationDirectory()) + CONFIG_FILE;
 }
 
-void LoadEditorConfig(EditorState &editor)
+static bool configNeedsSaving = false;
+
+// editor.cfg as the editor last wrote or read it. When the file changes on disk, matching this means it
+// was the editor's own save, anything else is a hand edit
+static std::string lastConfigText;
+
+// The default binds, then editor.cfg on top of them. Returns false if editor.cfg couldn't be read
+static bool RunConfigFile()
 {
-    current = &editor;
     Execute(DEFAULT_CONFIG);
     std::map<int, std::string> defaults = binds;
 
-    std::string path = ConfigPath();
-    if (!FileExists(path.c_str()))
-    {
-        TraceLog(LOG_INFO, "CONFIG: No %s yet, using the default binds and settings", CONFIG_FILE);
-        return;
-    }
-
+    std::string path = GetEditorConfigPath();
     char *text = LoadFileText(path.c_str());
-    if (text == nullptr) return;
+    if (text == nullptr) return false;
+    lastConfigText = text;
     Execute(text);
     UnloadFileText(text);
     TraceLog(LOG_INFO, "CONFIG: Ran %s", path.c_str());
@@ -393,13 +394,41 @@ void LoadEditorConfig(EditorState &editor)
         if (commandBound) continue;
 
         binds[bind.first] = bind.second;
+        configNeedsSaving = true;  // So the file gets them too
         TraceLog(LOG_INFO, "CONFIG: Added the default bind %s for %s", ComboToName(bind.first).c_str(), bind.second.c_str());
     }
+    return true;
+}
+
+void LoadEditorConfig(EditorState &editor)
+{
+    current = &editor;
+    if (!FileExists(GetEditorConfigPath().c_str()))
+    {
+        Execute(DEFAULT_CONFIG);
+        TraceLog(LOG_INFO, "CONFIG: No %s yet, using the default binds and settings", CONFIG_FILE);
+        return;
+    }
+    RunConfigFile();
+}
+
+bool ReloadEditorConfigIfEdited(EditorState &editor)
+{
+    char *text = LoadFileText(GetEditorConfigPath().c_str());
+    if (text == nullptr) return false;
+    bool ownSave = (lastConfigText == text);
+    UnloadFileText(text);
+    if (ownSave) return false;
+
+    // Let go of held keys first, so a camera button whose key moved doesn't stay stuck on
+    current = &editor;
+    ReleaseEditorBinds();
+    return RunConfigFile();
 }
 
 void SaveEditorConfig()
 {
-    std::string text = "// Written by the editor whenever a setting changes and when it closes. Close the editor before editing this by hand\n";
+    std::string text = "// Written by the editor whenever a setting changes. It can be edited by hand, even with the editor open: it picks up the changes when the file is saved\n";
     text += "unbindall\n";
     for (const auto &bind : binds) text += "bind \"" + ComboToName(bind.first) + "\" \"" + bind.second + "\"\n";
 
@@ -411,8 +440,10 @@ void SaveEditorConfig()
         if (setting.integer) text += TextFormat("%s \"%d\"\n", setting.name, *setting.integer);
     }
 
-    std::string path = ConfigPath();
-    if (!SaveFileText(path.c_str(), text.c_str())) TraceLog(LOG_WARNING, "CONFIG: Couldn't save %s", path.c_str());
+    std::string path = GetEditorConfigPath();
+    if (SaveFileText(path.c_str(), text.c_str())) lastConfigText = text;
+    else TraceLog(LOG_WARNING, "CONFIG: Couldn't save %s", path.c_str());
+    configNeedsSaving = false;
 }
 
 void ToggleDarkMode()
@@ -469,8 +500,6 @@ void ReleaseEditorBinds()
 // ---------------------------------------------------------------------------------------------
 // Preferences
 
-static bool configNeedsSaving = false;
-
 void MarkSettingsChanged()
 {
     configNeedsSaving = true;
@@ -480,7 +509,11 @@ void UpdateConfigSaving()
 {
     if (!configNeedsSaving || IsMouseButtonDown(MOUSE_BUTTON_LEFT)) return;  // Wait until a slider drag is over
     SaveEditorConfig();
-    configNeedsSaving = false;
+}
+
+void SaveEditorConfigIfChanged()
+{
+    if (configNeedsSaving) SaveEditorConfig();
 }
 
 std::vector<BindableCommand> GetBindableCommands()

@@ -1,7 +1,8 @@
 #pragma once
 
 // editor.cfg: the editor's binds and settings, in the same format as the game's .cfg files.
-// It lives next to editor.exe, and is saved automatically whenever a setting changes and on exit.
+// It lives next to editor.exe, and is saved automatically whenever a setting changes. Hand edits made
+// while the editor is open are picked up when the file is saved (hotreload.cpp), so they aren't lost.
 //
 //   bind "ctrl+s" "save_level"    Binds can use ctrl+, shift+ and alt+ in front of a key
 //   ed_darkmode "1"               Settings are set like the game's cvars
@@ -48,6 +49,12 @@ extern EditorSettings editorSettings;
 // Sets up the default binds and settings, then runs editor.cfg if it exists. Call after LoadEditorStyle
 void LoadEditorConfig(EditorState &editor);
 void SaveEditorConfig();
+void SaveEditorConfigIfChanged();  // On exit: only a change still waiting to be saved, so hand edits aren't overwritten
+std::string GetEditorConfigPath();
+
+// Runs editor.cfg again if it was edited by hand since the editor last wrote or read it. Returns true if
+// it did; the editor's own saves don't count
+bool ReloadEditorConfigIfEdited(EditorState &editor);
 
 // Runs the commands of keys pressed or released this frame
 void UpdateEditorBinds(EditorState &editor);

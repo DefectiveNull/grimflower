@@ -1,4 +1,5 @@
 #include "hotreload.h"
+#include "config.h"
 #include "entitylist.h"
 #include "raylib.h"
 
@@ -36,6 +37,7 @@ struct WatchedFile
 
 static WatchedFile entityList;
 static WatchedFile worldModel;
+static WatchedFile editorConfig;
 static bool started = false;
 static double lastCheck = 0.0;
 
@@ -71,6 +73,7 @@ void UpdateHotReload(EditorState &editor)
     if (!started)
     {
         Watch(entityList, ENTITY_LIST_PATH);
+        Watch(editorConfig, GetEditorConfigPath());
         started = true;
     }
 
@@ -81,6 +84,13 @@ void UpdateHotReload(EditorState &editor)
     {
         if (LoadEntityList(ENTITY_LIST_PATH)) SetStatus(editor, "%s changed, reloaded %d entity types", ENTITY_LIST_PATH, (int)GetEntityClassList().size());
         else SetStatus(editor, "%s changed but couldn't be read, kept the previous entity types", ENTITY_LIST_PATH);
+    }
+
+    // The editor saves editor.cfg itself whenever a setting changes, which also counts as a change here.
+    // ReloadEditorConfigIfEdited tells those apart from hand edits, and only runs the file again for those
+    if (HasSettledChange(editorConfig) && ReloadEditorConfigIfEdited(editor))
+    {
+        SetStatus(editor, "editor.cfg changed, reloaded its binds and settings");
     }
 
     // Opening a level, Create World or an undo can switch to another model, which was just loaded

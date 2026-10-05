@@ -114,7 +114,7 @@ int main()
         }
     }
 
-    SaveEditorConfig();
+    SaveEditorConfigIfChanged();
     ShutdownEditor(editor);
     UnloadViewport();
     UnloadEditorStyle();
