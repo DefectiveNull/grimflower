@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "raymath.h"
 #include "rlgl.h"
+#include "bounce.h"
 #include "config.h"
 #include "entitylist.h"
 #include "style.h"
@@ -389,6 +390,46 @@ static void DrawEditorGrid(const EditorState &editor)
     rlPopMatrix();
 }
 
+// Keeps the sun's bounce lightmap up to date. Whenever its key changes, because the sun moved, turned or
+// changed color or intensity, or the world model was reloaded, a new bake starts in the background, once
+// things have been still for a moment so dragging doesn't start one every frame. A level's saved lightmap
+// is used instead when it still matches. The lightmap updates when a bake finishes
+static void UpdateEditorBounce(EditorState &editor)
+{
+    static unsigned long long lastKey = 0;
+    static unsigned long long triedLoading = 0;  // The key a saved lightmap was last tried for, so it's tried once
+    static double changedAt = 0.0;
+
+    World &world = editor.world;
+    BounceStats stats;
+    if (UpdateLightmapBake(world, &stats))
+    {
+        SetStatus(editor, "Baked the bounce lightmap (%dx%d, %d texels) in %.0f ms", stats.width, stats.height, stats.texels, stats.bakeMs);
+    }
+
+    unsigned long long key = LightmapKey(world);
+    if (key != lastKey)
+    {
+        lastKey = key;
+        changedAt = GetTime();
+    }
+    if (key == world.lightmapKey || key == LightmapBakingKey(world)) return;  // Up to date, or being baked
+
+    // The lightmap saved with the level, if it was baked from this world and sun
+    if (!editor.levelPath.empty() && key != triedLoading)
+    {
+        triedLoading = key;
+        if (LoadLightmap(world, LightmapPath(editor.levelPath).c_str(), editor.level.info.lightmapKey))
+        {
+            SetStatus(editor, "Loaded the level's bounce lightmap");
+            return;
+        }
+    }
+
+    if (GetTime() - changedAt < 0.25) return;
+    StartLightmapBake(world);  // Cancels one still running for an older key
+}
+
 void DrawViewport(EditorState &editor)
 {
     Rectangle view = GetViewportRect();
@@ -407,6 +448,7 @@ void DrawViewport(EditorState &editor)
     {
         // Lights come from the level's entities every frame, so edits in the details panel show up right away
         ApplyLevelLights(editor.level, editor.world.lighting, editor.defaultSun, GetEntityListParamReader());
+        UpdateEditorBounce(editor);
         RenderWorldShadows(editor.world);
     }
 

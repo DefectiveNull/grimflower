@@ -1,4 +1,5 @@
 #include "world.h"
+#include "bounce.h"
 #include "gamedata.h"
 #include "raymath.h"
 #include "rlgl.h"
@@ -325,6 +326,9 @@ bool LoadWorld(World &world, const char *objPath, float scale)
 
     InitLighting(world.lighting, world.bounds);
     for (int i = 0; i < world.model.materialCount; i++) world.model.materials[i].shader = world.lighting.shader;
+
+    // Where every part of the world is in the lightmap. Quick, and the same every time, so a saved lightmap fits
+    BuildLightmapLayout(world);
     return true;
 }
 
@@ -339,9 +343,18 @@ void UnloadWorld(World &world)
     }
     UnloadModel(world.model);
     UnloadLighting(world.lighting);
+    UnloadAmbientOcclusion(world.ao);
     UnloadSkybox(world.skybox);
     world.colliders.clear();
     world.movers.clear();
+    CancelLightmapBake(world);
+    if (world.lightmap.id != 0) UnloadTexture(world.lightmap);
+    world.lightmap = { 0 };
+    world.lighting.lightmapTexture = 0;
+    world.bounceTriangles.clear();
+    world.lightmapTexels.clear();
+    world.lightmapKey = 0;
+    world.bounceBaked = false;
 }
 
 void RenderWorldShadows(World &world)
@@ -349,10 +362,29 @@ void RenderWorldShadows(World &world)
     RenderShadowMap(world.lighting, world.model);
 }
 
+void RenderWorldAO(World &world, Camera camera, int width, int height, bool enabled, float radius)
+{
+    if (!enabled)
+    {
+        world.lighting.aoTexture = 0;
+        return;
+    }
+
+    // Only the world mesh goes in, so entities never darken the level around them
+    RenderAmbientOcclusion(world.ao, world.model, camera, width, height, radius);
+    world.lighting.aoTexture = world.ao.blurred.texture.id;
+    world.lighting.aoScreenSize = { (float)width, (float)height };
+}
+
 void DrawWorld(const World &world, bool showColliders)
 {
     BeginLighting(world.lighting);
+        // Only the world mesh gets ambient occlusion and baked bounce
+        SetLightingAO(world.lighting, true);
+        SetLightingBounce(world.lighting, world.bounceBaked);
         DrawModel(world.model, { 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
+        SetLightingAO(world.lighting, false);
+        SetLightingBounce(world.lighting, false);
         DrawModelWires(world.model, { 0.0f, 0.0f, 0.0f }, 1.0f, Fade(BLACK, 0.6f));
     EndLighting();
 

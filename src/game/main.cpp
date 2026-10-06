@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include "raygui.h"
 #include "audio.h"
+#include "bounce.h"
 #include "binds.h"
 #include "gamecommands.h"
 #include "console.h"
@@ -44,6 +45,23 @@ static bool StartLevel(const std::string &path, Level &level, World &world, bool
     {
         ConsolePrintf("Couldn't load the level %s, see the warnings above", path.c_str());
         return false;
+    }
+
+    // The sun's bounce light: the lightmap the editor saved with the level. Without one, or if the world
+    // model, its textures or the sun changed since it was baked, it's baked in the background and shows up
+    // when it's done
+    if (r_bounce.value != 0.0f)
+    {
+        std::string lightmapPath = LightmapPath(path);
+        if (LoadLightmap(newWorld, lightmapPath.c_str(), newLevel.info.lightmapKey))
+        {
+            ConsolePrintf("Loaded the bounce lightmap %s", lightmapPath.c_str());
+        }
+        else
+        {
+            StartLightmapBake(newWorld);
+            ConsolePrintf("No up to date bounce lightmap for this level, baking one in the background. Save the level in the editor to keep one");
+        }
     }
 
     if (worldLoaded)
@@ -139,6 +157,13 @@ int main(int argc, char **argv)
         bool consoleFocused = ConsoleUpdate();
         UpdateAudio();  // Streams the music and applies volume changes
 
+        // A bounce lightmap baking in the background goes into use as soon as it's done
+        BounceStats bake;
+        if (worldLoaded && UpdateLightmapBake(world, &bake))
+        {
+            ConsolePrintf("Baked the bounce lightmap (%dx%d, %d texels) in %.0f ms", bake.width, bake.height, bake.texels, bake.bakeMs);
+        }
+
         // Esc backs out of the options screen first, unless it's waiting for a key to bind: then Esc cancels that
         bool escapePressed = !consoleFocused && IsKeyPressed(KEY_ESCAPE);
         if (escapePressed && showOptions)
@@ -206,10 +231,14 @@ int main(int argc, char **argv)
 
         BeginDrawing();
             world.lighting.pointShadows = r_use_pointlight_shadows.value != 0.0f;
+            world.lighting.aoDirect = r_ssao_direct.value;
+            world.lighting.bounceScale = (r_bounce.value != 0.0f) ? r_bounce_scale.value : 0.0f;
             RenderWorldShadows(world);  // Its own render pass, so it has to come before BeginMode3D
-            ClearBackground(RAYWHITE);
 
             Camera camera = GetPlayerCamera(player);
+            RenderWorldAO(world, camera, screenWidth, screenHeight, r_ssao.value != 0.0f, r_ssao_radius.value);  // Its own passes too
+
+            ClearBackground(RAYWHITE);
             BeginMode3D(camera);
                 DrawSkybox(world.skybox, camera);  // First, so the world draws over it
                 DrawWorld(world, r_showcolliders.value != 0.0f);

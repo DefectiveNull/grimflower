@@ -2,6 +2,7 @@
 #include "config.h"
 #include "entitylist.h"
 #include "filedialog.h"
+#include "bounce.h"
 #include "raymath.h"
 
 #include <cctype>
@@ -219,6 +220,22 @@ bool SaveCurrentLevel(EditorState &editor, bool askForPath)
         if (!ShowSaveFileDialog(GetWindowHandle(), "Save Level", LEVEL_FILTER, "json", editor.dataRoot + "/maps", path)) return false;
     }
 
+    // The bounce lightmap goes next to it, so the game doesn't have to bake it. It has to match the world
+    // and sun being saved: finish the bake for them, or bake them now if none has started yet
+    World &world = editor.world;
+    bool saveLightmap = false;
+    if (editor.worldLoaded && !world.lightmapTexels.empty())
+    {
+        unsigned long long key = LightmapKey(world);
+        if (world.lightmapKey != key)
+        {
+            if (LightmapBakingKey(world) != key) StartLightmapBake(world);
+            FinishLightmapBake(world, nullptr);
+        }
+        saveLightmap = (world.lightmapKey == key);
+    }
+    editor.level.info.lightmapKey = saveLightmap ? LightmapKeyToText(world.lightmapKey) : "";
+
     if (!SaveLevel(editor.level, path.c_str()))
     {
         SetStatus(editor, "Couldn't save %s", path.c_str());
@@ -227,7 +244,16 @@ bool SaveCurrentLevel(EditorState &editor, bool askForPath)
 
     editor.levelPath = path;
     MarkSaved(editor);
-    SetStatus(editor, "Saved %s", ToDataPath(editor, path).c_str());
+
+    std::string lightmapPath = LightmapPath(path);
+    if (saveLightmap && SaveLightmap(world, lightmapPath.c_str()))
+    {
+        SetStatus(editor, "Saved %s and its lightmap", ToDataPath(editor, path).c_str());
+    }
+    else
+    {
+        SetStatus(editor, "Saved %s", ToDataPath(editor, path).c_str());
+    }
     return true;
 }
 

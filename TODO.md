@@ -16,9 +16,9 @@ Known gaps and loose ends, collected while building the game and the editor. Sec
 - [X] Add Ladders, Doors and level change triggers: `func_water`, `func_ladder` and `trigger_changelevel` are volumes, boxes that do what their entity type says while the player is inside them (`src/game/volumes.cpp`). `func_door` is a solid textured box that slides open when walked into. Their bounds are typed in the editor, and they move like other entities.
 - [X] Add a Crouching mechanic: hold Ctrl (`+duck`) for a half-height hull at a third of the speed, standing back up once there's room.
 - [X] Add a swimming mechanic: waist deep in a water volume, the player swims where they look, jump and crouch go up and down, and jump at the surface climbs out.
-- [ ] Test SSAO and see how well it performs
+- [X] Test SSAO and see how well it performs: in, on the world mesh only (`src/engine/ssao.cpp`, cvars `r_ssao`, `r_ssao_radius` and `r_ssao_direct`). On a GTX 1050 Ti it costs about 0.6-0.8 ms a frame at 1280x720 and 1.2-2.0 ms at 1920x1080 in the test levels, and it darkens ambient light plus half of the direct light by default (`r_ssao_direct 0.5`), since both levels have very little ambient.
 = [ ] Test an alternative lighting route with lightmapping and the embree library
-- [ ] Test a simplified bounce lighting hack and see how it looks/performs
+- [X] Test a simplified bounce lighting hack and see how it looks/performs: in, for the sun only (`src/engine/bounce.cpp`, cvars `r_bounce` and `r_bounce_scale`). One bounce, gathered from 26 directions per texel of a lightmap at 2 texels per world unit, baked on a background thread. The editor re-bakes when the sun changes and saves `maps/<level>_lightmap.png` with the level, plus a fingerprint of the world, its textures and the sun (`info.lightmapKey`); the game loads that instead of baking while it still matches, and re-bakes in the background when it doesn't, like the editor does after a world model hot reload. On a GTX 1050 Ti the dev level bakes in 1.3 s without blocking anything, loads its saved lightmap in 6 ms, and draws no slower.
 
 ## Code
 

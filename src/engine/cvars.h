@@ -25,6 +25,11 @@ struct Cvar
 extern Cvar r_showentities;
 extern Cvar r_use_pointlight_shadows;
 extern Cvar r_showcolliders;
+extern Cvar r_ssao;
+extern Cvar r_ssao_radius;
+extern Cvar r_ssao_direct;
+extern Cvar r_bounce;
+extern Cvar r_bounce_scale;
 
 // Runs console commands, like Quake's command buffer: commands are separated by ; or new lines,
 // "quoted text" is one argument, and // starts a comment. Each command can be a command, an alias
