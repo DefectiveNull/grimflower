@@ -2,11 +2,11 @@
 
 We want to eventually have mostly stable binaries for the editor and game so that building upon that doesn't cause things to break or become incompatible too often. I also want to add some basic documentation for things
 
-## Editor Stability improvements and bug fixes (Current)
+## Editor Stability improvements and bug fixes 
 
 I'm currently trying to make it so there's no potential crashes or breaking issues when updating from one version to another, or when adding new entities. I also want it to be performant throughout this project, preferably i can eventually create a scene with 2048 entities (Half life 2's maximum ammount) and still maintain 150+ FPS on a 1050 TI or similar card (which is what i own).
 
-## Further game and engine development with a focus on some new features and organization
+## Further game and engine development with a focus on some new features and organization (Current)
 
 Need to catch up with some of the editor's quality of life features (an input screen, having options be saved, have a cvar for loading maps directly, having a menu for opening maps). I also want to do some much needed organization separating game code from engine code since right now it's all kind of a mess that'll get worse later, maybe also add some documentation along the way. And finally i want to add a few mechanics and add in new entities.
 
