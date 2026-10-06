@@ -1,6 +1,9 @@
 newmtl dev/wall128g
 map_Kd textures/dev/wall128g.tga
 
+newmtl dev/wall32
+map_Kd textures/dev/wall32.tga
+
 newmtl dev/wall64a
 map_Kd textures/dev/wall64a.tga
 
