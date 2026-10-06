@@ -4,9 +4,10 @@
     "info": {
         "name": "Platforms Test",
         "created": "2026-10-05T04:36:29Z",
-        "saved": "2026-10-05T22:59:33Z",
+        "saved": "2026-10-06T01:28:55Z",
         "skybox": "",
-        "entityCount": 4
+        "lightmapKey": "0e74eddf21967b77",
+        "entityCount": 5
     },
     "world": {
         "model": "model/platforms.obj",
@@ -39,6 +40,12 @@
             "color": [255, 255, 255],
             "intensity": 1.0,
             "radius": 5.0
+        },
+        {
+            "classname": "func_water",
+            "origin": [10.0, -1.0097, -11.0],
+            "mins": [-2.0, 0.0, -2.0],
+            "maxs": [2.0, 1.0, 2.0]
         }
     ]
 }

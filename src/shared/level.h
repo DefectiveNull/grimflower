@@ -16,6 +16,7 @@ struct LevelInfo
     std::string created;   // UTC, like "2026-10-04T09:35:54Z". Set on the first save if missing
     std::string saved;     // UTC, updated on every save
     std::string skybox;    // Environment map for the sky, as a game data path. Empty uses the plain background
+    std::string lightmapKey;  // Fingerprint of what maps/<level>_lightmap.png was baked from, see LightmapKey. Written by the editor
     int entityCount;       // How many entities the file has. Updated on every save
 };
 

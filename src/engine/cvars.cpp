@@ -71,12 +71,22 @@ void AddCommands(const ConsoleCommand *list, int count)
 Cvar r_showentities = { "r_showentities", "Shows markers and labels on world entities like the sun (0/1)", 0.0f, 0.0f };
 Cvar r_use_pointlight_shadows = { "r_use_pointlight_shadows", "Point lights cast shadows, up to the first 4 lights (0/1)", 1.0f, 1.0f };
 Cvar r_showcolliders = { "r_showcolliders", "Draws the level's collision brushes (0/1)", 0.0f, 0.0f };
+Cvar r_ssao = { "r_ssao", "Screen space ambient occlusion on the world mesh (0/1)", 1.0f, 1.0f };
+Cvar r_ssao_radius = { "r_ssao_radius", "How far around each point ambient occlusion looks for things hemming it in, in world units", 0.5f, 0.5f };
+Cvar r_ssao_direct = { "r_ssao_direct", "How much ambient occlusion also darkens light from the sun and lights, 0 to 1", 0.5f, 0.5f };
+Cvar r_bounce = { "r_bounce", "Sun bounce light (0/1). Baked when a level loads, so turning it on needs a map reload; turning it off hides it straight away", 1.0f, 1.0f };
+Cvar r_bounce_scale = { "r_bounce_scale", "Strength of the baked sun bounce", 1.0f, 1.0f };
 
 static Cvar *const cvars[] =
 {
     &r_showentities,
     &r_use_pointlight_shadows,
     &r_showcolliders,
+    &r_ssao,
+    &r_ssao_radius,
+    &r_ssao_direct,
+    &r_bounce,
+    &r_bounce_scale,
 };
 
 // Cvars added with AddCvars, after the engine's own

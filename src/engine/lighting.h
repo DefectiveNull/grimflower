@@ -55,6 +55,17 @@ struct Lighting
     int pointShadowAtlasLoc, pointShadowMatricesLoc, pointShadowSlotsLoc, pointShadowTileSizeLoc;
     int pointDepthLightPositionLoc, pointDepthLightRadiusLoc;
     float shadowDepthScale;  // 1/depth range of the shadow camera, for converting the shadow bias to depth
+
+    // Ambient occlusion, applied while SetLightingAO turns it on: to the ambient light, and aoDirect of it to direct light
+    unsigned int aoTexture;  // From RenderAmbientOcclusion this frame, 0 for none
+    Vector2 aoScreenSize;    // The size it was rendered at, the same as the screen
+    float aoDirect;          // How much the AO also darkens the sun and point lights, 0 to 1
+    int aoMapLoc, aoEnabledLoc, aoScreenSizeLoc, aoDirectLoc;
+
+    // Baked sun bounce: a lightmap, read through the mesh's second texture coordinates while SetLightingBounce turns it on
+    float bounceScale;       // How strong it is, 0 for none
+    unsigned int lightmapTexture;  // 0 for none
+    int bounceEnabledLoc, bounceScaleLoc, lightmapLoc;
 };
 
 // Loads the shaders and shadow map, and places the sun above a corner of the given area
@@ -68,3 +79,11 @@ void RenderShadowMap(Lighting &lighting, const Model &model);
 // Sends the lights to the shader and binds the shadow map. Call before drawing lit models, inside BeginMode3D
 void BeginLighting(const Lighting &lighting);
 void EndLighting();
+
+// Between BeginLighting and EndLighting: whether what's drawn next gets the ambient occlusion. DrawWorld
+// turns it on for the world mesh only, so nothing else drawn with the lighting shader is affected
+void SetLightingAO(const Lighting &lighting, bool enabled);
+
+// The same for baked sun bounce: what's drawn next reads the lightmap through its second texture coordinates (only the world
+// mesh, which has them). Its strength is bounceScale
+void SetLightingBounce(const Lighting &lighting, bool enabled);

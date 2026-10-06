@@ -137,6 +137,7 @@ bool LoadLevel(Level &level, const char *path)
     level.info.created = GetString(info, "created", "");
     level.info.saved = GetString(info, "saved", "");
     level.info.skybox = GetString(info, "skybox", "");
+    level.info.lightmapKey = GetString(info, "lightmapKey", "");
     level.info.entityCount = (int)GetNumber(info, "entityCount", 0.0f);
 
     const json &world = Section(root, "world");
@@ -196,6 +197,7 @@ bool SaveLevel(Level &level, const char *path)
     root["info"]["created"] = level.info.created;
     root["info"]["saved"] = level.info.saved;
     root["info"]["skybox"] = level.info.skybox;
+    if (!level.info.lightmapKey.empty()) root["info"]["lightmapKey"] = level.info.lightmapKey;
     root["info"]["entityCount"] = level.info.entityCount;
 
     root["world"]["model"] = level.worldModel;

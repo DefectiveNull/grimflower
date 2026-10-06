@@ -9,6 +9,8 @@ static const int SHADOW_MAP_SLOT = 10;  // Texture slot the shadow map is bound 
 
 static const int POINT_SHADOW_TILE_SIZE = 512;  // Resolution of each cube face
 static const int POINT_SHADOW_ATLAS_SLOT = 11;
+static const int AO_SLOT = 12;
+static const int LIGHTMAP_SLOT = 13;
 static const float POINT_SHADOW_NEAR = 0.05f;
 
 // Per-pixel lighting. The vertex shader only passes the world position and normal along;
@@ -17,6 +19,7 @@ static const char *LIGHTING_VS = R"(
 #version 330
 in vec3 vertexPosition;
 in vec2 vertexTexCoord;
+in vec2 vertexTexCoord2;  // Where it is in the lightmap
 in vec3 vertexNormal;
 in vec4 vertexColor;
 
@@ -27,6 +30,7 @@ uniform mat4 matNormal;
 out vec3 fragPosition;
 out vec3 fragNormal;
 out vec2 fragTexCoord;
+out vec2 fragTexCoord2;
 out vec4 fragColor;
 
 void main()
@@ -34,6 +38,7 @@ void main()
     fragPosition = vec3(matModel*vec4(vertexPosition, 1.0));
     fragNormal = normalize(vec3(matNormal*vec4(vertexNormal, 0.0)));
     fragTexCoord = vertexTexCoord;
+    fragTexCoord2 = vertexTexCoord2;
     fragColor = vertexColor;
     gl_Position = mvp*vec4(vertexPosition, 1.0);
 }
@@ -47,6 +52,7 @@ static const char *LIGHTING_FS = R"(
 in vec3 fragPosition;
 in vec3 fragNormal;
 in vec2 fragTexCoord;
+in vec2 fragTexCoord2;
 in vec4 fragColor;
 
 uniform sampler2D texture0;
@@ -69,6 +75,17 @@ uniform sampler2D pointShadowAtlas;
 uniform mat4 pointShadowMatrices[MAX_SHADOW_LIGHTS*6];
 uniform int pointShadowSlots[MAX_LIGHTS];
 uniform int pointShadowTileSize;
+
+uniform sampler2D aoMap;    // 1 = open, 0 = hemmed in, per screen pixel
+uniform int aoEnabled;
+uniform vec2 aoScreenSize;
+uniform float aoDirect;     // How much the AO darkens direct light too, 0 to 1
+
+// The world mesh's baked sun bounce, in a lightmap as bounce/2 (bounce.cpp), read at fragTexCoord2. Only
+// while bounceEnabled is on, which is only for the world mesh
+uniform sampler2D lightmap;
+uniform int bounceEnabled;
+uniform float bounceScale;
 
 out vec4 finalColor;
 
@@ -137,10 +154,17 @@ void main()
     vec4 texel = texture(texture0, fragTexCoord)*colDiffuse*fragColor;
     vec3 normal = normalize(fragNormal);
 
-    vec3 light = ambient;
+    // Ambient occlusion fully darkens the ambient light, which stands in for light bouncing around: creases
+    // and corners get less of it. It also darkens the direct light by aoDirect, which isn't physically right
+    // (that light is shadowed already) but makes corners read clearly when there's little ambient
+    float ao = (aoEnabled == 1) ? texture(aoMap, gl_FragCoord.xy/aoScreenSize).r : 1.0;
+    float directAO = mix(1.0, ao, aoDirect);
+    vec3 light = ambient*ao;
+    if (bounceEnabled == 1) light += texture(lightmap, fragTexCoord2).rgb*2.0*bounceScale*ao;  // Bounce is indirect light too, so AO darkens it
+    vec3 direct = vec3(0.0);
 
     float sunFacing = max(dot(normal, -sunDirection), 0.0);
-    if (sunFacing > 0.0) light += sunColor*sunFacing*(1.0 - SunShadow(normal, sunFacing));
+    if (sunFacing > 0.0) direct += sunColor*sunFacing*(1.0 - SunShadow(normal, sunFacing));
 
     for (int i = 0; i < lightCount; i++)
     {
@@ -151,9 +175,10 @@ void main()
         if (facing <= 0.0 || falloff <= 0.0) continue;
 
         float shadow = (pointShadowSlots[i] >= 0) ? PointShadow(i, pointShadowSlots[i], -toLight, facing) : 0.0;
-        light += lightColors[i]*facing*falloff*falloff*(1.0 - shadow);
+        direct += lightColors[i]*facing*falloff*falloff*(1.0 - shadow);
     }
 
+    light += direct*directAO;
     finalColor = vec4(texel.rgb*light, texel.a);
 }
 )";
@@ -265,6 +290,19 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.pointShadowMatricesLoc = GetShaderLocation(shader, "pointShadowMatrices");
     lighting.pointShadowSlotsLoc = GetShaderLocation(shader, "pointShadowSlots");
     lighting.pointShadowTileSizeLoc = GetShaderLocation(shader, "pointShadowTileSize");
+
+    lighting.aoMapLoc = GetShaderLocation(shader, "aoMap");
+    lighting.aoEnabledLoc = GetShaderLocation(shader, "aoEnabled");
+    lighting.aoScreenSizeLoc = GetShaderLocation(shader, "aoScreenSize");
+    lighting.aoDirectLoc = GetShaderLocation(shader, "aoDirect");
+    lighting.bounceEnabledLoc = GetShaderLocation(shader, "bounceEnabled");
+    lighting.bounceScaleLoc = GetShaderLocation(shader, "bounceScale");
+    lighting.lightmapLoc = GetShaderLocation(shader, "lightmap");
+    lighting.aoTexture = 0;
+    lighting.aoScreenSize = { 1.0f, 1.0f };
+    lighting.aoDirect = 0.0f;
+    lighting.bounceScale = 1.0f;
+    lighting.lightmapTexture = 0;
 
     lighting.depthShader = LoadShaderFromMemory(DEPTH_VS, DEPTH_FS);
     lighting.depthMaterial = LoadMaterialDefault();
@@ -432,11 +470,42 @@ void BeginLighting(const Lighting &lighting)
     rlSetUniformMatrices(lighting.pointShadowMatricesLoc, lighting.pointShadowMatrices, MAX_SHADOW_LIGHTS*6);
     rlDisableShader();
 
+    // Ambient occlusion: off until SetLightingAO turns it on
+    int aoSlot = AO_SLOT;
+    int aoEnabled = 0;
+    SetShaderValue(shader, lighting.aoMapLoc, &aoSlot, SHADER_UNIFORM_INT);
+    SetShaderValue(shader, lighting.aoEnabledLoc, &aoEnabled, SHADER_UNIFORM_INT);
+    SetShaderValue(shader, lighting.aoScreenSizeLoc, &lighting.aoScreenSize, SHADER_UNIFORM_VEC2);
+    SetShaderValue(shader, lighting.aoDirectLoc, &lighting.aoDirect, SHADER_UNIFORM_FLOAT);
+
+    // Bounce: off until SetLightingBounce turns it on
+    int bounceEnabled = 0;
+    SetShaderValue(shader, lighting.bounceEnabledLoc, &bounceEnabled, SHADER_UNIFORM_INT);
+    SetShaderValue(shader, lighting.bounceScaleLoc, &lighting.bounceScale, SHADER_UNIFORM_FLOAT);
+    int lightmapSlot = LIGHTMAP_SLOT;
+    SetShaderValue(shader, lighting.lightmapLoc, &lightmapSlot, SHADER_UNIFORM_INT);
+
     rlActiveTextureSlot(SHADOW_MAP_SLOT);
     rlEnableTexture(lighting.shadowMap.depth.id);
     rlActiveTextureSlot(POINT_SHADOW_ATLAS_SLOT);
     rlEnableTexture(lighting.pointShadowAtlas.depth.id);
+    rlActiveTextureSlot(AO_SLOT);
+    rlEnableTexture(lighting.aoTexture);
+    rlActiveTextureSlot(LIGHTMAP_SLOT);
+    rlEnableTexture(lighting.lightmapTexture);
     rlActiveTextureSlot(0);
+}
+
+void SetLightingAO(const Lighting &lighting, bool enabled)
+{
+    int on = (enabled && lighting.aoTexture != 0) ? 1 : 0;
+    SetShaderValue(lighting.shader, lighting.aoEnabledLoc, &on, SHADER_UNIFORM_INT);
+}
+
+void SetLightingBounce(const Lighting &lighting, bool enabled)
+{
+    int on = enabled ? 1 : 0;
+    SetShaderValue(lighting.shader, lighting.bounceEnabledLoc, &on, SHADER_UNIFORM_INT);
 }
 
 void EndLighting()
@@ -444,6 +513,10 @@ void EndLighting()
     rlActiveTextureSlot(SHADOW_MAP_SLOT);
     rlDisableTexture();
     rlActiveTextureSlot(POINT_SHADOW_ATLAS_SLOT);
+    rlDisableTexture();
+    rlActiveTextureSlot(AO_SLOT);
+    rlDisableTexture();
+    rlActiveTextureSlot(LIGHTMAP_SLOT);
     rlDisableTexture();
     rlActiveTextureSlot(0);
 }
