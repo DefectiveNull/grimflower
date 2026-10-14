@@ -1,24 +1,20 @@
 {
     "format": "rlib-level",
-    "version": 1,
+    "version": 2,
     "info": {
         "name": "Platforms Test",
         "created": "2026-10-05T04:36:29Z",
-        "saved": "2026-10-12T20:25:59Z",
+        "saved": "2026-10-14T20:01:32Z",
         "skybox": "",
-        "lightmapKey": "d1eaeaeaabd86274",
-        "luxelsPerUnit": 2.0,
+        "lightmapKey": "00562cdaae36baa1",
+        "luxelSize": 16.0,
         "lightmapFilter": "bilinear",
         "entityCount": 7
-    },
-    "world": {
-        "model": "model/platforms.obj",
-        "scale": 0.03125
     },
     "entities": [
         {
             "classname": "sun",
-            "origin": [-10.0, 9.0, -2.75],
+            "origin": [-320.0, 288.0, -88.0],
             "direction": [0.0172, -0.6615, 0.7498],
             "color": [255, 244, 214],
             "intensity": 1.0,
@@ -26,45 +22,1190 @@
         },
         {
             "classname": "info_player_start",
-            "origin": [-8.0, 0.5, 1.5],
+            "origin": [-256.0, 16.0, 48.0],
             "angle": 0
         },
         {
             "classname": "func_ladder",
-            "origin": [16.5, 5.0, -2.0],
-            "mins": [0.0, -2.0, -1.5],
-            "maxs": [0.5, 3.0, 0.0],
+            "origin": [528.0, 160.0, -64.0],
+            "mins": [0.0, -64.0, -48.0],
+            "maxs": [16.0, 96.0, 0.0],
             "texture": "tools/ladder"
         },
         {
             "classname": "light",
-            "origin": [18.75, 2.5, -0.75],
+            "origin": [600.0, 80.0, -24.0],
             "color": [255, 255, 255],
             "intensity": 1.0,
-            "radius": 5.0
+            "radius": 160.0
         },
         {
             "classname": "func_water",
-            "origin": [10.75, -1.5, -14.75],
-            "mins": [-8.0, -1.25, -4.0],
-            "maxs": [5.5, 0.75, 3.75]
+            "origin": [344.0, -48.0, -472.0],
+            "mins": [-256.0, -40.0, -128.0],
+            "maxs": [176.0, 24.0, 120.0]
         },
         {
             "classname": "func_ladder",
-            "origin": [2.25, 0.25, 3.5],
-            "mins": [-0.5, -0.75, -0.125],
-            "maxs": [0.5, 1.75, 0.125]
+            "origin": [72.0, 8.0, 112.0],
+            "mins": [-16.0, -24.0, -4.0],
+            "maxs": [16.0, 56.0, 4.0]
         },
         {
             "classname": "func_door",
-            "origin": [18.0, -0.5, 3.25],
-            "mins": [-1.0, 0.0, -0.125],
-            "maxs": [2.5, 2.5, 0.125],
+            "origin": [576.0, -16.0, 104.0],
+            "mins": [-32.0, 0.0, -4.0],
+            "maxs": [80.0, 80.0, 4.0],
             "direction": [0.0, 1.0, 0.0],
-            "lip": 0.125,
-            "speed": 3.0,
+            "lip": 4.0,
+            "speed": 96.0,
             "wait": 3.0,
             "texture": "textures/dev/wall64.tga"
         }
-    ]
+    ],
+    "geometry": {
+        "shapes": [
+            {
+                "vertices": [
+                    [-536.0, -32.0, -336.0],
+                    [-536.0, -32.0, 336.0],
+                    [-536.0, 32.0, 336.0],
+                    [-536.0, 32.0, -336.0],
+                    [536.0, 32.0, 336.0],
+                    [536.0, -32.0, 336.0],
+                    [536.0, -32.0, -336.0],
+                    [536.0, 32.0, -336.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-88.0, -24.0, -88.0],
+                    [-88.0, -24.0, 88.0],
+                    [-88.0, 24.0, 88.0],
+                    [-88.0, 24.0, -88.0],
+                    [88.0, 24.0, 88.0],
+                    [88.0, -24.0, 88.0],
+                    [88.0, -24.0, -88.0],
+                    [88.0, 24.0, -88.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-48.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-32.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-136.0, -40.0, -184.0],
+                    [-136.0, -40.0, 184.0],
+                    [-136.0, 40.0, 184.0],
+                    [-136.0, 40.0, -184.0],
+                    [136.0, 40.0, 184.0],
+                    [136.0, -40.0, 184.0],
+                    [136.0, -40.0, -184.0],
+                    [136.0, 40.0, -184.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-32.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-56.0, -40.0, -88.0],
+                    [-56.0, -40.0, 88.0],
+                    [-56.0, 8.0, 88.0],
+                    [-56.0, 8.0, -88.0],
+                    [56.0, 40.0, -88.0],
+                    [56.0, 40.0, 88.0],
+                    [56.0, -40.0, 88.0],
+                    [56.0, -40.0, -88.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 3, 2, 5],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.9615, 0.2747, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-24.1509, 256.0],
+                        "scale": [1.04, 1.0]
+                    },
+                    {
+                        "corners": [5, 2, 1, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-48.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 1, 0, 7],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 0, 3, 4],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-32.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 7, 4, 5],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-56.0, -56.0, -168.0],
+                    [-56.0, -56.0, 168.0],
+                    [-56.0, 56.0, 168.0],
+                    [-56.0, 56.0, -168.0],
+                    [56.0, 56.0, 168.0],
+                    [56.0, -56.0, 168.0],
+                    [56.0, -56.0, -168.0],
+                    [56.0, 56.0, -168.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-80.0, -16.0, -16.0],
+                    [-80.0, -16.0, 16.0],
+                    [-80.0, 16.0, 16.0],
+                    [-80.0, 16.0, -16.0],
+                    [80.0, 16.0, 16.0],
+                    [80.0, -16.0, 16.0],
+                    [80.0, -16.0, -16.0],
+                    [80.0, 16.0, -16.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-80.0, -8.0, -16.0],
+                    [-80.0, -8.0, 16.0],
+                    [-80.0, 8.0, 16.0],
+                    [-80.0, 8.0, -16.0],
+                    [80.0, 8.0, 16.0],
+                    [80.0, -8.0, 16.0],
+                    [80.0, -8.0, -16.0],
+                    [80.0, 8.0, -16.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-24.0, -32.0, -168.0],
+                    [-24.0, -32.0, 168.0],
+                    [-24.0, 32.0, 168.0],
+                    [-24.0, 32.0, -168.0],
+                    [24.0, 32.0, 168.0],
+                    [24.0, -32.0, 168.0],
+                    [24.0, -32.0, -168.0],
+                    [24.0, 32.0, -168.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-32.0, -56.0, -168.0],
+                    [-32.0, -56.0, 168.0],
+                    [-32.0, 56.0, 168.0],
+                    [-32.0, 56.0, -168.0],
+                    [32.0, 56.0, 168.0],
+                    [32.0, -56.0, 168.0],
+                    [32.0, -56.0, -168.0],
+                    [32.0, 56.0, -168.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-32.0, -56.0, -168.0],
+                    [-32.0, -56.0, 168.0],
+                    [-32.0, 56.0, 168.0],
+                    [-32.0, 56.0, -168.0],
+                    [32.0, 56.0, 168.0],
+                    [32.0, -56.0, 168.0],
+                    [32.0, -56.0, -168.0],
+                    [32.0, 56.0, -168.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-144.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -80.0, -24.0],
+                    [-8.0, -80.0, 24.0],
+                    [-8.0, 80.0, 24.0],
+                    [-8.0, 80.0, -24.0],
+                    [8.0, 80.0, 24.0],
+                    [8.0, -80.0, 24.0],
+                    [8.0, -80.0, -24.0],
+                    [8.0, 80.0, -24.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-72.0, -80.0, -168.0],
+                    [-72.0, -80.0, 168.0],
+                    [-72.0, 80.0, 168.0],
+                    [-72.0, 80.0, -168.0],
+                    [72.0, 80.0, 168.0],
+                    [72.0, -80.0, 168.0],
+                    [72.0, -80.0, -168.0],
+                    [72.0, 80.0, -168.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-144.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-16.0, -64.0, -168.0],
+                    [-16.0, -64.0, 168.0],
+                    [-16.0, 64.0, 168.0],
+                    [-16.0, 64.0, -168.0],
+                    [16.0, 64.0, 168.0],
+                    [16.0, -64.0, 168.0],
+                    [16.0, -64.0, -168.0],
+                    [16.0, 64.0, -168.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-144.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [16.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-88.0, -32.0, -176.0],
+                    [-88.0, -32.0, 176.0],
+                    [-88.0, 32.0, 176.0],
+                    [-88.0, 32.0, -176.0],
+                    [88.0, 32.0, 176.0],
+                    [88.0, -32.0, 176.0],
+                    [88.0, -32.0, -176.0],
+                    [88.0, 32.0, -176.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-448.0, -32.0, -56.0],
+                    [-448.0, -32.0, 56.0],
+                    [-448.0, 32.0, 56.0],
+                    [-448.0, 32.0, -56.0],
+                    [448.0, 32.0, 56.0],
+                    [448.0, -32.0, 56.0],
+                    [448.0, -32.0, -56.0],
+                    [448.0, 32.0, -56.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-240.0, -32.0, -120.0],
+                    [-240.0, -32.0, 120.0],
+                    [-240.0, 32.0, 120.0],
+                    [-240.0, 32.0, -120.0],
+                    [240.0, 32.0, 120.0],
+                    [240.0, -32.0, 120.0],
+                    [240.0, -32.0, -120.0],
+                    [240.0, 32.0, -120.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128g.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-208.0, -8.0, -120.0],
+                    [-208.0, -8.0, 120.0],
+                    [-208.0, 8.0, 120.0],
+                    [-208.0, 8.0, -120.0],
+                    [208.0, 8.0, 120.0],
+                    [208.0, -8.0, 120.0],
+                    [208.0, -8.0, -120.0],
+                    [208.0, 8.0, -120.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall32.tga",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, -16.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall32.tga",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, -16.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall32.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall32.tga",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall32.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, -16.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall32.tga",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, -16.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            }
+        ],
+        "meshes": [
+            {
+                "shape": 0,
+                "position": [152.0, -48.0, -16.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 1,
+                "position": [-296.0, 8.0, -168.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 2,
+                "position": [40.0, 24.0, -72.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 3,
+                "position": [-152.0, 24.0, -168.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 4,
+                "position": [232.0, 40.0, -56.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 5,
+                "position": [-304.0, 0.0, -64.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 6,
+                "position": [-304.0, -8.0, -32.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [312.0, 64.0, -56.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 8,
+                "position": [368.0, 40.0, -56.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 9,
+                "position": [512.0, 40.0, -56.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 10,
+                "position": [536.0, 176.0, -88.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 11,
+                "position": [616.0, 176.0, -56.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 12,
+                "position": [672.0, 48.0, -56.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 13,
+                "position": [600.0, -48.0, -528.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 14,
+                "position": [64.0, -48.0, -648.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 15,
+                "position": [-144.0, -48.0, -472.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 16,
+                "position": [304.0, -88.0, -472.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            }
+        ]
+    }
 }

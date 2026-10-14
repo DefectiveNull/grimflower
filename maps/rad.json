@@ -1,31 +1,1569 @@
 {
     "format": "rlib-level",
-    "version": 1,
+    "version": 2,
     "info": {
         "name": "Radiosity Test",
         "created": "2026-10-06T02:32:18Z",
-        "saved": "2026-10-06T03:48:02Z",
+        "saved": "2026-10-14T21:05:24Z",
         "skybox": "",
-        "lightmapKey": "1ccc857d23c4132a",
+        "lightmapKey": "51b5515fc5629059",
+        "luxelSize": 16.0,
+        "lightmapFilter": "bilinear",
         "entityCount": 2
-    },
-    "world": {
-        "model": "model/rad.obj",
-        "scale": 0.03125
     },
     "entities": [
         {
             "classname": "info_player_start",
-            "origin": [5.0, 1.3, -22.75],
+            "origin": [160.0, 41.6, -728.0],
             "angle": 0
         },
         {
             "classname": "sun",
-            "origin": [1.0, 11.0, -5.25],
+            "origin": [32.0, 352.0, -168.0],
             "direction": [0.3976, -0.6178, -0.6784],
             "color": [255, 244, 214],
             "intensity": 1.0,
             "ambient": 0.35
         }
-    ]
+    ],
+    "geometry": {
+        "shapes": [
+            {
+                "vertices": [
+                    [-176.0, -16.0, -976.0],
+                    [-176.0, -16.0, 976.0],
+                    [-176.0, 16.0, 976.0],
+                    [-176.0, 16.0, -976.0],
+                    [176.0, 16.0, 976.0],
+                    [176.0, -16.0, 976.0],
+                    [176.0, -16.0, -976.0],
+                    [176.0, 16.0, -976.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-0.0001, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 128.0001],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 127.9999],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0001, 128.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-16.0, -160.0, -976.0],
+                    [-16.0, -160.0, 976.0],
+                    [-16.0, 160.0, 976.0],
+                    [-16.0, 160.0, -976.0],
+                    [16.0, 160.0, 976.0],
+                    [16.0, -160.0, 976.0],
+                    [16.0, -160.0, -976.0],
+                    [16.0, 160.0, -976.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0001, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0001],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 255.9999],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0001, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-160.0, -24.0, -160.0],
+                    [-160.0, -24.0, 160.0],
+                    [-160.0, 24.0, 160.0],
+                    [-160.0, 24.0, -160.0],
+                    [160.0, 24.0, 160.0],
+                    [160.0, -24.0, 160.0],
+                    [160.0, -24.0, -160.0],
+                    [160.0, 24.0, -160.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-160.0, -24.0, -160.0],
+                    [-160.0, -24.0, 160.0],
+                    [-160.0, 24.0, 160.0],
+                    [-160.0, 24.0, -160.0],
+                    [160.0, 24.0, 160.0],
+                    [160.0, -24.0, 160.0],
+                    [160.0, -24.0, -160.0],
+                    [160.0, 24.0, -160.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-160.0, -24.0, -40.0],
+                    [-160.0, -24.0, 40.0],
+                    [-160.0, 24.0, 40.0],
+                    [-160.0, 24.0, -40.0],
+                    [160.0, 24.0, 40.0],
+                    [160.0, -24.0, 40.0],
+                    [160.0, -24.0, -40.0],
+                    [160.0, 24.0, -40.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-160.0, -24.0, -40.0],
+                    [-160.0, -24.0, 40.0],
+                    [-160.0, 24.0, 40.0],
+                    [-160.0, 24.0, -40.0],
+                    [160.0, 24.0, 40.0],
+                    [160.0, -24.0, 40.0],
+                    [160.0, -24.0, -40.0],
+                    [160.0, 24.0, -40.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-160.0, -24.0, -184.0],
+                    [-160.0, -24.0, 184.0],
+                    [-160.0, 24.0, 184.0],
+                    [-160.0, 24.0, -184.0],
+                    [160.0, 24.0, 184.0],
+                    [160.0, -24.0, 184.0],
+                    [160.0, -24.0, -184.0],
+                    [160.0, 24.0, -184.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-160.0, -24.0, -40.0],
+                    [-160.0, -24.0, 40.0],
+                    [-160.0, 24.0, 40.0],
+                    [-160.0, 24.0, -40.0],
+                    [160.0, 24.0, 40.0],
+                    [160.0, -24.0, 40.0],
+                    [160.0, -24.0, -40.0],
+                    [160.0, 24.0, -40.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-16.0, -160.0, -816.0],
+                    [-16.0, -160.0, 816.0],
+                    [-16.0, 160.0, 816.0],
+                    [-16.0, 160.0, -816.0],
+                    [16.0, 160.0, 816.0],
+                    [16.0, -160.0, 816.0],
+                    [16.0, -160.0, -816.0],
+                    [16.0, 160.0, -816.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-16.0, -136.0, -24.0],
+                    [-16.0, -136.0, 568.0],
+                    [-16.0, 136.0, 568.0],
+                    [-16.0, 136.0, -24.0],
+                    [16.0, 136.0, 568.0],
+                    [16.0, -136.0, 568.0],
+                    [16.0, -136.0, -24.0],
+                    [16.0, 136.0, -24.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -120.0, -8.0],
+                    [-8.0, -120.0, 8.0],
+                    [-8.0, 120.0, 8.0],
+                    [-8.0, 120.0, -8.0],
+                    [8.0, 120.0, 8.0],
+                    [8.0, -120.0, 8.0],
+                    [8.0, -120.0, -8.0],
+                    [8.0, 120.0, -8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -120.0, -8.0],
+                    [-8.0, -120.0, 8.0],
+                    [-8.0, 120.0, 8.0],
+                    [-8.0, 120.0, -8.0],
+                    [8.0, 120.0, 8.0],
+                    [8.0, -120.0, 8.0],
+                    [8.0, -120.0, -8.0],
+                    [8.0, 120.0, -8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -120.0, -8.0],
+                    [-8.0, -120.0, 8.0],
+                    [-8.0, 120.0, 8.0],
+                    [-8.0, 120.0, -8.0],
+                    [8.0, 120.0, 8.0],
+                    [8.0, -120.0, 8.0],
+                    [8.0, -120.0, -8.0],
+                    [8.0, 120.0, -8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -120.0, -8.0],
+                    [-8.0, -120.0, 8.0],
+                    [-8.0, 120.0, 8.0],
+                    [-8.0, 120.0, -8.0],
+                    [8.0, 120.0, 8.0],
+                    [8.0, -120.0, 8.0],
+                    [8.0, -120.0, -8.0],
+                    [8.0, 120.0, -8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -120.0, -8.0],
+                    [-8.0, -120.0, 8.0],
+                    [-8.0, 120.0, 8.0],
+                    [-8.0, 120.0, -8.0],
+                    [8.0, 120.0, 8.0],
+                    [8.0, -120.0, 8.0],
+                    [8.0, -120.0, -8.0],
+                    [8.0, 120.0, -8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -120.0, -8.0],
+                    [-8.0, -120.0, 8.0],
+                    [-8.0, 120.0, 8.0],
+                    [-8.0, 120.0, -8.0],
+                    [8.0, 120.0, 8.0],
+                    [8.0, -120.0, 8.0],
+                    [8.0, -120.0, -8.0],
+                    [8.0, 120.0, -8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-16.0, -24.0, -160.0],
+                    [-16.0, -24.0, 160.0],
+                    [-16.0, 24.0, 160.0],
+                    [-16.0, 24.0, -160.0],
+                    [16.0, 24.0, 160.0],
+                    [16.0, -24.0, 160.0],
+                    [16.0, -24.0, -160.0],
+                    [16.0, 24.0, -160.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 2, 1, 5],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, -0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 1, 0, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, -0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 3, 2, 4],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 0, 3, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [-96.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 4, 5, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, -0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 256.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [160.0, 16.0, -120.0],
+                    [160.0, -16.0, -120.0],
+                    [-160.0, -16.0, -120.0],
+                    [-160.0, 16.0, -120.0],
+                    [160.0, 16.0, 424.0],
+                    [160.0, 0.0, 424.0],
+                    [-160.0, 0.0, 424.0],
+                    [-160.0, -16.0, 424.0],
+                    [352.0, -16.0, 424.0],
+                    [352.0, 16.0, 424.0],
+                    [352.0, 16.0, -120.0],
+                    [352.0, 16.0, 112.0],
+                    [352.0, -16.0, 112.0],
+                    [352.0, -16.0, -120.0],
+                    [160.0, 16.0, 112.0],
+                    [160.0, 0.0, 112.0],
+                    [160.0, -16.0, 112.0],
+                    [-160.0, 0.0, 112.0],
+                    [-160.0, 16.0, 112.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/dev/wall128.tga",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7, 8, 9],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [10, 11, 12, 13],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 14, 15, 5],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [9, 8, 12, 11],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [14, 11, 12, 16, 15],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 7, 6, 17, 18],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [15, 17, 6, 5],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [14, 4, 9, 11, 10, 0, 3, 18],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [18, 17, 15, 16, 12, 11, 14],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [16, 12, 8, 7, 2, 1, 13, 12],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [1, 0, 10, 13],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [32.0, -44.0, -4.0],
+                    [24.0, -44.0, 20.0],
+                    [0.0, -44.0, 28.0],
+                    [-32.0, -44.0, 28.0],
+                    [-32.0, -44.0, -28.0],
+                    [32.0, -44.0, -28.0],
+                    [32.0, 212.0, -28.0],
+                    [-32.0, 212.0, -28.0],
+                    [-32.0, 212.0, 28.0],
+                    [0.0, 212.0, 28.0],
+                    [24.0, 212.0, 20.0],
+                    [32.0, 212.0, -4.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3, 4, 5],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 7, 8, 9, 10, 11],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [9, 8, 3, 2],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 4, 7, 6],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 5, 6, 11],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [8, 7, 4, 3],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [1, 10, 9, 2],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 11, 10, 1],
+                        "material": "textures/dev/wall64a_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [96.0, 24.0, -184.0],
+                    [336.0, 24.0, -184.0],
+                    [336.0, -24.0, -184.0],
+                    [96.0, -24.0, -184.0],
+                    [-96.0, -24.0, -184.0],
+                    [-192.0, -24.0, -184.0],
+                    [-192.0, 24.0, -184.0],
+                    [-96.0, 24.0, -184.0],
+                    [96.0, -24.0, 360.0],
+                    [336.0, -24.0, 360.0],
+                    [336.0, 24.0, 360.0],
+                    [96.0, 24.0, 360.0],
+                    [-192.0, 24.0, 360.0],
+                    [-192.0, -24.0, 360.0],
+                    [-96.0, -24.0, 360.0],
+                    [96.0, -24.0, 304.0],
+                    [96.0, -24.0, 104.0],
+                    [-192.0, -24.0, 304.0],
+                    [-96.0, -24.0, 304.0],
+                    [-96.0, -24.0, 104.0],
+                    [96.0, 24.0, 104.0],
+                    [96.0, 24.0, 304.0],
+                    [-192.0, 24.0, 304.0],
+                    [-96.0, 24.0, 304.0],
+                    [-96.0, 24.0, 104.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3, 4, 5, 6, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [8, 9, 10, 11, 12, 13, 14],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 9, 8, 15, 16],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [17, 18, 14, 13],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [15, 8, 14, 18],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [17, 5, 4, 19, 18],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 3, 16, 19],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [11, 10, 1, 0, 20, 21],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [22, 12, 11, 21, 23],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [22, 23, 24, 7, 6],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [24, 20, 0, 7],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 5, 17, 13, 12, 22],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [2, 1, 10, 9],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [20, 16, 15, 21],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [21, 15, 18, 23],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [23, 18, 19, 24],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [24, 19, 16, 20],
+                        "material": "textures/dev/wall128gr_inv.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            }
+        ],
+        "meshes": [
+            {
+                "shape": 0,
+                "position": [80.0, 0.0, 144.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 1,
+                "position": [272.0, 144.0, 144.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 2,
+                "position": [96.0, 280.0, -672.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 3,
+                "position": [96.0, 280.0, -96.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 4,
+                "position": [96.0, 280.0, 216.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 5,
+                "position": [96.0, 280.0, 408.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 6,
+                "position": [96.0, 280.0, 936.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [96.0, 280.0, 600.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 8,
+                "position": [-80.0, 144.0, -16.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 9,
+                "position": [-80.0, 120.0, 1096.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 10,
+                "position": [-88.0, 136.0, 1048.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 11,
+                "position": [-88.0, 136.0, 1000.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 12,
+                "position": [-88.0, 136.0, 952.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 13,
+                "position": [-88.0, 136.0, 904.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 14,
+                "position": [-88.0, 136.0, 856.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 15,
+                "position": [-88.0, 136.0, 808.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 16,
+                "position": [-80.0, 280.0, 960.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 17,
+                "position": [96.0, 0.0, 1240.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 18,
+                "position": [-32.0, 44.0, 1380.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 18,
+                "position": [224.0, 44.0, 1388.0],
+                "rotation": [0.0, -0.7071, 0.0, 0.7071]
+            },
+            {
+                "shape": 18,
+                "position": [224.0, 44.0, 1636.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 19,
+                "position": [96.0, 280.0, 1304.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            }
+        ]
+    }
 }
