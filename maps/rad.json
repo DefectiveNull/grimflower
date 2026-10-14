@@ -1,0 +1,31 @@
+{
+    "format": "rlib-level",
+    "version": 1,
+    "info": {
+        "name": "Radiosity Test",
+        "created": "2026-10-06T02:32:18Z",
+        "saved": "2026-10-06T03:48:02Z",
+        "skybox": "",
+        "lightmapKey": "1ccc857d23c4132a",
+        "entityCount": 2
+    },
+    "world": {
+        "model": "model/rad.obj",
+        "scale": 0.03125
+    },
+    "entities": [
+        {
+            "classname": "info_player_start",
+            "origin": [5.0, 1.3, -22.75],
+            "angle": 0
+        },
+        {
+            "classname": "sun",
+            "origin": [1.0, 11.0, -5.25],
+            "direction": [0.3976, -0.6178, -0.6784],
+            "color": [255, 244, 214],
+            "intensity": 1.0,
+            "ambient": 0.35
+        }
+    ]
+}

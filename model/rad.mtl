@@ -1,0 +1,6 @@
+newmtl dev/wall128gr_inv
+map_Kd textures/dev/wall128gr_inv.png
+
+newmtl dev/wall64a_inv
+map_Kd textures/dev/wall64a_inv.png
+

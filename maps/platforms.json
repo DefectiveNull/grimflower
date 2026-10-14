@@ -4,10 +4,12 @@
     "info": {
         "name": "Platforms Test",
         "created": "2026-10-05T04:36:29Z",
-        "saved": "2026-10-06T01:28:55Z",
+        "saved": "2026-10-12T20:25:59Z",
         "skybox": "",
-        "lightmapKey": "0e74eddf21967b77",
-        "entityCount": 5
+        "lightmapKey": "d1eaeaeaabd86274",
+        "luxelsPerUnit": 2.0,
+        "lightmapFilter": "bilinear",
+        "entityCount": 7
     },
     "world": {
         "model": "model/platforms.obj",
@@ -30,8 +32,8 @@
         {
             "classname": "func_ladder",
             "origin": [16.5, 5.0, -2.0],
-            "mins": [-0.5, 0.0, -0.125],
-            "maxs": [0.5, 3.0, 0.125],
+            "mins": [0.0, -2.0, -1.5],
+            "maxs": [0.5, 3.0, 0.0],
             "texture": "tools/ladder"
         },
         {
@@ -43,9 +45,26 @@
         },
         {
             "classname": "func_water",
-            "origin": [10.0, -1.0097, -11.0],
-            "mins": [-2.0, 0.0, -2.0],
-            "maxs": [2.0, 1.0, 2.0]
+            "origin": [10.75, -1.5, -14.75],
+            "mins": [-8.0, -1.25, -4.0],
+            "maxs": [5.5, 0.75, 3.75]
+        },
+        {
+            "classname": "func_ladder",
+            "origin": [2.25, 0.25, 3.5],
+            "mins": [-0.5, -0.75, -0.125],
+            "maxs": [0.5, 1.75, 0.125]
+        },
+        {
+            "classname": "func_door",
+            "origin": [18.0, -0.5, 3.25],
+            "mins": [-1.0, 0.0, -0.125],
+            "maxs": [2.5, 2.5, 0.125],
+            "direction": [0.0, 1.0, 0.0],
+            "lip": 0.125,
+            "speed": 3.0,
+            "wait": 3.0,
+            "texture": "textures/dev/wall64.tga"
         }
     ]
 }
