@@ -74,9 +74,9 @@ bool LoadEntityList(const char *path)
             entityClass.description = (tokens.size() >= 3) ? tokens[2] : "";
             entityClass.shape = "sphere";
             entityClass.mins = entityClass.maxs = { 0.0f, 0.0f, 0.0f };
-            entityClass.radius = 0.25f;
+            entityClass.radius = 8.0f;
             entityClass.color = MAGENTA;
-            entityClass.placement = 1.0f;
+            entityClass.placement = 32.0f;
             loaded.push_back(entityClass);
             current = &loaded.back();
         }

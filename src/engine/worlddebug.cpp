@@ -19,13 +19,13 @@ void DrawLightMarkers(const Lighting &lighting)
 
     // Sun, with a line showing which way the light goes
     const Sun &sun = lighting.sun;
-    DrawSphere(sun.position, 0.5f, YELLOW);
-    DrawLine3D(sun.position, Vector3Add(sun.position, Vector3Scale(Vector3Normalize(sun.direction), 3.0f)), ORANGE);
+    DrawSphere(sun.position, 16.0f, YELLOW);
+    DrawLine3D(sun.position, Vector3Add(sun.position, Vector3Scale(Vector3Normalize(sun.direction), 96.0f)), ORANGE);
 
     // Point lights, in their own color, with a wireframe sphere showing their radius
     for (const PointLight &light : lighting.lights)
     {
-        DrawSphere(light.position, 0.15f, light.color);
+        DrawSphere(light.position, 5.0f, light.color);
         DrawSphereWires(light.position, light.radius, 8, 8, Fade(light.color, 0.3f));
     }
 }

@@ -133,7 +133,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
             { "angle", "angle", "0", "Degrees around the vertical axis: 0 looks down -Z, 90 down -X", 0.0f, 360.0f },
         },
         // The player's collision hull, so the editor shows how much room it needs
-        { "box", { -0.5f, -0.75f, -0.5f }, { 0.5f, 1.0f, 0.5f }, 0.0f, { 0, 228, 48, 255 }, nullptr, 0.8f },
+        { "box", { -16.0f, -24.0f, -16.0f }, { 16.0f, 32.0f, 16.0f }, 0.0f, { 0, 228, 48, 255 }, nullptr, 25.0f },
         SpawnPlayerStart,
     },
     {
@@ -144,7 +144,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
             { "intensity", "number", "1", "Brightness of a surface facing the sun head on", 0.0f, 4.0f },
             { "ambient", "number", "0.35", "Light every surface gets, so shadows aren't black", 0.0f, 1.0f },
         },
-        { "sphere", { 0 }, { 0 }, 0.5f, { 253, 249, 0, 255 }, nullptr, 1.0f },
+        { "sphere", { 0 }, { 0 }, 16.0f, { 253, 249, 0, 255 }, nullptr, 32.0f },
         nullptr,  // ApplyLevelLights
     },
     {
@@ -152,9 +152,9 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         {
             { "color", "color", "255 255 255", "Light color", 0.0f, 0.0f },
             { "intensity", "number", "1", "Brightness right next to the light", 0.0f, 10.0f },
-            { "radius", "radius", "5", "Distance where the light has faded out completely", 0.0f, 30.0f },
+            { "radius", "radius", "160", "Distance where the light has faded out completely", 0.0f, 1000.0f },
         },
-        { "sphere", { 0 }, { 0 }, 0.2f, WHITE, "color", 1.0f },
+        { "sphere", { 0 }, { 0 }, 6.0f, WHITE, "color", 32.0f },
         nullptr,  // ApplyLevelLights
     },
     {
@@ -162,7 +162,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         {
             { "size", "number", "128", "Pixels along each side of its six images: bigger is sharper", 16.0f, 512.0f },
         },
-        { "sphere", { 0 }, { 0 }, 0.3f, { 200, 220, 235, 255 }, nullptr, 1.0f },
+        { "sphere", { 0 }, { 0 }, 10.0f, { 200, 220, 235, 255 }, nullptr, 32.0f },
         SpawnCubemap,
     },
 
@@ -170,17 +170,17 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "func_water", "Water the player swims in. Drawn see-through in the game",
         {
-            { "mins", "vector", "-2 0 -2", "Corner of the box, relative to the origin", 0.0f, 0.0f },
-            { "maxs", "vector", "2 1 2", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "mins", "vector", "-64 0 -64", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "64 32 64", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
         },
         { "volume", { 0 }, { 0 }, 0.0f, { 40, 110, 200, 255 }, nullptr, 0.0f },
         SpawnWater,
     },
     {
-        "func_ladder", "A ladder the player climbs while touching it. Invisible in the game, so put it in front of a ladder in the world model",
+        "func_ladder", "A ladder the player climbs while touching it. Invisible in the game, so put it in front of a ladder in the level's geometry",
         {
-            { "mins", "vector", "-0.5 0 -0.125", "Corner of the box, relative to the origin", 0.0f, 0.0f },
-            { "maxs", "vector", "0.5 3 0.125", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "mins", "vector", "-16 0 -4", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "16 96 4", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
         },
         { "volume", { 0 }, { 0 }, 0.0f, { 230, 150, 40, 255 }, nullptr, 0.0f },
         SpawnLadder,
@@ -188,8 +188,8 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "trigger_changelevel", "Loads another level when the player walks in. Invisible in the game",
         {
-            { "mins", "vector", "-1 0 -1", "Corner of the box, relative to the origin", 0.0f, 0.0f },
-            { "maxs", "vector", "1 2 1", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "mins", "vector", "-32 0 -32", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "32 64 32", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
             { "map", "text", "", "The level to load, like dev for maps/dev.json", 0.0f, 0.0f },
         },
         { "volume", { 0 }, { 0 }, 0.0f, { 240, 200, 40, 255 }, nullptr, 0.0f },
@@ -198,11 +198,11 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "func_door", "A solid door that slides open when the player walks into it, then closes again",
         {
-            { "mins", "vector", "-1 0 -0.125", "Corner of the door, relative to the origin", 0.0f, 0.0f },
-            { "maxs", "vector", "1 2.5 0.125", "Opposite corner of the door, relative to the origin", 0.0f, 0.0f },
+            { "mins", "vector", "-32 0 -4", "Corner of the door, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "32 80 4", "Opposite corner of the door, relative to the origin", 0.0f, 0.0f },
             { "direction", "direction", "0 1 0", "Which way it slides open. It moves its own size that way, minus the lip", 0.0f, 0.0f },
-            { "lip", "number", "0.125", "How much of it stays in the frame when open", 0.0f, 1.0f },
-            { "speed", "number", "3", "World units per second", 0.5f, 10.0f },
+            { "lip", "number", "4", "How much of it stays in the frame when open", 0.0f, 32.0f },
+            { "speed", "number", "96", "World units per second", 16.0f, 320.0f },
             { "wait", "number", "3", "Seconds it stays open before closing. -1 stays open", -1.0f, 10.0f },
             { "texture", "text", "textures/dev/wall64.tga", "Texture it's drawn with, as a game data path", 0.0f, 0.0f },
         },
@@ -212,11 +212,11 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "trigger_soundscape", "Loops a sound while the player is inside, fading out towards the sides, and sounding like it comes from its origin",
         {
-            { "mins", "vector", "-4 0 -4", "Corner of the box, relative to the origin", 0.0f, 0.0f },
-            { "maxs", "vector", "4 3 4", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "mins", "vector", "-128 0 -128", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "128 96 128", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
             { "sound", "text", "", "Sound to loop, as a game data path, like sound/ambient/wind.ogg", 0.0f, 0.0f },
             { "volume", "number", "1", "How loud it is well inside the box, 0 to 1", 0.0f, 1.0f },
-            { "fade", "number", "1", "World units in from the sides over which it fades in, so walking out fades it away", 0.0f, 8.0f },
+            { "fade", "number", "32", "World units in from the sides over which it fades in, so walking out fades it away", 0.0f, 256.0f },
         },
         { "volume", { 0 }, { 0 }, 0.0f, { 190, 110, 230, 255 }, nullptr, 0.0f },
         SpawnSoundscape,
@@ -228,10 +228,10 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         {
             { "model", "text", "", "The .obj to show, as a game data path, like model/crate.obj. Its .mtl textures and .materials apply", 0.0f, 0.0f },
             { "angle", "angle", "0", "Degrees around the vertical axis", 0.0f, 360.0f },
-            { "scale", "number", "0.03125", "From the model's units to world units: 0.03125 for models made in Quake units, like the world", 0.0f, 2.0f },
+            { "scale", "number", "1", "Size, as a multiple of the model's own: 1 for models made in Quake units, like the world", 0.0f, 4.0f },
             { "static", "bool", "1", "Part of the level for good: the player collides with the box around it, and it's in the bounce bake. Off: decoration the player walks through", 0.0f, 0.0f },
         },
-        { "box", { -0.25f, -0.25f, -0.25f }, { 0.25f, 0.25f, 0.25f }, 0.0f, { 120, 200, 255, 255 }, nullptr, 0.0f },
+        { "box", { -8.0f, -8.0f, -8.0f }, { 8.0f, 8.0f, 8.0f }, 0.0f, { 120, 200, 255, 255 }, nullptr, 0.0f },
         SpawnProp,
     },
 };
@@ -252,8 +252,10 @@ const EntityClass *FindEntityClass(const std::string &classname)
 
 bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volumes)
 {
-    SetLightmapSettings(world, level.info.luxelsPerUnit, level.info.lightmapFiltered);  // Before loading, so the lightmap is laid out once
-    if (!LoadWorld(world, level.worldModel.c_str(), level.worldScale)) return false;
+    SetLightmapSettings(world, level.info.luxelSize, level.info.lightmapFiltered);  // Before building, so the lightmap is laid out once
+    CreateWorld(world);
+    SetWorldGeometry(world, level.geometry, true);  // Drawn, collided with, and laid out for the bounce lightmap
+    if (level.geometry.meshes.empty()) TraceLog(LOG_WARNING, "LEVEL: Has no geometry, there's nothing to stand on");
 
     // Each entity type spawns itself, see the table above
     SpawnContext context = { world, player, volumes, false };
@@ -277,7 +279,7 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
         if (entityClass->spawn != nullptr) entityClass->spawn(entity, *entityClass, context);
     }
 
-    // LoadWorld put a default sun above a corner of the level; a sun entity replaces it
+    // CreateWorld put a default sun above a corner of the level; a sun entity replaces it
     const EntityParamReader tableParams = { TableParamNumber, TableParamVector, TableParamColor };
     if (ApplyLevelLights(level, world.lighting, world.lighting.sun, tableParams) > 0)
     {
@@ -294,7 +296,7 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
         // Drop the player in from above the middle of the level
         BoundingBox b = world.bounds;
         TraceLog(LOG_WARNING, "LEVEL: No info_player_start, spawning above the middle of the level");
-        InitPlayer(player, { (b.min.x + b.max.x)*0.5f, b.max.y + 2.0f, (b.min.z + b.max.z)*0.5f }, 0.0f);
+        InitPlayer(player, { (b.min.x + b.max.x)*0.5f, b.max.y + 64.0f, (b.min.z + b.max.z)*0.5f }, 0.0f);
     }
 
     if (!level.info.skybox.empty() && !LoadSkybox(world.skybox, level.info.skybox.c_str()))

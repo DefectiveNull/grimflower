@@ -67,7 +67,7 @@ struct EntityClass
 const std::vector<EntityClass> &GetEntityClasses();
 const EntityClass *FindEntityClass(const std::string &classname);
 
-// Loads the level's world model, then places the player and sets up the lights, volumes and doors from its entities
+// Builds the world from the level's geometry, then places the player and sets up the lights, volumes and doors from its entities
 bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volumes);
 
 // An entity's parameter, or its default from the table if the level file doesn't set it

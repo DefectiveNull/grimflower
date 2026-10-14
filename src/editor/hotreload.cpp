@@ -36,7 +36,6 @@ struct WatchedFile
 };
 
 static WatchedFile entityList;
-static WatchedFile worldModel;
 static WatchedFile editorConfig;
 static bool started = false;
 static double lastCheck = 0.0;
@@ -91,15 +90,5 @@ void UpdateHotReload(EditorState &editor)
     if (HasSettledChange(editorConfig) && ReloadEditorConfigIfEdited(editor))
     {
         SetStatus(editor, "editor.cfg changed, reloaded its binds and settings");
-    }
-
-    // Opening a level, Create World or an undo can switch to another model, which was just loaded
-    if (worldModel.path != editor.level.worldModel)
-    {
-        Watch(worldModel, editor.level.worldModel);
-    }
-    else if (HasSettledChange(worldModel) && ReloadWorld(editor))
-    {
-        SetStatus(editor, "%s changed, reloaded it with %d collision brushes", worldModel.path.c_str(), (int)editor.world.colliders.size());
     }
 }

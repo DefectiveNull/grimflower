@@ -73,6 +73,8 @@ struct Lighting
     // The material of the mesh drawn next, see SetLightingMaterial
     int bumpMapLoc, specularMapLoc, glossMapLoc, hasBumpMapLoc, bumpGreenUpLoc, hasSpecularMapLoc, hasGlossMapLoc;
     int specularStrengthLoc, glossinessLoc, viewPositionLoc, reflectionLoc;
+    bool unlit;              // Textures only, no lighting: the editor's Shaded Unlit and Wireframe views
+    int unlitLoc;
 
     // Cubemaps (env_cubemap) for reflections: every one in the level. BeginLighting picks the MAX_CUBEMAPS
     // nearest the camera. capturingCubemaps turns reflections off while they're being captured

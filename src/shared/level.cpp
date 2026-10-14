@@ -9,7 +9,7 @@
 using json = nlohmann::ordered_json;
 
 static const char *LEVEL_FORMAT = "rlib-level";
-static const int LEVEL_VERSION = 1;
+static const int LEVEL_VERSION = 2;  // 2: world units are Quake units (1 was 32 Quake units per world unit)
 
 static std::string NowUtc()
 {
@@ -84,6 +84,131 @@ static bool ReadVector(const json &value, Vector3 &out)
     return true;
 }
 
+// [x, y]
+static Vector2 ReadVector2(const json &value, Vector2 fallback)
+{
+    if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) return fallback;
+    return { value[0].get<float>(), value[1].get<float>() };
+}
+
+// The "geometry" section: shapes (vertices and faces) and the meshes placing them
+static void ReadGeometry(const json &section, Geometry &geometry, const char *path)
+{
+    auto shapes = section.find("shapes");
+    if (shapes != section.end() && shapes->is_array())
+    {
+        for (const json &item : *shapes)
+        {
+            GeoShape shape;
+            auto vertices = item.find("vertices");
+            if (vertices != item.end() && vertices->is_array())
+            {
+                for (const json &v : *vertices)
+                {
+                    Vector3 p = { 0.0f, 0.0f, 0.0f };
+                    ReadVector(v, p);
+                    shape.vertices.push_back(p);
+                }
+            }
+            auto faces = item.find("faces");
+            if (faces != item.end() && faces->is_array())
+            {
+                for (const json &f : *faces)
+                {
+                    GeoFace face;
+                    auto corners = f.find("corners");
+                    if (corners == f.end() || !corners->is_array()) continue;
+                    bool valid = corners->size() >= 3;
+                    for (const json &c : *corners)
+                    {
+                        int index = c.is_number_integer() ? c.get<int>() : -1;
+                        valid = valid && index >= 0 && index < (int)shape.vertices.size();
+                        face.corners.push_back(index);
+                    }
+                    if (!valid)
+                    {
+                        TraceLog(LOG_WARNING, "LEVEL: [%s] Skipped a face with corners that aren't vertices of its shape", path);
+                        continue;
+                    }
+                    face.material = GetString(f, "material", "");
+                    if (f.contains("uAxis")) ReadVector(f["uAxis"], face.uAxis);
+                    if (f.contains("vAxis")) ReadVector(f["vAxis"], face.vAxis);
+                    if (f.contains("offset")) face.offset = ReadVector2(f["offset"], face.offset);
+                    if (f.contains("scale")) face.scale = ReadVector2(f["scale"], face.scale);
+                    if (face.scale.x == 0.0f) face.scale.x = 1.0f;
+                    if (face.scale.y == 0.0f) face.scale.y = 1.0f;
+                    shape.faces.push_back(face);
+                }
+            }
+            geometry.shapes.push_back(shape);
+        }
+    }
+
+    auto meshes = section.find("meshes");
+    if (meshes != section.end() && meshes->is_array())
+    {
+        for (const json &item : *meshes)
+        {
+            GeoMesh mesh;
+            mesh.shape = (int)GetNumber(item, "shape", -1.0f);
+            if (mesh.shape < 0 || mesh.shape >= (int)geometry.shapes.size())
+            {
+                TraceLog(LOG_WARNING, "LEVEL: [%s] Skipped a mesh with no shape", path);
+                continue;
+            }
+            mesh.position = { 0.0f, 0.0f, 0.0f };
+            if (item.contains("position")) ReadVector(item["position"], mesh.position);
+            auto rotation = item.find("rotation");
+            if (rotation != item.end() && rotation->is_array() && rotation->size() == 4)
+            {
+                // As saved: renormalizing would change it a hair, and the lightmap's fingerprint with it. Only one
+                // that's clearly off (edited by hand) is fixed
+                Quaternion q = { (*rotation)[0].get<float>(), (*rotation)[1].get<float>(), (*rotation)[2].get<float>(), (*rotation)[3].get<float>() };
+                float length = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+                mesh.rotation = (fabsf(length - 1.0f) > 0.01f) ? QuaternionNormalize(q) : q;
+            }
+            geometry.meshes.push_back(mesh);
+        }
+    }
+}
+
+static json WriteGeometry(const Geometry &geometry)
+{
+    auto vec3 = [](Vector3 v) { return json::array({ Tidy(v.x), Tidy(v.y), Tidy(v.z) }); };
+    json section;
+    section["shapes"] = json::array();
+    for (const GeoShape &shape : geometry.shapes)
+    {
+        json item;
+        item["vertices"] = json::array();
+        for (Vector3 v : shape.vertices) item["vertices"].push_back(vec3(v));
+        item["faces"] = json::array();
+        for (const GeoFace &face : shape.faces)
+        {
+            json f;
+            f["corners"] = face.corners;
+            f["material"] = face.material;
+            f["uAxis"] = vec3(face.uAxis);
+            f["vAxis"] = vec3(face.vAxis);
+            f["offset"] = { Tidy(face.offset.x), Tidy(face.offset.y) };
+            f["scale"] = { Tidy(face.scale.x), Tidy(face.scale.y) };
+            item["faces"].push_back(f);
+        }
+        section["shapes"].push_back(item);
+    }
+    section["meshes"] = json::array();
+    for (const GeoMesh &mesh : geometry.meshes)
+    {
+        json item;
+        item["shape"] = mesh.shape;
+        item["position"] = vec3(mesh.position);
+        Quaternion q = mesh.rotation;
+        item["rotation"] = { Tidy(q.x), Tidy(q.y), Tidy(q.z), Tidy(q.w) };
+        section["meshes"].push_back(item);
+    }
+    return section;
+}
+
 float EntityFloat(const LevelEntity &entity, const char *key, float fallback)
 {
     return GetNumber(entity.properties, key, fallback);
@@ -147,17 +272,31 @@ bool LoadLevel(Level &level, const char *path)
     level.info.saved = GetString(info, "saved", "");
     level.info.skybox = GetString(info, "skybox", "");
     level.info.lightmapKey = GetString(info, "lightmapKey", "");
-    level.info.luxelsPerUnit = Clamp(GetNumber(info, "luxelsPerUnit", 2.0f), 0.25f, 16.0f);
+    // luxelsPerUnit is how files from before Quake units had it, in luxels per 32 units
+    float luxelSize = info.contains("luxelsPerUnit") ? 32.0f/fmaxf(GetNumber(info, "luxelsPerUnit", 2.0f), 0.01f) : 16.0f;
+    level.info.luxelSize = Clamp(GetNumber(info, "luxelSize", luxelSize), 1.0f, 128.0f);
     level.info.lightmapFiltered = GetString(info, "lightmapFilter", "bilinear") != "nearest";
     level.info.entityCount = (int)GetNumber(info, "entityCount", 0.0f);
 
-    const json &world = Section(root, "world");
-    level.worldModel = GetString(world, "model", "");
-    level.worldScale = GetNumber(world, "scale", 1.0f);
-    if (level.worldModel.empty())
+    // The geometry. Levels from before it, with a world model (an OBJ) instead, get it imported as meshes:
+    // saving them keeps those. Version 1 levels were also in the old world units, 32 Quake units each
+    int version = (int)GetNumber(root, "version", 1.0f);
+    auto geometry = root.find("geometry");
+    if (geometry != root.end() && geometry->is_object()) ReadGeometry(*geometry, level.geometry, path);
+    else
     {
-        TraceLog(LOG_WARNING, "LEVEL: [%s] Has no world model", path);
-        return false;
+        const json &world = Section(root, "world");
+        std::string model = GetString(world, "model", "");
+        float scale = GetNumber(world, "scale", 1.0f)*((version < 2) ? 32.0f : 1.0f);
+        if (!model.empty())
+        {
+            if (ImportObjGeometry(model.c_str(), scale, level.geometry))
+            {
+                GeoQuantize(level.geometry);  // As saving will store it
+                TraceLog(LOG_INFO, "LEVEL: [%s] Imported its world model %s as meshes", path, model.c_str());
+            }
+            else TraceLog(LOG_WARNING, "LEVEL: [%s] Couldn't import its world model %s", path, model.c_str());
+        }
     }
 
     auto entities = root.find("entities");
@@ -181,6 +320,24 @@ bool LoadLevel(Level &level, const char *path)
             entity.properties.erase("origin");
             level.entities.push_back(entity);
         }
+    }
+
+    // Version 1 levels are in the old world units, 32 Quake units each: scaled up to Quake units, which
+    // world units are now. The parameters that are distances are scaled with the origins
+    if (version < 2)
+    {
+        for (LevelEntity &entity : level.entities)
+        {
+            entity.origin = Vector3Scale(entity.origin, 32.0f);
+            for (const char *name : { "mins", "maxs", "radius", "lip", "speed", "fade", "scale" })
+            {
+                auto it = entity.properties.find(name);
+                if (it == entity.properties.end()) continue;
+                if (it->is_number()) *it = Tidy(it->get<float>()*32.0f);
+                else if (it->is_array()) for (json &n : *it) if (n.is_number()) n = Tidy(n.get<float>()*32.0f);
+            }
+        }
+        TraceLog(LOG_INFO, "LEVEL: [%s] Converted from the old world units to Quake units. Saving it keeps it that way", path);
     }
 
     if (level.info.entityCount != (int)level.entities.size())
@@ -209,12 +366,9 @@ bool SaveLevel(Level &level, const char *path)
     root["info"]["saved"] = level.info.saved;
     root["info"]["skybox"] = level.info.skybox;
     if (!level.info.lightmapKey.empty()) root["info"]["lightmapKey"] = level.info.lightmapKey;
-    root["info"]["luxelsPerUnit"] = level.info.luxelsPerUnit;
+    root["info"]["luxelSize"] = level.info.luxelSize;
     root["info"]["lightmapFilter"] = level.info.lightmapFiltered ? "bilinear" : "nearest";
     root["info"]["entityCount"] = level.info.entityCount;
-
-    root["world"]["model"] = level.worldModel;
-    root["world"]["scale"] = level.worldScale;
 
     root["entities"] = json::array();
     for (const LevelEntity &entity : level.entities)
@@ -228,6 +382,9 @@ bool SaveLevel(Level &level, const char *path)
         }
         root["entities"].push_back(item);
     }
+
+    // Last, since it's long: the entities stay near the top, easy to read
+    root["geometry"] = WriteGeometry(level.geometry);
 
     std::string text = CollapseNumberArrays(root.dump(4)) + "\n";
     if (!SaveFileText(path, text.c_str())) return false;

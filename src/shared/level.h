@@ -1,10 +1,11 @@
 #pragma once
 
-// Level files: JSON files in maps/ that say which world model to use, where the entities are,
-// and some map-wide settings. See maps/dev.json for an example.
+// Level files: JSON files in maps/ with the level's geometry (its meshes), where the entities are, and
+// some map-wide settings. See maps/dev.json for an example.
 
 #include "raylib.h"
 #include "json.hpp"
+#include "geometry.h"
 
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ struct LevelInfo
     std::string saved;     // UTC, updated on every save
     std::string skybox;    // Environment map for the sky, as a game data path. Empty uses the plain background
     std::string lightmapKey;  // Fingerprint of what maps/<level>_lightmap.png was baked from, see LightmapKey. Written by the editor
-    float luxelsPerUnit = 2.0f;   // Bounce lightmap resolution: texels (luxels) per world unit. 2 is 16 Quake units each, like Quake
+    float luxelSize = 16.0f;      // Bounce lightmap resolution: world units per texel (luxel). 16, like Quake
     bool lightmapFiltered = true; // Smooth (bilinear) lightmap, or blocky (nearest) luxels like software Quake
     int entityCount;       // How many entities the file has. Updated on every save
 };
@@ -35,8 +36,7 @@ struct LevelEntity
 struct Level
 {
     LevelInfo info;
-    std::string worldModel;   // OBJ used for both drawing and collision, as a game data path
-    float worldScale;         // Converts the OBJ's units to world units
+    Geometry geometry;        // The world: every mesh, drawn and collided with (src/engine/geometry.h)
     std::vector<LevelEntity> entities;
 };
 

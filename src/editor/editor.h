@@ -18,6 +18,94 @@ static const int MENU_BAR_HEIGHT = 26;
 static const int STATUS_BAR_HEIGHT = 24;
 static const int DETAILS_PANEL_WIDTH = 340;
 
+// Object mode edits entities; Edit mode edits the level's geometry, and only Edit mode can
+enum EditorMode
+{
+    MODE_OBJECT,
+    MODE_EDIT
+};
+
+// Edit mode's tools (editmode.cpp). Select also moves, duplicates, resizes faces and applies materials, with
+// the mouse and modifier keys
+enum EditTool
+{
+    TOOL_SELECT,
+    TOOL_CUBE,       // B, with no edges selected
+    TOOL_ROTATE,     // R
+    TOOL_CUT,        // C
+    TOOL_EXTRUDE,    // Ctrl+Shift
+    TOOL_PUSHPULL,   // Alt+Shift
+    TOOL_EDGE,       // E
+    TOOL_BEVEL,      // B, with edges selected
+    TOOL_COUNT
+};
+
+// How the 3D view draws the level (the menu behind the three dots in its corner)
+enum ViewMode
+{
+    VIEW_LIT,        // Full 3D: lights, shadows, bounce, everything the game has
+    VIEW_UNLIT,      // Shaded unlit: textures only
+    VIEW_WIREFRAME
+};
+
+// Something in the level's geometry, under the mouse or clicked: a face of a mesh, and where on it (world space)
+struct GeoPick
+{
+    int mesh = -1;
+    int face = -1;
+    Vector3 point = { 0.0f, 0.0f, 0.0f };
+    Vector3 normal = { 0.0f, 1.0f, 0.0f };
+};
+
+// An edge of a mesh's shape, by its two vertices
+struct GeoEdge
+{
+    int mesh;
+    int a, b;
+};
+
+// What Edit mode is doing. Drags keep a copy of the geometry from when they started, and redo their change
+// to it every frame, so moving the mouse back undoes what it did
+struct EditState
+{
+    EditTool tool = TOOL_SELECT;
+    int selectedMesh = -1;
+    GeoPick hover;
+
+    enum Drag { DRAG_NONE, DRAG_MOVE, DRAG_RESIZE, DRAG_EXTRUDE, DRAG_PUSHPULL, DRAG_EDGES, DRAG_PIVOT } drag = DRAG_NONE;
+    bool dragMoved = false;           // Past a few pixels: a drag, not a click
+    Vector2 dragStartMouse = { 0.0f, 0.0f };
+    Geometry before;                  // The geometry when the drag started
+    GeoPick dragPick;                 // What the drag started on
+    Vector3 planePoint = { 0.0f, 0.0f, 0.0f }, planeNormal = { 0.0f, 1.0f, 0.0f };  // The mouse moves things along this plane...
+    Vector3 dragStart = { 0.0f, 0.0f, 0.0f };   // ...from where it met it when the drag started
+    bool dragVertical = false;        // Alt: up and down instead of along the floor
+    bool duplicated = false;          // Ctrl: the drag moves a copy
+
+    // Create Cube: a rectangle on a plane, then how deep
+    int cubeStage = 0;                // 0 waiting for a click, 1 drawing the rectangle, 2 setting the depth, 3 ready for Enter
+    Vector3 cubeCorner = { 0.0f, 0.0f, 0.0f }, cubeU = { 1.0f, 0.0f, 0.0f }, cubeV = { 0.0f, 0.0f, 1.0f }, cubeNormal = { 0.0f, 1.0f, 0.0f };
+    float cubeSizeU = 0.0f, cubeSizeV = 0.0f, cubeDepth = 0.0f;
+
+    // Cut: the face and a point on it, then which way the cut runs
+    int cutStage = 0;                 // 0 waiting, 1 picking the direction, 2 ready for Enter
+    GeoPick cutPick;
+    Vector3 cutDirection = { 1.0f, 0.0f, 0.0f };
+
+    // Extrude around a pivot (P while extruding)
+    bool pivotPlaced = false;
+    bool pivotLocked = false;         // Once a face is extruded around it, it stays put
+    Vector3 pivot = { 0.0f, 0.0f, 0.0f };
+    int extrudeSegments = 0;          // Around a pivot: 0 picks one per 15 degrees
+
+    // Edges, and bevelling them
+    std::vector<GeoEdge> edges;
+    bool beveling = false;
+    float bevelWidth = 0.0f;
+    int bevelSegments = 1;
+    Vector2 bevelStartMouse = { 0.0f, 0.0f };
+};
+
 // A copy of the level from before a change, so the change can be undone
 struct UndoStep
 {
@@ -39,7 +127,6 @@ enum MenuId
 enum DialogId
 {
     DIALOG_NONE,
-    DIALOG_CREATE_WORLD,
     DIALOG_WORLD_SETTINGS,
     DIALOG_PREFERENCES,
     DIALOG_EDITOR_INFO,
@@ -74,11 +161,16 @@ struct EditorState
     int savedStateId;                  // Version last opened or saved
     int nextStateId;
 
-    // Its world model, drawn with the game's lighting
+    // The level's world, built from its geometry and drawn with the game's lighting
     World world;
     bool worldLoaded;
-    std::string loadedModel;  // Model and scale the world was loaded from, to tell when undo changes them
-    float loadedScale;
+    int geometryVersion;       // Goes up whenever level.geometry changes (GeometryChanged)
+    int builtGeometryVersion;  // The version the world was last built from
+    bool builtFull;            // ...and whether that build had collision and the lightmap layout
+
+    EditorMode mode;
+    EditState edit;
+    ViewMode viewMode;
     Sun defaultSun;           // Sun the world gets when the level has no "sun" entity
     Skybox skybox;            // The level's info.skybox
     std::string skyboxTried;  // Path last loaded (or tried), so a broken one isn't retried every frame
@@ -114,6 +206,7 @@ struct EditorState
     DialogId dialog;
     PendingAction pendingAction;
     bool textEditing;         // A text field has the keyboard, so shortcuts are off
+    bool keysFree;            // No dialog or text field had the keyboard last frame: tool keys can act
     bool quit;
 
     std::string status;       // Message in the status bar, like "Saved maps/dev.json"
@@ -128,12 +221,12 @@ std::string ToDataPath(const EditorState &editor, const std::string &path);  // 
 void RequestAction(EditorState &editor, PendingAction action);              // Asks first if there are unsaved changes
 void RunAction(EditorState &editor, PendingAction action);
 bool SaveCurrentLevel(EditorState &editor, bool askForPath);               // askForPath: Save As
-bool CreateWorld(EditorState &editor, const std::string &model, float scale);
+bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale);  // Adds an OBJ's objects to the geometry as meshes
+void ImportObjFromDialog(EditorState &editor);   // Asks which OBJ, then imports it at scale 1 (Quake units)
 void CreateEntity(EditorState &editor, const char *classname);
 void ShowCreateEntityList(EditorState &editor);                 // Deselects, so the details panel shows the list of entity types
 void DeleteSelectedEntity(EditorState &editor);
 void RotateSelectedEntity(EditorState &editor, float degrees);  // Positive turns left, seen from above
-bool ReloadWorld(EditorState &editor);                           // Reads the world model's .obj from disk again
 void ChangeGridSize(EditorState &editor, int steps);             // Steps through the grid sizes: -1 smaller, 1 bigger
 float SnapToGrid(float value);                                   // The nearest grid line, or value as is with snapping off
 void StartPointAt(EditorState &editor, int entityIndex, const std::string &parameter);
@@ -141,6 +234,7 @@ void CancelPointAt(EditorState &editor);
 bool RaycastWorld(const EditorState &editor, Ray ray, Vector3 &point, Vector3 *normal);  // Where a ray first hits the level
 void FrameCameraOnWorld(EditorState &editor);
 void UpdateCameraFromAngles(EditorState &editor);
+void AimCamera(EditorState &editor, Vector3 position, Vector3 target);  // Puts the camera there, looking at target
 
 // undo.cpp: undo and redo
 void RecordUndo(EditorState &editor, const std::string &description);  // Call just before changing the level
@@ -153,15 +247,18 @@ void Redo(EditorState &editor);
 int GetHistoryPosition(const EditorState &editor);                    // 0 is the level as opened
 void JumpToHistory(EditorState &editor, int position);                 // Undoes or redoes until there
 
-// Loads or unloads the world model if the level's no longer matches the loaded one, like after an undo
+// Rebuilds the world from the level's geometry if it changed since, like after an undo. Call GeometryChanged first
+void GeometryChanged(EditorState &editor);
 void SyncWorldWithLevel(EditorState &editor);
 
 // viewport.cpp: the 3D view
 Rectangle GetViewportRect();
+Ray GetViewportMouseRay(const EditorState &editor);  // The ray under the mouse
 bool IsMouseOverViewport(const EditorState &editor);
 void UpdateViewport(EditorState &editor);   // Camera movement and clicking entities
 void DrawViewport(EditorState &editor);     // World, grid and entity markers. Call between BeginDrawing/EndDrawing
 void UnloadViewport();
+Texture2D GetViewportTexture();             // What DrawViewport drew last, upside down like render textures are
 
 // menubar.cpp
 void DrawMenuBar(EditorState &editor);
@@ -177,3 +274,14 @@ void DrawDetailsPanel(EditorState &editor);
 
 // materialspanel.cpp: the details panel's Materials tab, in the given area
 void DrawMaterialsPanel(EditorState &editor, Rectangle area);
+std::string GetPickedMaterial();  // The texture picked in the Materials tab, empty for none
+
+// editmode.cpp: Edit mode, its tools, and the toolbar and view menu over the 3D view
+void SetEditorMode(EditorState &editor, EditorMode mode);  // Leaving Edit mode builds collision and the lightmap layout
+void ResetEditTools(EditorState &editor);
+void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree);  // In Edit mode, instead of entity selection
+bool EditModeEscape(EditorState &editor);  // Cancels what the tool is doing, then the tool. False if there was nothing to
+GeoPick PickGeometry(const EditorState &editor, Ray ray);  // The face a ray hits first
+void DrawEditModeOverlay(const EditorState &editor);  // Inside BeginMode3D, after the world
+void DrawViewportUI(EditorState &editor);             // Over the 3D view: the mode and tool buttons, and the view menu
+bool IsMouseOverViewportUI();                         // So clicks on them don't reach the level

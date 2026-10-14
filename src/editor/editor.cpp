@@ -11,11 +11,11 @@
 #include <cstdio>
 
 static const char *LEVEL_FILTER = "Level files (*.json)\0*.json\0All files (*.*)\0*.*\0";
-static const float DEFAULT_WORLD_SCALE = 1.0f/32.0f;  // Quake units to world units, same as the game uses
+static const float DEFAULT_WORLD_SCALE = 1.0f;  // Imported OBJs are made in Quake units, like the world
 
-// Grid sizes in world units, where the player is 1 wide and 1.75 tall (a Quake grid of 1 to 256 Quake
-// units would be 1/32 to 8 here). Powers of two, so every size lines up with all the bigger ones
-static const float GRID_SIZES[] = { 0.0625f, 0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f };
+// Grid sizes in world units (Quake units), where the player is 32 wide and 56 tall, like Quake's 1 to 256.
+// Powers of two, so every size lines up with all the bigger ones
+static const float GRID_SIZES[] = { 1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f, 128.0f, 256.0f };
 static const int GRID_SIZE_COUNT = (int)(sizeof(GRID_SIZES)/sizeof(GRID_SIZES[0]));
 
 void SetStatus(EditorState &editor, const char *format, ...)
@@ -55,7 +55,7 @@ void UpdateCameraFromAngles(EditorState &editor)
     editor.camera.target = Vector3Add(editor.camera.position, look);
 }
 
-static void AimCamera(EditorState &editor, Vector3 position, Vector3 target)
+void AimCamera(EditorState &editor, Vector3 position, Vector3 target)
 {
     Vector3 direction = Vector3Normalize(Vector3Subtract(target, position));
     editor.camera.position = position;
@@ -66,9 +66,9 @@ static void AimCamera(EditorState &editor, Vector3 position, Vector3 target)
 
 void FrameCameraOnWorld(EditorState &editor)
 {
-    if (!editor.worldLoaded)
+    if (editor.level.geometry.meshes.empty())
     {
-        AimCamera(editor, { 6.0f, 5.0f, 8.0f }, { 0.0f, 0.0f, 0.0f });
+        AimCamera(editor, { 192.0f, 160.0f, 256.0f }, { 0.0f, 0.0f, 0.0f });
         return;
     }
 
@@ -84,52 +84,49 @@ static void UnloadCurrentWorld(EditorState &editor)
     if (editor.worldLoaded) UnloadWorld(editor.world);
     editor.world = World();
     editor.worldLoaded = false;
-    editor.loadedModel.clear();
 }
 
-// Loads a world model in place of the current one. If it fails, the current one stays
-static bool SwapWorld(EditorState &editor, const std::string &model, float scale)
+// A new, empty world for the level, then built from its geometry
+static void StartWorld(EditorState &editor)
 {
-    World world = {};
-    SetLightmapSettings(world, editor.level.info.luxelsPerUnit, editor.level.info.lightmapFiltered);  // Before loading, so it's laid out once
-    if (!LoadWorld(world, model.c_str(), scale)) return false;
-
     UnloadCurrentWorld(editor);
-    editor.world = world;
-    editor.worldLoaded = true;
-    editor.loadedModel = model;
-    editor.loadedScale = scale;
+    CreateWorld(editor.world);
+    SetLightmapSettings(editor.world, editor.level.info.luxelSize, editor.level.info.lightmapFiltered);  // Before building, so it's laid out once
     editor.defaultSun = editor.world.lighting.sun;
-    return true;
+    editor.worldLoaded = true;
+    editor.mode = MODE_OBJECT;
+    GeometryChanged(editor);
+    SyncWorldWithLevel(editor);
+}
+
+void GeometryChanged(EditorState &editor)
+{
+    editor.geometryVersion++;
 }
 
 void SyncWorldWithLevel(EditorState &editor)
 {
-    const Level &level = editor.level;
-    if (level.worldModel.empty())
-    {
-        UnloadCurrentWorld(editor);
-        return;
-    }
-
-    bool matches = editor.worldLoaded && editor.loadedModel == level.worldModel && editor.loadedScale == level.worldScale;
-    if (!matches && !SwapWorld(editor, level.worldModel, level.worldScale)) SetStatus(editor, "Couldn't load %s", level.worldModel.c_str());
+    // Outside Edit mode the build is full: collision and the lightmap layout too, which starts a bake
+    bool full = (editor.mode == MODE_OBJECT);
+    if (editor.builtGeometryVersion == editor.geometryVersion && editor.builtFull == full) return;
+    SetWorldGeometry(editor.world, editor.level.geometry, full);
+    editor.builtGeometryVersion = editor.geometryVersion;
+    editor.builtFull = full;
 }
 
 static void NewLevel(EditorState &editor)
 {
-    UnloadCurrentWorld(editor);
-
     editor.level = Level();
     editor.level.info.name = "Untitled";
     editor.level.info.entityCount = 0;
-    editor.level.worldScale = DEFAULT_WORLD_SCALE;
     editor.levelPath.clear();
     editor.selected = -1;
+    ResetEditTools(editor);
     ResetUndoHistory(editor);
+    StartWorld(editor);
 
     FrameCameraOnWorld(editor);
-    SetStatus(editor, "New level");
+    SetStatus(editor, "New level. Press Tab for Edit mode to build its geometry");
 }
 
 static void OpenLevel(EditorState &editor)
@@ -144,17 +141,15 @@ static void OpenLevel(EditorState &editor)
         return;
     }
 
-    UnloadCurrentWorld(editor);
     editor.level = level;
     editor.levelPath = path;
     editor.selected = -1;
+    ResetEditTools(editor);
     ResetUndoHistory(editor);
-
-    if (!editor.level.worldModel.empty()) SwapWorld(editor, editor.level.worldModel, editor.level.worldScale);
+    StartWorld(editor);
 
     FrameCameraOnWorld(editor);
-    if (!editor.level.worldModel.empty() && !editor.worldLoaded) SetStatus(editor, "Opened %s, but its world model %s didn't load", ToDataPath(editor, path).c_str(), editor.level.worldModel.c_str());
-    else SetStatus(editor, "Opened %s", ToDataPath(editor, path).c_str());
+    SetStatus(editor, "Opened %s, %d meshes", ToDataPath(editor, path).c_str(), (int)editor.level.geometry.meshes.size());
 }
 
 void InitEditor(EditorState &editor, const std::string &dataRoot)
@@ -173,7 +168,10 @@ void InitEditor(EditorState &editor, const std::string &dataRoot)
     editor.pointing = false;
     editor.pointEntity = -1;
     editor.nextStateId = 0;
-    editor.loadedScale = 0.0f;
+    editor.mode = MODE_OBJECT;
+    editor.geometryVersion = 0;
+    editor.builtGeometryVersion = -1;
+    editor.builtFull = false;
     editor.openMenu = MENU_NONE;
     editor.dialog = DIALOG_NONE;
     editor.pendingAction = ACTION_NONE;
@@ -216,11 +214,24 @@ void RequestAction(EditorState &editor, PendingAction action)
 
 bool SaveCurrentLevel(EditorState &editor, bool askForPath)
 {
+    // Geometry being edited isn't final: leaving Edit mode works out its collision and lightmap first
+    if (editor.mode == MODE_EDIT)
+    {
+        SetStatus(editor, "Can't save in Edit mode. Press Tab to go back to Object mode, then save");
+        return false;
+    }
+
     std::string path = editor.levelPath;
     if (askForPath || path.empty())
     {
         if (!ShowSaveFileDialog(GetWindowHandle(), "Save Level", LEVEL_FILTER, "json", editor.dataRoot + "/maps", path)) return false;
     }
+
+    // The geometry as the file will have it (rounded), built from that. An undo can bring back geometry from the
+    // middle of an edit that wasn't rounded yet. Rebuilding the same geometry keeps the lightmap it has
+    GeoQuantize(editor.level.geometry);
+    GeometryChanged(editor);
+    SyncWorldWithLevel(editor);
 
     // The bounce lightmap goes next to it, so the game doesn't have to bake it. It has to match the world
     // and sun being saved: finish the bake for them, or bake them now if none has started yet
@@ -259,21 +270,38 @@ bool SaveCurrentLevel(EditorState &editor, bool askForPath)
     return true;
 }
 
-bool CreateWorld(EditorState &editor, const std::string &model, float scale)
+bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale)
 {
-    if (!SwapWorld(editor, model, scale))
+    Geometry imported;
+    if (!ImportObjGeometry(path.c_str(), scale, imported) || imported.meshes.empty())
     {
-        SetStatus(editor, "Couldn't load %s as a world model", model.c_str());
+        SetStatus(editor, "Couldn't import %s, see the log for why", path.c_str());
         return false;
     }
+    GeoQuantize(imported);  // As saving will store it
 
-    RecordUndo(editor, "Set world model");
-    editor.level.worldModel = model;
-    editor.level.worldScale = scale;
-
+    // Added to the level's geometry, shapes and all
+    RecordUndo(editor, "Import " + path);
+    int shapeBase = (int)editor.level.geometry.shapes.size();
+    for (const GeoShape &shape : imported.shapes) editor.level.geometry.shapes.push_back(shape);
+    for (GeoMesh mesh : imported.meshes)
+    {
+        mesh.shape += shapeBase;
+        editor.level.geometry.meshes.push_back(mesh);
+    }
+    GeometryChanged(editor);
+    SyncWorldWithLevel(editor);
     FrameCameraOnWorld(editor);
-    SetStatus(editor, "World model set to %s", model.c_str());
+    SetStatus(editor, "Imported %s as %d meshes", path.c_str(), (int)imported.meshes.size());
     return true;
+}
+
+void ImportObjFromDialog(EditorState &editor)
+{
+    std::string path;
+    if (!ShowOpenFileDialog(GetWindowHandle(), "Import OBJ as Meshes", "OBJ models (*.obj)\0*.obj\0All files (*.*)\0*.*\0", editor.dataRoot + "/model", path)) return;
+    SetEditorMode(editor, MODE_EDIT);  // Geometry only changes in Edit mode
+    ImportObjMeshes(editor, ToDataPath(editor, path), DEFAULT_WORLD_SCALE);
 }
 
 bool RaycastWorld(const EditorState &editor, Ray ray, Vector3 &point, Vector3 *normal)
@@ -301,7 +329,7 @@ static Vector3 PlacementPoint(const EditorState &editor, float offset)
 
     Vector3 point, normal;
     if (RaycastWorld(editor, ray, point, &normal)) return Vector3Add(point, Vector3Scale(normal, offset));
-    return Vector3Add(ray.position, Vector3Scale(ray.direction, 4.0f));
+    return Vector3Add(ray.position, Vector3Scale(ray.direction, 128.0f));
 }
 
 void StartPointAt(EditorState &editor, int entityIndex, const std::string &parameter)
@@ -309,7 +337,7 @@ void StartPointAt(EditorState &editor, int entityIndex, const std::string &param
     if (entityIndex < 0 || entityIndex >= (int)editor.level.entities.size()) return;
     if (!editor.worldLoaded)
     {
-        SetStatus(editor, "Point At needs a world model to click on, see Edit > Create World");
+        SetStatus(editor, "Point At needs geometry to click on: make some in Edit mode (Tab)");
         return;
     }
 
@@ -421,26 +449,6 @@ void RotateSelectedEntity(EditorState &editor, float degrees)
     }
 
     SetStatus(editor, "Rotated %s %g degrees %s", entity.classname.c_str(), fabsf(degrees), (degrees > 0.0f) ? "left" : "right");
-}
-
-bool ReloadWorld(EditorState &editor)
-{
-    if (editor.level.worldModel.empty())
-    {
-        SetStatus(editor, "This level has no world model to reload yet, see Edit > Create World");
-        return false;
-    }
-
-    // SwapWorld loads the new one before letting go of the old one, so a broken .obj doesn't leave nothing to look at
-    if (!SwapWorld(editor, editor.level.worldModel, editor.level.worldScale))
-    {
-        SetStatus(editor, "Couldn't reload %s, kept the previous version", editor.level.worldModel.c_str());
-        return false;
-    }
-
-    // The level only stores the model's path, so it doesn't change: saving it picks up the new mesh as is
-    SetStatus(editor, "Reloaded %s, %d collision brushes", editor.level.worldModel.c_str(), (int)editor.world.colliders.size());
-    return true;
 }
 
 void DeleteSelectedEntity(EditorState &editor)

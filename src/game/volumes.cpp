@@ -9,7 +9,7 @@
 
 // Water is drawn with this texture, a placeholder until there's a real one. Ladders and triggers are invisible
 static const char *WATER_TEXTURE = "textures/liquids/water.tga";
-static const float WATER_TILE_SIZE = 2.0f;  // World units per repeat of the texture: 64 Quake units, like Quake's 64x64 water
+static const float WATER_TILE_SIZE = 64.0f;  // World units per repeat of the texture, like Quake's 64x64 water
 static const float WATER_ALPHA = 0.75f;
 
 // Quake's water turbulence (R_DrawWaterSurfaces): each texture axis wobbles with a sine of the other.
@@ -144,7 +144,7 @@ void AddDoor(Volumes &volumes, BoundingBox closedBox, Vector3 direction, float l
 {
     Door door = {};
     door.closedBox = closedBox;
-    door.speed = fmaxf(speed, 0.1f);
+    door.speed = fmaxf(speed, 1.0f);
     door.wait = wait;
     door.state = DOOR_CLOSED;
 
@@ -178,7 +178,7 @@ static BoundingBox Grow(BoundingBox box, float amount)
 static void UpdateDoor(Door &door, BoundingBox playerBox, float dt)
 {
     // Walking into it opens it, even while it's closing
-    bool touched = CheckCollisionBoxes(Grow(playerBox, 0.05f), DoorBox(door));
+    bool touched = CheckCollisionBoxes(Grow(playerBox, 1.5f), DoorBox(door));
     if (touched && (door.state == DOOR_CLOSED || door.state == DOOR_CLOSING)) door.state = DOOR_OPENING;
 
     float length = Vector3Length(door.openOffset);
@@ -276,13 +276,13 @@ void UpdateSoundscapes(Volumes &volumes, Vector3 listener, float yaw)
         fade = fade*fade*(3.0f - 2.0f*fade);  // Smoothstep, so it doesn't start or stop abruptly
         soundscape.heardVolume = soundscape.volume*fade;
 
-        // Panned towards the origin, flat on the ground, fully only when it's at least a unit away to the side,
+        // Panned towards the origin, flat on the ground, fully only when it's at least 32 units away to the side,
         // so standing on the origin is centered rather than flipping between ears
         Vector3 toOrigin = Vector3Subtract(soundscape.origin, listener);
         toOrigin.y = 0.0f;
         float distance = Vector3Length(toOrigin);
         float side = (distance > 0.001f) ? Vector3DotProduct(Vector3Scale(toOrigin, 1.0f/distance), right) : 0.0f;
-        soundscape.heardPan = side*fminf(distance, 1.0f)*0.8f;  // Never fully in one ear
+        soundscape.heardPan = side*fminf(distance/32.0f, 1.0f)*0.8f;  // Never fully in one ear
 
         SetAmbientSound(soundscape.sound, soundscape.heardVolume, soundscape.heardPan);
     }

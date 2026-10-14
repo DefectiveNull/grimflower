@@ -13,7 +13,7 @@
 #include <vector>
 
 CameraButtons cameraButtons = {};
-EditorSettings editorSettings = { 200, 70.0f, 8.0f, true, true, true, true, false, 0.25f, true, 0.003f, false };
+EditorSettings editorSettings = { 200, 70.0f, 256.0f, true, true, true, true, false, 8.0f, true, 0.003f, false };
 
 static const char *CONFIG_FILE = "editor.cfg";
 
@@ -227,13 +227,13 @@ static void Cmd_ExitEditor(const Args &) { RequestAction(*current, ACTION_EXIT);
 static void Cmd_DeleteEntity(const Args &) { DeleteSelectedEntity(*current); }
 static void Cmd_Deselect(const Args &) { current->selected = -1; }
 static void Cmd_CreateEntity(const Args &) { ShowCreateEntityList(*current); }
-static void Cmd_CreateWorld(const Args &) { OpenDialog(*current, DIALOG_CREATE_WORLD); }
+static void Cmd_ImportObj(const Args &) { ImportObjFromDialog(*current); }
 static void Cmd_WorldSettings(const Args &) { OpenDialog(*current, DIALOG_WORLD_SETTINGS); }
 static void Cmd_EditorInfo(const Args &) { OpenDialog(*current, DIALOG_EDITOR_INFO); }
 static void Cmd_ToggleDarkMode(const Args &) { ToggleDarkMode(); }
 static void Cmd_RotateLeft(const Args &) { RotateSelectedEntity(*current, 45.0f); }
 static void Cmd_RotateRight(const Args &) { RotateSelectedEntity(*current, -45.0f); }
-static void Cmd_ReloadWorld(const Args &) { ReloadWorld(*current); }
+static void Cmd_ToggleEditMode(const Args &) { SetEditorMode(*current, (current->mode == MODE_EDIT) ? MODE_OBJECT : MODE_EDIT); }
 static void Cmd_GridSmaller(const Args &) { ChangeGridSize(*current, -1); }
 static void Cmd_GridBigger(const Args &) { ChangeGridSize(*current, 1); }
 static void Cmd_Undo(const Args &) { Undo(*current); }
@@ -279,8 +279,8 @@ static const Command commands[] =
     { "rotate_right", Cmd_RotateRight, "Rotate right 45 degrees" },
     { "grid_smaller", Cmd_GridSmaller, "Smaller grid" },
     { "grid_bigger", Cmd_GridBigger, "Bigger grid" },
-    { "create_world", Cmd_CreateWorld, "Create world" },
-    { "reload_world", Cmd_ReloadWorld, "Reload world model" },
+    { "import_obj", Cmd_ImportObj, "Import OBJ as meshes" },
+    { "toggle_edit_mode", Cmd_ToggleEditMode, "Object/Edit mode" },
     { "world_settings", Cmd_WorldSettings, "World settings" },
     { "toggle_darkmode", Cmd_ToggleDarkMode, "Toggle dark mode" },
     { "editor_info", Cmd_EditorInfo, "Editor info" },
@@ -294,7 +294,7 @@ static const Command commands[] =
     { "+speed", Cmd_Button, "Camera faster (hold)" }, { "-speed", Cmd_Button, nullptr },
 };
 
-// Settings, set like cvars: ed_movespeed 8. Each points at one field of editorSettings
+// Settings, set like cvars: ed_movespeed 256. Each points at one field of editorSettings
 struct Setting
 {
     const char *name;

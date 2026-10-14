@@ -12,19 +12,23 @@
 #include <string>
 #include <vector>
 
-// The prebuilt raylib has TGA loading compiled out, so decode TGAs ourselves (LoadWorldTexture).
-// Static so it can't clash with raylib's own internal copy of stb_image
+// The prebuilt raylib has TGA loading compiled out, so decode TGAs ourselves (LoadWorldTexture). PNG, JPEG
+// and BMP too, for reading texture sizes without loading them (GetGameTextureSize). Static so it can't clash
+// with raylib's own internal copy of stb_image
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
 #define STBI_ONLY_TGA
+#define STBI_ONLY_PNG
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_BMP
 #include "stb_image.h"
 
 // Distance a trace stops short of a surface, so the box never ends up exactly touching it (Quake's DIST_EPSILON)
-static const float DIST_EPSILON = 0.001f;
+static const float DIST_EPSILON = 0.03125f;
 
 // Tolerances for treating two planes as the same, and for the convexity check
 static const float NORMAL_EPSILON = 0.0001f;
-static const float PLANE_DIST_EPSILON = 0.001f;
+static const float PLANE_DIST_EPSILON = 0.03125f;
 
 // The rest of a line after its tag, without surrounding whitespace. Also drops the '\r' Windows line endings leave behind
 static std::string RestOfLine(std::istringstream &tokens)
@@ -301,47 +305,156 @@ static Model LoadWorldModel(const char *objPath, std::vector<WorldMaterial> &wor
     return model;
 }
 
-// Box around every brush in the level
-static BoundingBox ComputeBounds(const std::vector<Brush> &colliders)
+// ---------------------------------------------------------------------------------------------
+// The world, built from the level's geometry
+
+void CreateWorld(World &world)
 {
-    BoundingBox bounds = { { FLT_MAX, FLT_MAX, FLT_MAX }, { -FLT_MAX, -FLT_MAX, -FLT_MAX } };
-    for (const Brush &brush : colliders)
+    world.bounds = { { -512.0f, -64.0f, -512.0f }, { 512.0f, 256.0f, 512.0f } };  // Until it has geometry
+    InitLighting(world.lighting, world.bounds);
+    world.model = { 0 };
+    world.model.transform = MatrixIdentity();
+    world.hasGeometryBuilt = false;
+}
+
+// A diffuse texture, loaded once however many times the geometry is rebuilt. Plain white if it can't be
+static Texture CachedTexture(World &world, const std::string &path)
+{
+    auto found = world.textureCache.find(path);
+    if (found != world.textureCache.end()) return found->second;
+    Texture texture = { 0 };
+    if (path.empty() || !LoadGameTexture(path.c_str(), texture))
     {
-        for (const std::vector<Vector3> &face : brush.faces)
+        if (!path.empty()) TraceLog(LOG_WARNING, "WORLD: [%s] Couldn't load the texture, its faces will be plain white", path.c_str());
+        texture = { rlGetTextureIdDefault(), 1, 1, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+    }
+    world.textureCache[path] = texture;
+    return texture;
+}
+
+void SetWorldGeometry(World &world, const Geometry &geometry, bool full)
+{
+    CancelLightmapBake(world);
+    if (world.model.meshCount > 0 || world.model.materialCount > 0) UnloadModel(world.model);  // Its textures stay, in the cache
+    world.model = { 0 };
+    world.model.transform = MatrixIdentity();
+
+    // Every face, triangulated, in world space: one mesh per texture
+    std::map<std::string, int> materialIndex;
+    std::vector<std::string> materialPaths;
+    std::vector<MeshData> meshData;
+    BoundingBox bounds = { { FLT_MAX, FLT_MAX, FLT_MAX }, { -FLT_MAX, -FLT_MAX, -FLT_MAX } };
+    for (const GeoMesh &mesh : geometry.meshes)
+    {
+        if (mesh.shape < 0 || mesh.shape >= (int)geometry.shapes.size()) continue;
+        const GeoShape &shape = geometry.shapes[mesh.shape];
+        Matrix transform = GeoMeshTransform(mesh);
+        for (const GeoFace &face : shape.faces)
         {
-            for (Vector3 p : face)
+            std::vector<Vector3> points = GeoFacePoints(shape, face, transform);
+            if (points.size() < 3) continue;
+            Vector3 normal = GeoPolygonNormal(points);
+
+            auto found = materialIndex.find(face.material);
+            if (found == materialIndex.end())
+            {
+                found = materialIndex.emplace(face.material, (int)materialPaths.size()).first;
+                materialPaths.push_back(face.material);
+                meshData.emplace_back();
+            }
+            Texture texture = CachedTexture(world, face.material);
+            MeshData &data = meshData[found->second];
+            for (int index : GeoTriangulate(points, normal))
+            {
+                Vector3 p = points[index];
+                Vector2 uv = GeoTextureCoord(face, p, texture.width, texture.height);
+                data.vertices.insert(data.vertices.end(), { p.x, p.y, p.z });
+                data.texcoords.insert(data.texcoords.end(), { uv.x, uv.y });
+                data.normals.insert(data.normals.end(), { normal.x, normal.y, normal.z });
+            }
+            for (Vector3 p : points)
             {
                 bounds.min = Vector3Min(bounds.min, p);
                 bounds.max = Vector3Max(bounds.max, p);
             }
         }
     }
-    return bounds;
-}
 
-bool LoadWorld(World &world, const char *objPath, float scale)
-{
-    world.colliders = ComputeColliders(objPath, scale);
-    if (world.colliders.empty()) return false;
-    world.bounds = ComputeBounds(world.colliders);
+    Model &model = world.model;
+    model.materialCount = (int)materialPaths.size();
+    if (model.materialCount > 0)
+    {
+        model.materials = (Material *)RL_CALLOC(model.materialCount, sizeof(Material));
+        model.meshes = (Mesh *)RL_CALLOC(model.materialCount, sizeof(Mesh));
+        model.meshMaterial = (int *)RL_CALLOC(model.materialCount, sizeof(int));
+    }
+    MaterialLibrary library = LoadMaterialLibrary();
+    world.materials.clear();
+    for (int i = 0; i < model.materialCount; i++)
+    {
+        model.materials[i] = LoadMaterialDefault();
+        model.materials[i].shader = world.lighting.shader;
+        model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture = CachedTexture(world, materialPaths[i]);
+        if (!meshData[i].vertices.empty())
+        {
+            model.meshMaterial[model.meshCount] = i;
+            model.meshes[model.meshCount++] = UploadMeshData(meshData[i]);
+        }
 
-    world.model = LoadWorldModel(objPath, world.materials);
-    world.model.transform = MatrixScale(scale, scale, scale);
-    ApplyMaterials(world, LoadMaterialLibrary());
+        auto cached = world.materialCache.find(materialPaths[i]);
+        if (cached == world.materialCache.end()) cached = world.materialCache.emplace(materialPaths[i], LoadWorldMaterial(materialPaths[i], library)).first;
+        world.materials.push_back(cached->second);
+    }
 
-    InitLighting(world.lighting, world.bounds);
-    for (int i = 0; i < world.model.materialCount; i++) world.model.materials[i].shader = world.lighting.shader;
+    // Bounds, for the sun's shadow map to cover. A level without geometry keeps the default
+    if (bounds.min.x <= bounds.max.x)
+    {
+        world.bounds = bounds;
+        world.lighting.bounds = bounds;
+    }
 
-    // Where every part of the world is in the lightmap. Quick, and the same every time, so a saved lightmap fits
+    // Collision and the lightmap layout, only for full builds
+    world.colliders.clear();
+    world.bounceBaked = false;
+    world.lighting.lightmapTexture = 0;
+    world.hasGeometryBuilt = full;
+    if (!full) return;
+    for (const GeoMesh &mesh : geometry.meshes)
+    {
+        if (mesh.shape < 0 || mesh.shape >= (int)geometry.shapes.size()) continue;
+        Matrix transform = GeoMeshTransform(mesh);
+        for (std::vector<std::vector<Vector3>> &piece : GeoConvexPieces(geometry.shapes[mesh.shape]))
+        {
+            for (std::vector<Vector3> &face : piece) for (Vector3 &p : face) p = Vector3Transform(p, transform);
+            world.colliders.push_back(MakeConvexBrush(piece));
+        }
+    }
     BuildLightmapLayout(world);
-    return true;
+
+    // Laid out the same as before (the geometry didn't change): the lightmap there is still fits
+    if (world.lightmapKey != 0 && world.lightmap.id != 0)
+    {
+        world.bounceBaked = true;
+        world.lighting.lightmapTexture = world.lightmap.id;
+    }
+    TraceLog(LOG_INFO, "WORLD: Built %d meshes into %d triangles, %d collision pieces", (int)geometry.meshes.size(),
+             model.meshCount > 0 ? (int)world.bounceTriangles.size() : 0, (int)world.colliders.size());
 }
 
 static void UnloadWorldModel(Model &model, std::vector<WorldMaterial> &materials);
 
 void UnloadWorld(World &world)
 {
-    UnloadWorldModel(world.model, world.materials);
+    if (world.model.meshCount > 0 || world.model.materialCount > 0) UnloadModel(world.model);
+    world.model = { 0 };
+    for (auto &[path, texture] : world.textureCache)
+    {
+        if (texture.id != rlGetTextureIdDefault()) UnloadTexture(texture);
+    }
+    world.textureCache.clear();
+    for (auto &[path, material] : world.materialCache) UnloadWorldMaterial(material);
+    world.materialCache.clear();
+    world.materials.clear();
     for (PropModel &propModel : world.propModels)
     {
         if (propModel.model.meshCount > 0) UnloadWorldModel(propModel.model, propModel.materials);
@@ -362,6 +475,7 @@ void UnloadWorld(World &world)
     world.lightmapTexels.clear();
     world.lightmapKey = 0;
     world.bounceBaked = false;
+    world.hasGeometryBuilt = false;
 }
 
 void RenderWorldShadows(World &world)
@@ -416,7 +530,13 @@ static void ApplyMaterialList(std::vector<WorldMaterial> &materials, const Mater
 
 void ApplyMaterials(World &world, const MaterialLibrary &library)
 {
-    ApplyMaterialList(world.materials, library);
+    // The world's materials live in its cache; the model's list is copies of them
+    std::vector<WorldMaterial> cached;
+    for (auto &[path, material] : world.materialCache) cached.push_back(material);
+    ApplyMaterialList(cached, library);
+    for (const WorldMaterial &material : cached) world.materialCache[material.diffusePath] = material;
+    for (WorldMaterial &material : world.materials) material = world.materialCache[material.diffusePath];
+
     for (PropModel &propModel : world.propModels) ApplyMaterialList(propModel.materials, library);
 }
 
@@ -763,69 +883,9 @@ static Brush BuildBrush(const std::vector<std::vector<Vector3>> &faces, int obje
     return brush;
 }
 
-std::vector<Brush> ComputeColliders(const char *objPath, float scale)
+Brush MakeConvexBrush(const std::vector<std::vector<Vector3>> &faces)
 {
-    std::vector<Brush> brushes;
-
-    char *text = LoadFileText(objPath);
-    if (text == nullptr) return brushes;
-    std::istringstream file(text);
-    UnloadFileText(text);
-
-    std::vector<Vector3> vertices;
-    std::vector<std::vector<std::vector<int>>> objects;  // Faces (as vertex indices) of each object
-
-    std::string line;
-    while (std::getline(file, line))
-    {
-        std::istringstream tokens(line);
-        std::string tag;
-        tokens >> tag;
-
-        if (tag == "v")
-        {
-            Vector3 v = { 0 };
-            tokens >> v.x >> v.y >> v.z;
-            vertices.push_back(Vector3Scale(v, scale));
-        }
-        else if (tag == "o" || tag == "g")
-        {
-            objects.emplace_back();
-        }
-        else if (tag == "f")
-        {
-            if (objects.empty()) objects.emplace_back();
-
-            // Face entries look like "v", "v/vt", "v//vn" or "v/vt/vn"; only the position index matters
-            std::vector<int> face;
-            std::string entry;
-            while (tokens >> entry)
-            {
-                int index = std::stoi(entry);
-                face.push_back((index < 0) ? (int)vertices.size() + index : index - 1);
-            }
-            objects.back().push_back(face);
-        }
-    }
-
-    for (size_t i = 0; i < objects.size(); i++)
-    {
-        std::vector<std::vector<Vector3>> faces;
-        for (const std::vector<int> &indices : objects[i])
-        {
-            std::vector<Vector3> face;
-            for (int index : indices)
-            {
-                if (index >= 0 && index < (int)vertices.size()) face.push_back(vertices[index]);
-            }
-            if (face.size() >= 3) faces.push_back(face);
-        }
-
-        if (!faces.empty()) brushes.push_back(BuildBrush(faces, (int)i));
-    }
-
-    TraceLog(LOG_INFO, "WORLD: [%s] Computed %d collision brushes", objPath, (int)brushes.size());
-    return brushes;
+    return BuildBrush(faces, -1);
 }
 
 // Clips a moving box against one convex brush (Quake 2's CM_ClipBoxToBrush)
@@ -941,4 +1001,15 @@ Brush MakeBoxBrush(BoundingBox box)
 bool LoadGameTexture(const char *path, Texture &texture)
 {
     return LoadWorldTexture(path, GetDirectoryPath(path), texture);
+}
+
+bool GetGameTextureSize(const char *path, int &width, int &height)
+{
+    int fileSize = 0;
+    unsigned char *fileData = LoadFileData(path, &fileSize);  // Through the game data
+    if (fileData == nullptr) return false;
+    int channels;
+    bool found = stbi_info_from_memory(fileData, fileSize, &width, &height, &channels) != 0;
+    UnloadFileData(fileData);
+    return found;
 }

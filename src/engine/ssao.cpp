@@ -6,7 +6,7 @@
 
 static const int SAMPLE_COUNT = 16;       // Must match the shader
 
-static const float BIAS = 0.025f;         // Stops flat surfaces occluding themselves
+static const float BIAS = 0.8f;           // Stops flat surfaces occluding themselves
 
 // Pass 1: what the world mesh looks like from the camera, as view space normals and distance
 static const char *GBUFFER_VS = R"(
