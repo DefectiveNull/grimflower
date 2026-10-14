@@ -95,7 +95,7 @@ static const BindAction BIND_ACTIONS[] =
 };
 static const int BIND_ACTION_COUNT = (int)(sizeof(BIND_ACTIONS)/sizeof(BIND_ACTIONS[0]));
 
-static int optionsTab = 0;          // 0 General, 1 Input
+static int optionsTab = 0;          // 0 Video, 1 Audio, 2 Game, 3 Input
 static int capturingAction = -1;    // Index into BIND_ACTIONS waiting for a key, or -1
 static bool captureStarted = false; // The click that started capturing has been let go of, so mouse buttons can be bound
 static bool settingsChanged = false;
@@ -115,14 +115,10 @@ bool IsOptionsMenuCapturingKey()
     return capturingAction >= 0;
 }
 
-static float DrawGeneralOptions(float x, float y)
+static float DrawVideoOptions(float x, float y)
 {
     const float controlX = x + LABEL_WIDTH + 20.0f;
     const float controlWidth = OPTIONS_WIDTH - LABEL_WIDTH - 20.0f;
-
-    // Video
-    GuiLine({ x, y, OPTIONS_WIDTH, SECTION_HEIGHT }, "Video");
-    y += SECTION_HEIGHT + SECTION_GAP;
 
     std::string resolutionNames;
     for (size_t i = 0; i < resolutions.size(); i++)
@@ -149,9 +145,13 @@ static float DrawGeneralOptions(float x, float y)
         settingsChanged = true;
     }
 
-    // Audio
-    GuiLine({ x, y, OPTIONS_WIDTH, SECTION_HEIGHT }, "Audio");
-    y += SECTION_HEIGHT + SECTION_GAP;
+    return y;
+}
+
+static float DrawAudioOptions(float x, float y)
+{
+    const float controlX = x + LABEL_WIDTH + 20.0f;
+    const float controlWidth = OPTIONS_WIDTH - LABEL_WIDTH - 20.0f;
 
     // The master volume, then each channel's on top of it. UpdateAudio applies them
     struct VolumeRow { const char *label; Cvar *cvar; };
@@ -171,9 +171,13 @@ static float DrawGeneralOptions(float x, float y)
         }
     }
 
-    // Game
-    GuiLine({ x, y, OPTIONS_WIDTH, SECTION_HEIGHT }, "Game");
-    y += SECTION_HEIGHT + SECTION_GAP;
+    return y;
+}
+
+static float DrawGameOptions(float x, float y)
+{
+    const float controlX = x + LABEL_WIDTH + 20.0f;
+    const float controlWidth = OPTIONS_WIDTH - LABEL_WIDTH - 20.0f;
 
     float lookSpeed = sensitivity.value;
     GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, "Mouse sensitivity");
@@ -303,9 +307,11 @@ bool DrawOptionsMenu()
 
     DrawMenuBackground("OPTIONS", y - 70);
 
-    // Tabs. Switching while waiting for a key cancels it
+    // Tabs, spanning the panel's width. Switching while waiting for a key cancels it
+    const int tabCount = 4;
+    float tabGap = (float)GuiGetStyle(TOGGLE, GROUP_PADDING);
     int tab = optionsTab;
-    GuiToggleGroup({ x, y, (OPTIONS_WIDTH - 4.0f)/2.0f, TAB_HEIGHT }, "General;Input", &tab);
+    GuiToggleGroup({ x, y, (OPTIONS_WIDTH - (tabCount - 1)*tabGap)/tabCount, TAB_HEIGHT }, "Video;Audio;Game;Input", &tab);
     if (tab != optionsTab)
     {
         optionsTab = tab;
@@ -313,8 +319,13 @@ bool DrawOptionsMenu()
     }
     float contentY = y + TAB_HEIGHT + ROW_GAP;
 
-    if (optionsTab == 0) DrawGeneralOptions(x, contentY);
-    else DrawInputOptions(x, contentY);
+    switch (optionsTab)
+    {
+        case 0: DrawVideoOptions(x, contentY); break;
+        case 1: DrawAudioOptions(x, contentY); break;
+        case 2: DrawGameOptions(x, contentY); break;
+        default: DrawInputOptions(x, contentY); break;
+    }
     SaveSettingsWhenReady(false);
 
     float backY = contentY + inputHeight + 20.0f;

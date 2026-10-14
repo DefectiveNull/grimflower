@@ -47,6 +47,8 @@ if exist sound set ASSETS=%ASSETS% sound
 if exist music set ASSETS=%ASSETS% music
 rem Bounce lightmaps the editor saved next to the levels
 if exist maps\*_lightmap.png set ASSETS=%ASSETS% maps\*_lightmap.png
+rem Materials (bump, specular and gloss maps for each texture), written by the editor's Materials tab
+if exist .materials set ASSETS=%ASSETS% .materials
 "%SystemRoot%\System32\tar.exe" -a -c -f build\gamedata.zip %ASSETS%
 if errorlevel 1 exit /b 1
 

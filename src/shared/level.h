@@ -17,6 +17,8 @@ struct LevelInfo
     std::string saved;     // UTC, updated on every save
     std::string skybox;    // Environment map for the sky, as a game data path. Empty uses the plain background
     std::string lightmapKey;  // Fingerprint of what maps/<level>_lightmap.png was baked from, see LightmapKey. Written by the editor
+    float luxelsPerUnit = 2.0f;   // Bounce lightmap resolution: texels (luxels) per world unit. 2 is 16 Quake units each, like Quake
+    bool lightmapFiltered = true; // Smooth (bilinear) lightmap, or blocky (nearest) luxels like software Quake
     int entityCount;       // How many entities the file has. Updated on every save
 };
 
@@ -49,3 +51,4 @@ float EntityFloat(const LevelEntity &entity, const char *key, float fallback);
 Vector3 EntityVector(const LevelEntity &entity, const char *key, Vector3 fallback);
 Color EntityColor(const LevelEntity &entity, const char *key, Color fallback);
 std::string EntityText(const LevelEntity &entity, const char *key, const std::string &fallback);
+bool EntityBool(const LevelEntity &entity, const char *key, bool fallback);  // true/false, or a number: 0 is false

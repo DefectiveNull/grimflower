@@ -1,4 +1,5 @@
 #include "entities.h"
+#include "bounce.h"
 #include "level.h"
 #include "levellights.h"
 #include "lighting.h"
@@ -69,6 +70,37 @@ static void SpawnDoor(const LevelEntity &entity, const EntityClass &entityClass,
             context.world.lighting.shader);
 }
 
+static void SpawnSoundscape(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    std::string sound = EntityParamText(entity, entityClass, "sound");
+    if (sound.empty()) TraceLog(LOG_WARNING, "LEVEL: trigger_soundscape has no sound to play");
+    AddSoundscape(context.volumes, VolumeBox(entity, entityClass), entity.origin, sound.c_str(),
+                  EntityParamNumber(entity, entityClass, "volume"), EntityParamNumber(entity, entityClass, "fade"));
+}
+
+// A model placed in the level. Static ones are solid and part of the bounce bake, there for good; others
+// are decoration the player walks through, which game code can move later
+static void SpawnProp(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    std::string path = EntityParamText(entity, entityClass, "model");
+    if (path.empty())
+    {
+        TraceLog(LOG_WARNING, "LEVEL: prop_model has no model");
+        return;
+    }
+    int model = LoadPropModel(context.world, path);
+    if (model < 0) return;  // LoadPropModel said why
+    AddProp(context.world, model, entity.origin, EntityParamNumber(entity, entityClass, "angle"),
+            EntityParamNumber(entity, entityClass, "scale"), EntityParamBool(entity, entityClass, "static"));
+}
+
+// A spot the level is captured from for reflections, once when it loads (CaptureCubemaps in main.cpp)
+static void SpawnCubemap(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    int size = (int)Clamp(EntityParamNumber(entity, entityClass, "size"), 16.0f, 1024.0f);
+    AddCubemap(context.world, entity.origin, size);
+}
+
 // sun and light have no spawn function: ApplyLevelLights (src/shared/levellights.cpp) sets them up, the
 // same way the editor previews them. These read their parameters with the defaults from the table below
 
@@ -116,7 +148,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         nullptr,  // ApplyLevelLights
     },
     {
-        "light", "Point light with a color and a radius. The first 4 cast shadows",
+        "light", "Point light with a color and a radius. Up to 32 light the level, and all of them cast shadows",
         {
             { "color", "color", "255 255 255", "Light color", 0.0f, 0.0f },
             { "intensity", "number", "1", "Brightness right next to the light", 0.0f, 10.0f },
@@ -124,6 +156,14 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         },
         { "sphere", { 0 }, { 0 }, 0.2f, WHITE, "color", 1.0f },
         nullptr,  // ApplyLevelLights
+    },
+    {
+        "env_cubemap", "Captures what the level looks like from here, for materials with a Reflection. Each surface reflects the nearest one. Captured once when the level loads, with the lights where they start",
+        {
+            { "size", "number", "128", "Pixels along each side of its six images: bigger is sharper", 16.0f, 512.0f },
+        },
+        { "sphere", { 0 }, { 0 }, 0.3f, { 200, 220, 235, 255 }, nullptr, 1.0f },
+        SpawnCubemap,
     },
 
     // Volumes: a box from mins to maxs around the origin, doing what its type says over the whole box (volumes.cpp)
@@ -169,6 +209,31 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         { "volume", { 0 }, { 0 }, 0.0f, { 140, 220, 90, 255 }, nullptr, 0.0f },
         SpawnDoor,
     },
+    {
+        "trigger_soundscape", "Loops a sound while the player is inside, fading out towards the sides, and sounding like it comes from its origin",
+        {
+            { "mins", "vector", "-4 0 -4", "Corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "maxs", "vector", "4 3 4", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
+            { "sound", "text", "", "Sound to loop, as a game data path, like sound/ambient/wind.ogg", 0.0f, 0.0f },
+            { "volume", "number", "1", "How loud it is well inside the box, 0 to 1", 0.0f, 1.0f },
+            { "fade", "number", "1", "World units in from the sides over which it fades in, so walking out fades it away", 0.0f, 8.0f },
+        },
+        { "volume", { 0 }, { 0 }, 0.0f, { 190, 110, 230, 255 }, nullptr, 0.0f },
+        SpawnSoundscape,
+    },
+
+    // Props
+    {
+        "prop_model", "A model placed in the level, like a crate or a lamp. Static ones are solid; others are decoration the player walks through",
+        {
+            { "model", "text", "", "The .obj to show, as a game data path, like model/crate.obj. Its .mtl textures and .materials apply", 0.0f, 0.0f },
+            { "angle", "angle", "0", "Degrees around the vertical axis", 0.0f, 360.0f },
+            { "scale", "number", "0.03125", "From the model's units to world units: 0.03125 for models made in Quake units, like the world", 0.0f, 2.0f },
+            { "static", "bool", "1", "Part of the level for good: the player collides with the box around it, and it's in the bounce bake. Off: decoration the player walks through", 0.0f, 0.0f },
+        },
+        { "box", { -0.25f, -0.25f, -0.25f }, { 0.25f, 0.25f, 0.25f }, 0.0f, { 120, 200, 255, 255 }, nullptr, 0.0f },
+        SpawnProp,
+    },
 };
 
 const std::vector<EntityClass> &GetEntityClasses()
@@ -187,6 +252,7 @@ const EntityClass *FindEntityClass(const std::string &classname)
 
 bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volumes)
 {
+    SetLightmapSettings(world, level.info.luxelsPerUnit, level.info.lightmapFiltered);  // Before loading, so the lightmap is laid out once
     if (!LoadWorld(world, level.worldModel.c_str(), level.worldScale)) return false;
 
     // Each entity type spawns itself, see the table above
@@ -217,6 +283,11 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
     {
         TraceLog(LOG_WARNING, "LEVEL: More than one sun, using the first");
     }
+
+    // Static props have their part of the bounce lightmap, so it's laid out again with them
+    bool hasStaticProps = false;
+    for (const WorldProp &prop : world.props) hasStaticProps = hasStaticProps || prop.isStatic;
+    if (hasStaticProps) BuildLightmapLayout(world);
 
     if (!context.hasPlayerStart)
     {
@@ -290,6 +361,12 @@ std::string EntityParamText(const LevelEntity &entity, const EntityClass &entity
     return EntityText(entity, name, param ? param->defaultValue : "");
 }
 
+bool EntityParamBool(const LevelEntity &entity, const EntityClass &entityClass, const char *name)
+{
+    const EntityParam *param = FindParam(entityClass, name);
+    return EntityBool(entity, name, param ? atof(param->defaultValue) != 0.0 : false);
+}
+
 // ---------------------------------------------------------------------------------------------
 // entitylist.txt
 
@@ -304,7 +381,7 @@ bool ExportEntityList(const char *path)
         "//     marker box <min x y z> <max x y z>   or   marker sphere <radius>   or   marker volume (its own mins and maxs)\n"
         "//     color <r g b>   or   color param <color parameter>\n"
         "//     placement <how far off a surface new ones go>\n"
-        "//     param <name> <type> \"<default>\" \"<description>\" [<min> <max>]   (types: number angle direction color radius vector text)\n"
+        "//     param <name> <type> \"<default>\" \"<description>\" [<min> <max>]   (types: number angle direction color radius vector text bool)\n"
         "//         min and max are the range of the editor's slider, for single numbers\n"
         "// end\n";
 

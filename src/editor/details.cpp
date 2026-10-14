@@ -196,6 +196,14 @@ static void DrawEntityDetails(EditorState &editor, Rectangle panel, float y)
                 else setParameter(name, nlohmann::ordered_json::array({ v[0], v[1], v[2] }), false);
             }
         }
+        else if (type == "bool")
+        {
+            // A checkbox, saved as true or false
+            bool checked = EntityBoolOrDefault(entity, name.c_str(), false);
+            bool clicked = checked;
+            GuiCheckBox({ fieldX, y + 4, 18, 18 }, checked ? "On" : "Off", &clicked);
+            if (clicked != checked) setParameter(name, clicked, false);
+        }
         else if (type == "text")
         {
             // Shown and typed without the quotes JSON would put around it
@@ -272,33 +280,75 @@ static void DrawLevelDetails(EditorState &editor, Rectangle panel, float y)
     GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, TextFormat("%g", level.worldScale));
     y += ROW_HEIGHT + 6;
 
-    // Entity list, click one to select it. Scrolls with the mouse wheel
+    // Create Entity sits at the bottom of the panel, so work out its height first: the placed entities
+    // list gets the room between
+    const std::vector<EntityClassInfo> &classes = GetEntityClassList();
+    const int COLUMNS = 2;
+    int classRows = ((int)classes.size() + COLUMNS - 1)/COLUMNS;
+    float createHeight = 26 + 22 + (classes.empty() ? 40 : classRows*ROW_HEIGHT) + 40;
+    float createY = panel.y + panel.height - PADDING - createHeight;
+
+    // Placed entities, click one to select it. Scrolls with the mouse wheel
     GuiLine({ x, y, width, 20 }, TextFormat("Entities (%d)", (int)level.entities.size()));
     y += 26;
 
     if (level.entities.empty())
     {
-        GuiLabel({ x, y, width, ROW_HEIGHT }, "None yet, see Edit > Create Entity");
+        GuiLabel({ x, y, width, ROW_HEIGHT }, "None yet, create one below");
+    }
+    else
+    {
+        int visible = (int)((createY - 26 - y)/ROW_HEIGHT);  // Leaving room for the scroll hint under it
+        if (visible < 1) visible = 1;
+        int maxScroll = (int)level.entities.size() - visible;
+        if (maxScroll < 0) maxScroll = 0;
+        Rectangle listArea = { x, y, width, visible*ROW_HEIGHT };
+        if (CheckCollisionPointRec(GetMousePosition(), listArea) && !GuiIsLocked()) listScroll -= (int)GetMouseWheelMove();
+        if (listScroll > maxScroll) listScroll = maxScroll;
+        if (listScroll < 0) listScroll = 0;
+
+        int alignment = GuiGetStyle(BUTTON, TEXT_ALIGNMENT);
+        GuiSetStyle(BUTTON, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
+        for (int i = listScroll; i < (int)level.entities.size() && i < listScroll + visible; i++)
+        {
+            const LevelEntity &entity = level.entities[i];
+            const char *text = TextFormat("  %d. %s  (%.1f %.1f %.1f)", i + 1, entity.classname.c_str(), entity.origin.x, entity.origin.y, entity.origin.z);
+            if (GuiButton({ x, y, width, ROW_HEIGHT - 4 }, text)) editor.selected = i;
+            y += ROW_HEIGHT;
+        }
+        GuiSetStyle(BUTTON, TEXT_ALIGNMENT, alignment);
+        if (maxScroll > 0) DrawUIText(TextFormat("%d-%d of %d, scroll for more", listScroll + 1, listScroll + visible, (int)level.entities.size()),
+                                      x, y, 14, UIMutedTextColor());
+    }
+
+    // Every entity type the game has, from entitylist.txt. Clicking one places it where the middle of the
+    // view meets the level, and selects it. The one under the mouse is described below
+    y = createY;
+    GuiLine({ x, y, width, 20 }, "Create Entity");
+    y += 26;
+    if (classes.empty())
+    {
+        DrawUITextWrapped("No entity types: entitylist.txt is missing or empty. Build the game with build.bat to write it",
+                          x, y, width, 14, UIMutedTextColor());
         return;
     }
+    DrawUIText("Placed where the middle of the view meets the level", x, y, 14, UIMutedTextColor());
+    y += 22;
 
-    int visible = (int)((panel.y + panel.height - PADDING - y)/ROW_HEIGHT);
-    int maxScroll = (int)level.entities.size() - visible;
-    if (maxScroll < 0) maxScroll = 0;
-    if (CheckCollisionPointRec(GetMousePosition(), panel) && !GuiIsLocked()) listScroll -= (int)GetMouseWheelMove();
-    if (listScroll > maxScroll) listScroll = maxScroll;
-    if (listScroll < 0) listScroll = 0;
-
-    int alignment = GuiGetStyle(BUTTON, TEXT_ALIGNMENT);
-    GuiSetStyle(BUTTON, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
-    for (int i = listScroll; i < (int)level.entities.size() && i < listScroll + visible; i++)
+    const char *hovered = nullptr;
+    float buttonWidth = (width - (COLUMNS - 1)*6)/COLUMNS;
+    for (size_t i = 0; i < classes.size(); i++)
     {
-        const LevelEntity &entity = level.entities[i];
-        const char *text = TextFormat("  %d. %s  (%.1f %.1f %.1f)", i + 1, entity.classname.c_str(), entity.origin.x, entity.origin.y, entity.origin.z);
-        if (GuiButton({ x, y, width, ROW_HEIGHT - 4 }, text)) editor.selected = i;
-        y += ROW_HEIGHT;
+        Rectangle button = { x + (i%COLUMNS)*(buttonWidth + 6), y + (i/COLUMNS)*ROW_HEIGHT, buttonWidth, ROW_HEIGHT - 4 };
+        if (CheckCollisionPointRec(GetMousePosition(), button)) hovered = classes[i].description.c_str();
+        if (GuiButton(button, classes[i].classname.c_str()))
+        {
+            CreateEntity(editor, classes[i].classname.c_str());
+            return;  // It's selected now, so the panel shows its details from the next frame
+        }
     }
-    GuiSetStyle(BUTTON, TEXT_ALIGNMENT, alignment);
+    y += classRows*ROW_HEIGHT + 4;
+    if (hovered) DrawUITextWrapped(hovered, x, y, width, 14, UIMutedTextColor());
 }
 
 void DrawDetailsPanel(EditorState &editor)
@@ -312,10 +362,19 @@ void DrawDetailsPanel(EditorState &editor)
     }
 
     Rectangle panel = PanelRect();
-    GuiPanel(panel, "Details");
+    GuiPanel(panel, nullptr);
 
-    float y = panel.y + HEADER_HEIGHT + PADDING;
-    if (editor.selected >= 0) DrawEntityDetails(editor, panel, y);
+    // Two tabs: Details (the level, or the selected entity) and Materials. Selecting an entity shows its details
+    static int tab = 0;
+    static int lastSelected = -1;
+    if (editor.selected >= 0 && editor.selected != lastSelected) tab = 0;
+    lastSelected = editor.selected;
+    float tabWidth = (panel.width - 2*PADDING - 4)/2.0f;
+    GuiToggleGroup({ panel.x + PADDING, panel.y + 6, tabWidth, HEADER_HEIGHT }, "Details;Materials", &tab);
+
+    float y = panel.y + HEADER_HEIGHT + 6 + PADDING;
+    if (tab == 1) DrawMaterialsPanel(editor, { panel.x, y, panel.width, panel.y + panel.height - PADDING - y });
+    else if (editor.selected >= 0) DrawEntityDetails(editor, panel, y);
     else DrawLevelDetails(editor, panel, y);
 
     if (activeField >= 0) editor.textEditing = true;

@@ -32,13 +32,13 @@ enum MenuId
     MENU_NONE,
     MENU_FILE,
     MENU_EDIT,
+    MENU_VIEW,
     MENU_ABOUT
 };
 
 enum DialogId
 {
     DIALOG_NONE,
-    DIALOG_CREATE_ENTITY,
     DIALOG_CREATE_WORLD,
     DIALOG_WORLD_SETTINGS,
     DIALOG_PREFERENCES,
@@ -100,6 +100,11 @@ struct EditorState
     Vector3 dragPlaneNormal;
     Vector3 dragOffset;       // ...plus this, so it doesn't jump to the cursor when the drag starts
 
+    // Or resizing a volume by dragging one of the handles in the middle of its faces. The face slides along
+    // its own axis only, landing on the grid
+    int resizeFace;           // -1 when moving instead. 0-5: -x, +x, -y, +y, -z, +z
+    float resizeOffset;       // The face's position minus where along the axis it was grabbed
+
     // "Point At": the next click on the level aims an entity's direction parameter at the clicked spot
     bool pointing;
     int pointEntity;
@@ -125,6 +130,7 @@ void RunAction(EditorState &editor, PendingAction action);
 bool SaveCurrentLevel(EditorState &editor, bool askForPath);               // askForPath: Save As
 bool CreateWorld(EditorState &editor, const std::string &model, float scale);
 void CreateEntity(EditorState &editor, const char *classname);
+void ShowCreateEntityList(EditorState &editor);                 // Deselects, so the details panel shows the list of entity types
 void DeleteSelectedEntity(EditorState &editor);
 void RotateSelectedEntity(EditorState &editor, float degrees);  // Positive turns left, seen from above
 bool ReloadWorld(EditorState &editor);                           // Reads the world model's .obj from disk again
@@ -168,3 +174,6 @@ void DrawDialog(EditorState &editor);
 
 // details.cpp
 void DrawDetailsPanel(EditorState &editor);
+
+// materialspanel.cpp: the details panel's Materials tab, in the given area
+void DrawMaterialsPanel(EditorState &editor, Rectangle area);

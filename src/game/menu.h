@@ -13,8 +13,8 @@ enum MenuAction
 MenuAction DrawMainMenu(const char *title);
 MenuAction DrawPauseMenu();
 
-// Two tabs: General (video, audio and game settings, applied as soon as they change) and Input
-// (rebinding keys). Changes are saved to config.cfg. Returns true when Back is clicked
+// Four tabs: Video, Audio and Game (settings, applied as soon as they change) and Input (rebinding
+// keys). Changes are saved to config.cfg. Returns true when Back is clicked
 bool DrawOptionsMenu();
 
 // True while the Input tab waits for a key, so Esc cancels that instead of closing the options

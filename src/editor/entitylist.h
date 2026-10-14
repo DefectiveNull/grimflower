@@ -58,6 +58,8 @@ nlohmann::ordered_json DefaultParamValue(const EntityParamInfo &param);
 float EntityNumberOrDefault(const LevelEntity &entity, const char *name, float fallback);
 Vector3 EntityVectorOrDefault(const LevelEntity &entity, const char *name, Vector3 fallback);
 Color EntityColorOrDefault(const LevelEntity &entity, const char *name, Color fallback);
+bool EntityBoolOrDefault(const LevelEntity &entity, const char *name, bool fallback);
+std::string EntityTextOrDefault(const LevelEntity &entity, const char *name, const std::string &fallback);
 
 // The same, for ApplyLevelLights (src/shared/levellights.h)
 const EntityParamReader &GetEntityListParamReader();

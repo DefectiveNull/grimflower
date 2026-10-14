@@ -4,21 +4,24 @@ Known gaps and loose ends, collected while building the game and the editor. Sec
 
 ## Game
 
-- [X] **Skybox**: levels store `info.skybox`, but nothing draws it yet. The game only logs that it's set.
-- [X] **Map selection**: the `map <name>` console command loads `maps/<name>.json`, also from the command line as `game.exe +map <name>`. Play on the main menu still loads `maps/dev.json`, and there's no level picker yet.
-- [X] **Options aren't saved**: the options are now cvars (`vid_width`, `vid_height`, `vid_fullscreen`, `volume`, `sensitivity`, `m_invert`), saved to `config.cfg` whenever they change and loaded at startup. The options menu also has an Input tab for rebinding keys, saved the same way.
 - [ ] **Sounds**: the audio system is in (`src/engine/audio.cpp`), with a world and a music channel, each with its own volume in the options, and the `play` and `music` console commands. There are no sound files yet, and nothing in the game plays any: footsteps, jumping, landing, and music per level are next.
-- [X] **Multiple textures per map**: the world model is loaded by our own OBJ reader (`LoadWorldModel` in `src/shared/world.cpp`), one mesh per `usemtl` material, reading the `.mtl` and textures through the game data so it works from `gamedata.zip` too.
-- [ ] **Sun shadow resolution**: one 2048×2048 shadow map covers the whole level, so big maps will get blocky shadows. Fit it to the area around the player, or use cascades.
-- [ ] **Point light shadows**: only the first 4 lights cast shadows (`MAX_SHADOW_LIGHTS`). Raising it also means changing the matching number in the shader in `lighting.cpp`.
 - [ ] **Cvars are numbers only**: string cvars would be needed for things like a map name.
-- [X] Separate the rendering and engine specific code to a new folder `/engine` for better organization.
-- [X] Add Ladders, Doors and level change triggers: `func_water`, `func_ladder` and `trigger_changelevel` are volumes, boxes that do what their entity type says while the player is inside them (`src/game/volumes.cpp`). `func_door` is a solid textured box that slides open when walked into. Their bounds are typed in the editor, and they move like other entities.
-- [X] Add a Crouching mechanic: hold Ctrl (`+duck`) for a half-height hull at a third of the speed, standing back up once there's room.
-- [X] Add a swimming mechanic: waist deep in a water volume, the player swims where they look, jump and crouch go up and down, and jump at the surface climbs out.
-- [X] Test SSAO and see how well it performs: in, on the world mesh only (`src/engine/ssao.cpp`, cvars `r_ssao`, `r_ssao_radius` and `r_ssao_direct`). On a GTX 1050 Ti it costs about 0.6-0.8 ms a frame at 1280x720 and 1.2-2.0 ms at 1920x1080 in the test levels, and it darkens ambient light plus half of the direct light by default (`r_ssao_direct 0.5`), since both levels have very little ambient.
-= [ ] Test an alternative lighting route with lightmapping and the embree library
-- [X] Test a simplified bounce lighting hack and see how it looks/performs: in, for the sun only (`src/engine/bounce.cpp`, cvars `r_bounce` and `r_bounce_scale`). One bounce, gathered from 26 directions per texel of a lightmap at 2 texels per world unit, baked on a background thread. The editor re-bakes when the sun changes and saves `maps/<level>_lightmap.png` with the level, plus a fingerprint of the world, its textures and the sun (`info.lightmapKey`); the game loads that instead of baking while it still matches, and re-bakes in the background when it doesn't, like the editor does after a world model hot reload. On a GTX 1050 Ti the dev level bakes in 1.3 s without blocking anything, loads its saved lightmap in 6 ms, and draws no slower.
+- [X] Move the entity list into the details panel: with nothing selected, the details panel lists the level's entities, then a Create Entity section with a button per entity type (described when hovered). The Create Entity dialog is gone; Edit > Create Entity and `create_entity` deselect so the list shows.
+- [X] add a "view" submenu that lets you hide and shot volumes among other things: View menu with Grid, Entity Labels, Point Entities, Volumes and Collision Brushes, each On/Off and saved in editor.cfg. Hidden entities can't be clicked in the view, but can still be picked from the details panel.
+- [X] Add a material browser tab to the details panel: the Materials tab lists every texture in textures/ by subfolder, and gives each a bump map, specular map and gloss map (pre-PBR, like Source), saved to `.materials` and used by the game.
+- [X] add a generic static prop entity as well as a generic soundscape trigger volume: `prop_model` shows any .obj (with its .mtl textures and .materials), casts shadows, and with `static` on is solid (its bounding box). `trigger_soundscape` loops a sound inside its box, fading out over `fade` units towards the sides, panned towards its origin.
+- [X] bounce needs to take in  bump maps: the bake stores four layers (head on, plus Half-Life 2's three tilted directions) and bump mapped materials blend them by each texel's bump, so bumps catch the bounce light too.
+- [X] add cubemap entity: `env_cubemap` captures the level from its spot once when the level loads (lights where they start) and again when a bounce bake finishes. Materials with a Reflection mirror the nearest one, masked by their specular map.
+- [X] add support for materials being directly callable by func entities: `func_door`'s texture brings its material from .materials (bump, specular, gloss and reflection).
+
+## Issues and known bugs
+
+- [X] There's an issue with the game's options UI where now that there's a separate Input tab the organization looks weird: the General tab is gone, and its sections are tabs of their own, so the options menu has Video, Audio, Game and Input tabs.
+- [X] There's an issue in the editor where it doesn't have ways of sizing our func ents still even after there was a commit to fix that: a selected volume now has a handle in the middle of each face, and dragging one moves that face along its axis, snapped to the grid.
+- [ ] There's a bug in the editor where the water volume shows all wrong. and it shouldn't show the texture in the editor it should only show the volume bounds.
+- [X] There's a visual big in the game and editor that creates weird lighting artifacts on faces
+- [ ] There's a potential crash if the world model updates, don't understand it.
+- [X] There's an issue with the player movement can't get out of the water if there's a small gap between where the water volume ends and a hard edge begins: the hop out of water fell just short of a ledge above the surface. There's now a water jump like Quake's: swimming forward into a wall at the surface, with a ledge up to 1.25 above the waist, jumps just high enough to land on it.
 
 ## Code
 

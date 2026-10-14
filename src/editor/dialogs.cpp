@@ -20,6 +20,11 @@ static char scaleInput[32];
 static char nameInput[128];
 static char skyboxInput[256];
 
+// World Settings: the bounce lightmap's resolution, as an index into LUXEL_OPTIONS, and its filtering (0 smooth, 1 blocky)
+static const float LUXEL_OPTIONS[] = { 1.0f, 2.0f, 4.0f, 8.0f };
+static int luxelChoice, luxelChoiceOpened;
+static int filterChoice;
+
 // Which text field has the keyboard: one at a time, -1 for none
 static int activeField = -1;
 
@@ -45,6 +50,15 @@ void OpenDialog(EditorState &editor, DialogId dialog)
     snprintf(scaleInput, sizeof(scaleInput), "%g", level.worldScale);
     snprintf(nameInput, sizeof(nameInput), "%s", level.info.name.c_str());
     snprintf(skyboxInput, sizeof(skyboxInput), "%s", level.info.skybox.c_str());
+
+    // The option nearest the level's, which only replaces it if another one is picked
+    luxelChoice = 0;
+    for (int i = 1; i < 4; i++)
+    {
+        if (fabsf(LUXEL_OPTIONS[i] - level.info.luxelsPerUnit) < fabsf(LUXEL_OPTIONS[luxelChoice] - level.info.luxelsPerUnit)) luxelChoice = i;
+    }
+    luxelChoiceOpened = luxelChoice;
+    filterChoice = level.info.lightmapFiltered ? 0 : 1;
 }
 
 static void CloseDialog(EditorState &editor)
@@ -89,45 +103,6 @@ static Rectangle BottomButton(Rectangle bounds, int indexFromRight)
              bounds.y + bounds.height - PADDING - height, width, height };
 }
 
-static void DrawCreateEntityDialog(EditorState &editor)
-{
-    // Every entity type the game has, from entitylist.txt
-    const std::vector<EntityClassInfo> &classes = GetEntityClassList();
-    const float rowHeight = 50.0f;
-
-    bool closed;
-    float height = TITLE_BAR_HEIGHT + 2*PADDING + 28 + (classes.empty() ? 60 : classes.size()*rowHeight) + 50;
-    Rectangle bounds = DialogWindow("Create Entity", 680, height, closed);
-    Layout layout = StartLayout(bounds);
-
-    if (classes.empty())
-    {
-        GuiLabel({ bounds.x + PADDING, layout.y, bounds.width - 2*PADDING, 20 }, "No entity types: entitylist.txt is missing or empty.");
-        GuiLabel({ bounds.x + PADDING, layout.y + 24, bounds.width - 2*PADDING, 20 }, "Build the game with build.bat to write it. The editor picks it up by itself.");
-    }
-    else
-    {
-        GuiLabel({ bounds.x + PADDING, layout.y, bounds.width - 2*PADDING, 20 }, "Placed where the middle of the view meets the level:");
-        layout.Next(28);
-
-        for (const EntityClassInfo &entityClass : classes)
-        {
-            Rectangle button = { bounds.x + PADDING, layout.y, 170, 30 };
-            if (GuiButton(button, entityClass.classname.c_str()))
-            {
-                CreateEntity(editor, entityClass.classname.c_str());
-                CloseDialog(editor);
-                return;
-            }
-            float textX = button.x + button.width + 12;
-            DrawUITextWrapped(entityClass.description.c_str(), textX, layout.y + 6, bounds.x + bounds.width - PADDING - textX, 15, UITextColor());
-            layout.Next(rowHeight);
-        }
-    }
-
-    if (GuiButton(BottomButton(bounds, 0), "Cancel") || closed) CloseDialog(editor);
-}
-
 static void DrawCreateWorldDialog(EditorState &editor)
 {
     bool closed;
@@ -170,7 +145,7 @@ static void DrawWorldSettingsDialog(EditorState &editor)
     const Level &level = editor.level;
 
     bool closed;
-    Rectangle bounds = DialogWindow("Global World Settings", 560, 320, closed);
+    Rectangle bounds = DialogWindow("Global World Settings", 560, 446, closed);
     Layout layout = StartLayout(bounds);
 
     GuiLabel(layout.Label(), "Map name");
@@ -189,6 +164,19 @@ static void DrawWorldSettingsDialog(EditorState &editor)
             snprintf(skyboxInput, sizeof(skyboxInput), "%s", ToDataPath(editor, path).c_str());
         }
     }
+    layout.Next();
+
+    // The sun's bounce lightmap, which the game uses the same way
+    GuiLabel(layout.Label(), "Luxel resolution");
+    GuiToggleGroup({ layout.Field().x, layout.y, 60, ROW_HEIGHT - 4 }, "1;2;4;8", &luxelChoice);
+    layout.Next();
+    float luxelSize = 1.0f/LUXEL_OPTIONS[luxelChoice];
+    DrawUITextWrapped(TextFormat("Luxels per world unit: each is %g units (%g Quake units). Higher is sharper, but bakes slower",
+                                 luxelSize, luxelSize*32.0f), layout.Field().x, layout.y, layout.Field().width, 14, UIMutedTextColor());
+    layout.Next(40);
+
+    GuiLabel(layout.Label(), "Lightmap filtering");
+    GuiToggleGroup({ layout.Field().x, layout.y, 120, ROW_HEIGHT - 4 }, "Smooth;Blocky", &filterChoice);
     layout.Next();
 
     // Kept up to date by the editor, so shown but not editable
@@ -213,12 +201,16 @@ static void DrawWorldSettingsDialog(EditorState &editor)
 
     if (GuiButton(BottomButton(bounds, 1), "Apply"))
     {
-        if (editor.level.info.name != nameInput || editor.level.info.skybox != skyboxInput)
+        bool luxelsChanged = (luxelChoice != luxelChoiceOpened);
+        bool filterChanged = ((filterChoice == 0) != editor.level.info.lightmapFiltered);
+        if (editor.level.info.name != nameInput || editor.level.info.skybox != skyboxInput || luxelsChanged || filterChanged)
         {
             RecordUndo(editor, "Change world settings");
             editor.level.info.name = nameInput;
             editor.level.info.skybox = skyboxInput;
-            SetStatus(editor, "World settings changed");
+            if (luxelsChanged) editor.level.info.luxelsPerUnit = LUXEL_OPTIONS[luxelChoice];
+            editor.level.info.lightmapFiltered = (filterChoice == 0);
+            SetStatus(editor, luxelsChanged ? "World settings changed, re-baking the bounce lightmap" : "World settings changed");
         }
         CloseDialog(editor);
     }
@@ -604,7 +596,6 @@ void DrawDialog(EditorState &editor)
 
     switch (editor.dialog)
     {
-        case DIALOG_CREATE_ENTITY: DrawCreateEntityDialog(editor); break;
         case DIALOG_CREATE_WORLD: DrawCreateWorldDialog(editor); break;
         case DIALOG_WORLD_SETTINGS: DrawWorldSettingsDialog(editor); break;
         case DIALOG_PREFERENCES: DrawPreferencesDialog(editor); break;

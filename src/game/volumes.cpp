@@ -1,4 +1,5 @@
 #include "volumes.h"
+#include "audio.h"
 #include "game.h"
 #include "lighting.h"
 #include "raymath.h"
@@ -158,6 +159,7 @@ void AddDoor(Volumes &volumes, BoundingBox closedBox, Vector3 direction, float l
     door.model.materials[0].shader = shader;
     if (LoadGameTexture(texturePath, door.texture)) door.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = door.texture;
     else TraceLog(LOG_WARNING, "DOOR: Couldn't load the texture %s, using plain white", texturePath);
+    door.material = LoadWorldMaterial(texturePath, LoadMaterialLibrary());  // Its bump, specular and gloss maps, like the world's
 
     volumes.doors.push_back(door);
 }
@@ -227,6 +229,7 @@ void UnloadVolumes(Volumes &volumes)
     {
         UnloadModel(door.model);  // Leaves the shader and texture alone
         if (door.texture.id != 0) UnloadTexture(door.texture);
+        UnloadWorldMaterial(door.material);
     }
     for (Volume &volume : volumes.volumes)
     {
@@ -237,7 +240,52 @@ void UnloadVolumes(Volumes &volumes)
         UnloadShader(volumes.waterShader);
         if (volumes.waterTexture.id != rlGetTextureIdDefault()) UnloadTexture(volumes.waterTexture);
     }
+    for (const Soundscape &soundscape : volumes.soundscapes) StopAmbientSound(soundscape.sound);
     volumes = Volumes();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Soundscapes
+
+void AddSoundscape(Volumes &volumes, BoundingBox box, Vector3 origin, const char *soundPath, float volume, float fadeDistance)
+{
+    Soundscape soundscape = {};
+    soundscape.box = box;
+    soundscape.origin = origin;
+    soundscape.volume = volume;
+    soundscape.fadeDistance = fadeDistance;
+    soundscape.sound = (soundPath[0] != '\0') ? StartAmbientSound(soundPath) : -1;
+    volumes.soundscapes.push_back(soundscape);
+}
+
+// How far inside the box a point is: the distance to its nearest side, negative outside
+static float DepthInside(BoundingBox box, Vector3 p)
+{
+    float depth = fminf(fminf(p.x - box.min.x, box.max.x - p.x), fminf(p.y - box.min.y, box.max.y - p.y));
+    return fminf(depth, fminf(p.z - box.min.z, box.max.z - p.z));
+}
+
+void UpdateSoundscapes(Volumes &volumes, Vector3 listener, float yaw)
+{
+    Vector3 right = { cosf(yaw), 0.0f, -sinf(yaw) };  // The same as the player's
+    for (Soundscape &soundscape : volumes.soundscapes)
+    {
+        // Full strength from fadeDistance inside, easing out to nothing at the sides
+        float depth = DepthInside(soundscape.box, listener);
+        float fade = (soundscape.fadeDistance > 0.0f) ? Clamp(depth/soundscape.fadeDistance, 0.0f, 1.0f) : (depth >= 0.0f ? 1.0f : 0.0f);
+        fade = fade*fade*(3.0f - 2.0f*fade);  // Smoothstep, so it doesn't start or stop abruptly
+        soundscape.heardVolume = soundscape.volume*fade;
+
+        // Panned towards the origin, flat on the ground, fully only when it's at least a unit away to the side,
+        // so standing on the origin is centered rather than flipping between ears
+        Vector3 toOrigin = Vector3Subtract(soundscape.origin, listener);
+        toOrigin.y = 0.0f;
+        float distance = Vector3Length(toOrigin);
+        float side = (distance > 0.001f) ? Vector3DotProduct(Vector3Scale(toOrigin, 1.0f/distance), right) : 0.0f;
+        soundscape.heardPan = side*fminf(distance, 1.0f)*0.8f;  // Never fully in one ear
+
+        SetAmbientSound(soundscape.sound, soundscape.heardVolume, soundscape.heardPan);
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -268,8 +316,10 @@ void DrawVolumes(const Volumes &volumes, const World &world, bool showAll)
         for (const Door &door : volumes.doors)
         {
             BoundingBox box = DoorBox(door);
+            SetLightingWorldMaterial(world.lighting, door.material);
             DrawModel(door.model, Vector3Scale(Vector3Add(box.min, box.max), 0.5f), 1.0f, WHITE);
         }
+        ClearLightingMaterial(world.lighting);
     EndLighting();
 
     // Water last, since it's see-through. Both sides of each face, so the surface shows from underwater too,

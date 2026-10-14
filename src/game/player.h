@@ -16,6 +16,8 @@ struct Player
     bool flying;        // No gravity, moves where you look, still collides (Quake's MOVETYPE_FLY)
     bool ducked;        // Crouching, with a shorter hull
     int waterLevel;     // Like Half-Life's: 0 dry, 1 feet in water, 2 waist (swimming), 3 eyes under
+    float waterJumpTime;    // Seconds left of a jump out of water onto a ledge, see CheckWaterJump in player.cpp
+    Vector3 waterJumpDir;   // Which way it carries the player, towards the ledge
     bool onLadder;
     float ladderCooldown;   // Seconds until a ladder can be grabbed again, after jumping off one
     bool cursorWasHidden;   // Last frame, to notice when the mouse gets captured

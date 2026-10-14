@@ -23,6 +23,7 @@ struct World;
 //   radius      A distance, drawn as a sphere around the entity
 //   vector      [x, y, z], typed in a text field. A volume's mins and maxs are these
 //   text        A name, like a texture or a level
+//   bool        On or off, a checkbox in the editor. Its default is "1" or "0"; level files have true or false
 struct EntityParam
 {
     const char *name;
@@ -74,6 +75,7 @@ float EntityParamNumber(const LevelEntity &entity, const EntityClass &entityClas
 Vector3 EntityParamVector(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
 Color EntityParamColor(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
 std::string EntityParamText(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
+bool EntityParamBool(const LevelEntity &entity, const EntityClass &entityClass, const char *name);
 
 // Writes the table as entitylist.txt for the editor. Returns false if the file couldn't be written
 bool ExportEntityList(const char *path);

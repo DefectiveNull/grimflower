@@ -3,8 +3,9 @@
 #include "raylib.h"
 #include <vector>
 
-#define MAX_POINT_LIGHTS 16   // Must match MAX_LIGHTS in the shader in lighting.cpp
-#define MAX_SHADOW_LIGHTS 4   // Point lights that can cast shadows at once. Must match the shader too
+#define MAX_POINT_LIGHTS 32   // Point lights that light the world at once. The shader in lighting.cpp gets it as MAX_LIGHTS
+#define MAX_SHADOW_LIGHTS 32  // Point lights that can cast shadows at once. The shader gets it too
+#define MAX_CUBEMAPS 4        // Cubemaps the shader can reflect at once: the ones nearest the camera
 
 // A directional light, like sunlight: every surface gets light from the same direction. Casts shadows
 struct Sun
@@ -41,18 +42,20 @@ struct Lighting
     Matrix sunViewProjection;   // Takes world positions into the shadow map
     BoundingBox bounds;         // Area the sun's shadow map covers
 
-    // Point light shadows: one texture split into tiles, a row of 6 cube faces per shadowed light.
+    // Point light shadows: one texture split into tiles, a row of 6 cube faces per shadowed light. It has
+    // rows for as many shadowed lights as the level has had so far (4, 8, 16 or 32), so levels with few
+    // lights don't pay for 32 rows of video memory.
     // Each face stores the distance from the light to the nearest surface, divided by the light's radius
     Shader pointDepthShader;
     Material pointDepthMaterial;
     RenderTexture2D pointShadowAtlas;
-    Matrix pointShadowMatrices[MAX_SHADOW_LIGHTS*6];  // View-projection of each cube face, to find a pixel's spot in the atlas
-    int pointShadowSlots[MAX_POINT_LIGHTS];           // Atlas row of each light, or -1 if it has no shadow this frame
+    int pointShadowRows;                     // Rows the atlas has room for
+    int pointShadowSlots[MAX_POINT_LIGHTS];  // Atlas row of each light, or -1 if it has no shadow this frame
 
     int sunDirectionLoc, sunColorLoc, ambientLoc;
     int sunViewProjectionLoc, shadowMapLoc, shadowMapSizeLoc, shadowDepthScaleLoc;
     int lightCountLoc, lightPositionsLoc, lightColorsLoc, lightRadiiLoc;
-    int pointShadowAtlasLoc, pointShadowMatricesLoc, pointShadowSlotsLoc, pointShadowTileSizeLoc;
+    int pointShadowAtlasLoc, pointShadowSlotsLoc, pointShadowTileSizeLoc, pointShadowRowsLoc;
     int pointDepthLightPositionLoc, pointDepthLightRadiusLoc;
     float shadowDepthScale;  // 1/depth range of the shadow camera, for converting the shadow bias to depth
 
@@ -66,15 +69,33 @@ struct Lighting
     float bounceScale;       // How strong it is, 0 for none
     unsigned int lightmapTexture;  // 0 for none
     int bounceEnabledLoc, bounceScaleLoc, lightmapLoc;
+
+    // The material of the mesh drawn next, see SetLightingMaterial
+    int bumpMapLoc, specularMapLoc, glossMapLoc, hasBumpMapLoc, bumpGreenUpLoc, hasSpecularMapLoc, hasGlossMapLoc;
+    int specularStrengthLoc, glossinessLoc, viewPositionLoc, reflectionLoc;
+
+    // Cubemaps (env_cubemap) for reflections: every one in the level. BeginLighting picks the MAX_CUBEMAPS
+    // nearest the camera. capturingCubemaps turns reflections off while they're being captured
+    std::vector<Vector3> cubemapPositions;
+    std::vector<unsigned int> cubemapTextures;
+    bool capturingCubemaps;
+    int cubemapLocs[MAX_CUBEMAPS], cubemapPositionsLoc, cubemapCountLoc;
 };
 
 // Loads the shaders and shadow map, and places the sun above a corner of the given area
 void InitLighting(Lighting &lighting, BoundingBox bounds);
 void UnloadLighting(Lighting &lighting);
 
-// Renders the model's depth from the sun into the shadow map, and from each shadowed point light into
+// Something drawn into the shadow maps: a model, placed by transform (the world mesh, or a prop)
+struct ShadowCaster
+{
+    const Model *model;
+    Matrix transform;
+};
+
+// Renders the casters' depth from the sun into the shadow map, and from each shadowed point light into
 // the point shadow atlas. Call each frame before BeginMode3D
-void RenderShadowMap(Lighting &lighting, const Model &model);
+void RenderShadowMap(Lighting &lighting, const std::vector<ShadowCaster> &casters);
 
 // Sends the lights to the shader and binds the shadow map. Call before drawing lit models, inside BeginMode3D
 void BeginLighting(const Lighting &lighting);
@@ -87,3 +108,9 @@ void SetLightingAO(const Lighting &lighting, bool enabled);
 // The same for baked sun bounce: what's drawn next reads the lightmap through its second texture coordinates (only the world
 // mesh, which has them). Its strength is bounceScale
 void SetLightingBounce(const Lighting &lighting, bool enabled);
+
+// Between BeginLighting and EndLighting: the bump, specular and gloss maps (texture ids, 0 for none) and
+// settings of what's drawn next (materials.h). BeginLighting starts with none: no bump and no shine
+void SetLightingMaterial(const Lighting &lighting, unsigned int bumpMap, unsigned int specularMap, unsigned int glossMap,
+                         bool bumpGreenUp, float specular, float gloss, float reflection);
+void ClearLightingMaterial(const Lighting &lighting);

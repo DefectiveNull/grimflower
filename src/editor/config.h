@@ -24,7 +24,7 @@ struct CameraButtons
     bool speed;  // Faster
 };
 
-// Saved in editor.cfg as ed_ settings, and changed in Edit > Preferences
+// Saved in editor.cfg as ed_ settings, and changed in Edit > Preferences, or the View menu for what's shown
 struct EditorSettings
 {
     // General
@@ -35,6 +35,9 @@ struct EditorSettings
     float moveSpeed;         // Camera speed, units per second
     bool showGrid;
     bool showLabels;         // Entity names over their markers
+    bool showPointEntities;  // Markers of entities that aren't volumes, like lights and the player start
+    bool showVolumes;        // Volumes, like func_water and func_door
+    bool showColliders;      // The world's collision brushes, drawn over it
     float gridSize;          // Grid spacing and snapping step, in world units. [ and ] step through GRID_SIZES in editor.cpp
     bool snapToGrid;         // Dragged and created entities land on the grid
 

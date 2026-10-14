@@ -22,6 +22,13 @@ void UpdateAudio();
 // Plays a sound on the world channel, like "sound/door.wav". Returns false if it couldn't be loaded
 bool PlayWorldSound(const char *path);
 
+// Ambient sounds: loops on the world channel that keep playing, like a soundscape's wind or hum. They
+// start silent; whoever starts one sets its volume and pan as the player moves, and stops it when done.
+// Returns a handle, or -1 if it couldn't be loaded
+int StartAmbientSound(const char *path);
+void SetAmbientSound(int handle, float volume, float pan);  // volume: 0 to 1, times the world channel's. pan: -1 left to 1 right
+void StopAmbientSound(int handle);
+
 // Starts a track on the music channel in place of the current one. Returns false if it couldn't be loaded
 bool PlayMusic(const char *path, bool loop);
 void StopMusic();

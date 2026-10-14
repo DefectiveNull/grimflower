@@ -90,7 +90,8 @@ static void UnloadCurrentWorld(EditorState &editor)
 // Loads a world model in place of the current one. If it fails, the current one stays
 static bool SwapWorld(EditorState &editor, const std::string &model, float scale)
 {
-    World world;
+    World world = {};
+    SetLightmapSettings(world, editor.level.info.luxelsPerUnit, editor.level.info.lightmapFiltered);  // Before loading, so it's laid out once
     if (!LoadWorld(world, model.c_str(), scale)) return false;
 
     UnloadCurrentWorld(editor);
@@ -168,6 +169,7 @@ void InitEditor(EditorState &editor, const std::string &dataRoot)
     editor.dragging = false;
     editor.dragMoved = false;
     editor.dragVertical = false;
+    editor.resizeFace = -1;
     editor.pointing = false;
     editor.pointEntity = -1;
     editor.nextStateId = 0;
@@ -323,6 +325,13 @@ void CancelPointAt(EditorState &editor)
     if (!editor.pointing) return;
     editor.pointing = false;
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+}
+
+void ShowCreateEntityList(EditorState &editor)
+{
+    editor.selected = -1;
+    CancelPointAt(editor);
+    SetStatus(editor, "Pick an entity type under Create Entity in the details panel");
 }
 
 void CreateEntity(EditorState &editor, const char *classname)

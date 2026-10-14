@@ -31,7 +31,7 @@ static const MenuItem EDIT_ITEMS[] = {
     { "Redo", "Ctrl+Y", nullptr, CanRedo },
     { "Undo History...", nullptr, nullptr, nullptr },
     { nullptr, nullptr, nullptr, nullptr },
-    { "Create Entity...", nullptr, nullptr, nullptr },
+    { "Create Entity", nullptr, nullptr, nullptr },
     { "Create World...", nullptr, nullptr, nullptr },
     { "Reload World Model", nullptr, nullptr, nullptr },
     { "Global World Settings...", nullptr, nullptr, nullptr },
@@ -40,11 +40,28 @@ static const MenuItem EDIT_ITEMS[] = {
     { "Preferences...", nullptr, nullptr, nullptr },
 };
 
+// What the 3D view shows. Each item turns one on or off, saved in editor.cfg
+static const char *OnOff(bool on) { return on ? "On" : "Off"; }
+static const char *GridStatus() { return OnOff(editorSettings.showGrid); }
+static const char *LabelsStatus() { return OnOff(editorSettings.showLabels); }
+static const char *PointEntitiesStatus() { return OnOff(editorSettings.showPointEntities); }
+static const char *VolumesStatus() { return OnOff(editorSettings.showVolumes); }
+static const char *CollidersStatus() { return OnOff(editorSettings.showColliders); }
+
+static const MenuItem VIEW_ITEMS[] = {
+    { "Grid", nullptr, GridStatus, nullptr },
+    { "Entity Labels", nullptr, LabelsStatus, nullptr },
+    { nullptr, nullptr, nullptr, nullptr },
+    { "Point Entities", nullptr, PointEntitiesStatus, nullptr },
+    { "Volumes", nullptr, VolumesStatus, nullptr },
+    { "Collision Brushes", nullptr, CollidersStatus, nullptr },
+};
+
 static const MenuItem ABOUT_ITEMS[] = {
     { "Editor Info", nullptr, nullptr },
 };
 
-static const char *MENU_NAMES[] = { "", "File", "Edit", "About" };
+static const char *MENU_NAMES[] = { "", "File", "Edit", "View", "About" };
 
 static void GetMenuItems(MenuId menu, const MenuItem *&items, int &count)
 {
@@ -52,6 +69,7 @@ static void GetMenuItems(MenuId menu, const MenuItem *&items, int &count)
     {
         case MENU_FILE: items = FILE_ITEMS; count = sizeof(FILE_ITEMS)/sizeof(FILE_ITEMS[0]); break;
         case MENU_EDIT: items = EDIT_ITEMS; count = sizeof(EDIT_ITEMS)/sizeof(EDIT_ITEMS[0]); break;
+        case MENU_VIEW: items = VIEW_ITEMS; count = sizeof(VIEW_ITEMS)/sizeof(VIEW_ITEMS[0]); break;
         case MENU_ABOUT: items = ABOUT_ITEMS; count = sizeof(ABOUT_ITEMS)/sizeof(ABOUT_ITEMS[0]); break;
         default: items = nullptr; count = 0; break;
     }
@@ -94,12 +112,23 @@ static void RunMenuItem(EditorState &editor, MenuId menu, int item)
             case 0: Undo(editor); break;
             case 1: Redo(editor); break;
             case 2: OpenDialog(editor, DIALOG_UNDO_HISTORY); break;
-            case 4: OpenDialog(editor, DIALOG_CREATE_ENTITY); break;
+            case 4: ShowCreateEntityList(editor); break;
             case 5: OpenDialog(editor, DIALOG_CREATE_WORLD); break;
             case 6: ReloadWorld(editor); break;
             case 7: OpenDialog(editor, DIALOG_WORLD_SETTINGS); break;
             case 9: ToggleDarkMode(); break;
             case 10: OpenDialog(editor, DIALOG_PREFERENCES); break;
+        }
+    }
+    else if (menu == MENU_VIEW)
+    {
+        bool *flags[] = { &editorSettings.showGrid, &editorSettings.showLabels, nullptr,
+                          &editorSettings.showPointEntities, &editorSettings.showVolumes, &editorSettings.showColliders };
+        if (flags[item])
+        {
+            *flags[item] = !*flags[item];
+            MarkSettingsChanged();
+            SetStatus(editor, "%s %s", VIEW_ITEMS[item].label, *flags[item] ? "shown" : "hidden");
         }
     }
     else if (menu == MENU_ABOUT)

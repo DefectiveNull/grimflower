@@ -15,6 +15,8 @@
 #include <unordered_map>
 #include <vector>
 
+static const int DIRECTION_SETS = 2;   // Turned copies of the 26 directions each texel traces
+static const int SMOOTH_RADIUS = 1;    // Texels around each one it's averaged with after baking. Keep under PAD + 1
 static const int PAD = 2;                    // Texels of border around each chart, filled from its edge, so filtering never reads the next chart
 static const int MAX_LIGHTMAP_SIZE = 4096;
 static const float TRACE_DISTANCE = 64.0f;   // How far a bounce trace looks for a surface
@@ -26,7 +28,21 @@ static const float MAX_ALBEDO = 0.9f;        // No surface bounces all the light
 static const float BOUNCE_RANGE = 2.0f;
 
 // Part of every lightmap key, so changing how the bake works makes old lightmaps out of date
-static const unsigned long long BAKE_VERSION = 1;
+// 2: directions turned per texel, two sets, smoothed. 3: four layers, for bump maps
+static const unsigned long long BAKE_VERSION = 3;
+
+// Half-Life 2's three directions for bump mapped lighting, in the texture's own space (x and y along the
+// texture, z off the surface): 55 degrees off the surface, 120 degrees apart. The lighting shader has them too
+static const Vector3 BUMP_BASIS[3] = {
+    { 0.81649658f, 0.0f, 0.57735027f },           // sqrt(2/3), 0, 1/sqrt(3)
+    { -0.40824829f, 0.70710678f, 0.57735027f },   // -1/sqrt(6), 1/sqrt(2), 1/sqrt(3)
+    { -0.40824829f, -0.70710678f, 0.57735027f },  // -1/sqrt(6), -1/sqrt(2), 1/sqrt(3)
+};
+
+// The three directions add up to sqrt(3) times the surface's normal, so for light all three face, their
+// average is the head on bounce divided by sqrt(3). This makes up for it, so a flat bump map (which blends
+// the three equally) comes out as bright as no bump map
+static const float BUMP_BASIS_SCALE = 1.73205081f;
 
 // FNV-1a, a quick hash for lightmap keys
 static void Hash(unsigned long long &hash, const void *data, size_t size)
@@ -122,11 +138,20 @@ static Vector3 AverageColor(Texture texture, Color tint)
     return Vector3Min(tinted, { MAX_ALBEDO, MAX_ALBEDO, MAX_ALBEDO });
 }
 
-// A world triangle while laying out: which mesh and vertex it starts at, and its corners in world space
+// What gets a part of the lightmap: the world model, and each static prop, placed by its transform
+struct LayoutSource
+{
+    const Model *model;
+    Matrix transform;
+    int prop;  // Index into world.props, -1 for the world model
+};
+
+// A triangle while laying out: which source, mesh and vertex it starts at, and its corners in world space
 struct LayoutTriangle
 {
-    int mesh, vertex;
+    int source, mesh, vertex;
     Vector3 p[3];
+    Vector2 uv[3];   // Its texture coordinates, for which way the texture runs across it
     Vector3 normal;
     float dist;  // dot(normal, p) for points on its plane
 };
@@ -143,6 +168,7 @@ struct Chart
 {
     std::vector<int> triangles;
     Vector3 normal, u, v;   // u and v run along the plane: lightmap x and y
+    Vector3 tangent, bitangent;  // Which ways the texture's x and y run along it, see TextureDirections
     float dist;
     float minU, minV;       // The triangles' extent along u and v, in world units
     int width, height;      // In texels, padding included
@@ -173,6 +199,35 @@ static bool OnChart(const Chart &chart, const std::vector<LayoutTriangle> &tris,
     return false;
 }
 
+// Which ways the chart's texture x and y run along it, from the first of its triangles whose texture
+// coordinates aren't squashed flat. The same directions the lighting shader works out per pixel to read bump
+// maps, so the bounce from each of its three directions lines up with them. Square to the normal
+static void TextureDirections(Chart &chart, const std::vector<LayoutTriangle> &tris)
+{
+    chart.tangent = chart.u;
+    chart.bitangent = chart.v;
+    for (int t : chart.triangles)
+    {
+        const LayoutTriangle &tri = tris[t];
+        Vector3 e1 = Vector3Subtract(tri.p[1], tri.p[0]), e2 = Vector3Subtract(tri.p[2], tri.p[0]);
+        Vector2 d1 = Vector2Subtract(tri.uv[1], tri.uv[0]), d2 = Vector2Subtract(tri.uv[2], tri.uv[0]);
+        float det = d1.x*d2.y - d2.x*d1.y;
+        if (fabsf(det) < 1e-8f) continue;
+
+        Vector3 tangent = Vector3Scale(Vector3Subtract(Vector3Scale(e1, d2.y), Vector3Scale(e2, d1.y)), 1.0f/det);
+        Vector3 bitangent = Vector3Scale(Vector3Subtract(Vector3Scale(e2, d1.x), Vector3Scale(e1, d2.x)), 1.0f/det);
+        tangent = Vector3Subtract(tangent, Vector3Scale(chart.normal, Vector3DotProduct(chart.normal, tangent)));
+        if (Vector3LengthSqr(tangent) < 1e-12f) continue;
+        tangent = Vector3Normalize(tangent);
+        bitangent = Vector3Subtract(bitangent, Vector3Scale(chart.normal, Vector3DotProduct(chart.normal, bitangent)));
+        bitangent = Vector3Subtract(bitangent, Vector3Scale(tangent, Vector3DotProduct(tangent, bitangent)));
+        if (Vector3LengthSqr(bitangent) < 1e-12f) continue;
+        chart.tangent = tangent;
+        chart.bitangent = Vector3Normalize(bitangent);
+        return;
+    }
+}
+
 // The mesh again, with the lightmap texture coordinates added, since raylib only makes room for those when uploading
 static Mesh WithTexcoords2(const Mesh &old, float *texcoords2)
 {
@@ -199,40 +254,61 @@ static Mesh WithTexcoords2(const Mesh &old, float *texcoords2)
 
 void BuildLightmapLayout(World &world)
 {
-    Model &model = world.model;
+    const float density = (world.lightmapDensity > 0.0f) ? world.lightmapDensity : LIGHTMAP_DENSITY;
 
-    // What each material bounces: its texture's average color
-    std::vector<Vector3> albedos(model.materialCount);
-    for (int i = 0; i < model.materialCount; i++)
+    // The world model, then the static props. Other props move, so they can't have baked light
+    std::vector<LayoutSource> sources = { { &world.model, world.model.transform, -1 } };
+    for (size_t i = 0; i < world.props.size(); i++)
     {
-        const MaterialMap &map = model.materials[i].maps[MATERIAL_MAP_DIFFUSE];
-        albedos[i] = AverageColor(map.texture, map.color);
+        if (world.props[i].isStatic) sources.push_back({ &world.propModels[world.props[i].model].model, world.props[i].transform, (int)i });
     }
 
-    // Every triangle in world space, also kept for tracing
-    std::vector<LayoutTriangle> tris;
-    world.bounceTriangles.clear();
-    for (int m = 0; m < model.meshCount; m++)
+    // What each material bounces: its texture's average color. Once per model, however many props use it
+    std::map<const Model *, std::vector<Vector3>> albedos;
+    for (const LayoutSource &source : sources)
     {
-        const Mesh &mesh = model.meshes[m];
-        for (int v = 0; v + 2 < mesh.vertexCount; v += 3)
+        std::vector<Vector3> &modelAlbedos = albedos[source.model];
+        if (!modelAlbedos.empty()) continue;
+        modelAlbedos.resize(source.model->materialCount);
+        for (int i = 0; i < source.model->materialCount; i++)
         {
-            LayoutTriangle t;
-            t.mesh = m;
-            t.vertex = v;
-            for (int k = 0; k < 3; k++)
-            {
-                const float *p = &mesh.vertices[(v + k)*3];
-                t.p[k] = Vector3Transform({ p[0], p[1], p[2] }, model.transform);
-            }
-            Vector3 cross = Vector3CrossProduct(Vector3Subtract(t.p[1], t.p[0]), Vector3Subtract(t.p[2], t.p[0]));
-            if (Vector3LengthSqr(cross) < 1e-12f) continue;  // Degenerate
-            t.normal = Vector3Normalize(cross);
-            t.dist = Vector3DotProduct(t.normal, t.p[0]);
-            tris.push_back(t);
-            world.bounceTriangles.push_back({ t.p[0], t.p[1], t.p[2], t.normal, albedos[model.meshMaterial[m]] });
+            const MaterialMap &map = source.model->materials[i].maps[MATERIAL_MAP_DIFFUSE];
+            modelAlbedos[i] = AverageColor(map.texture, map.color);
         }
     }
+
+    // Every triangle in world space, also kept for tracing. The world's come first, then the props'
+    std::vector<LayoutTriangle> tris;
+    world.bounceTriangles.clear();
+    for (size_t s = 0; s < sources.size(); s++)
+    {
+        const Model &model = *sources[s].model;
+        if (s == 1) world.propTriangleStart = (int)world.bounceTriangles.size();
+        for (int m = 0; m < model.meshCount; m++)
+        {
+            const Mesh &mesh = model.meshes[m];
+            for (int v = 0; v + 2 < mesh.vertexCount; v += 3)
+            {
+                LayoutTriangle t;
+                t.source = (int)s;
+                t.mesh = m;
+                t.vertex = v;
+                for (int k = 0; k < 3; k++)
+                {
+                    const float *p = &mesh.vertices[(v + k)*3];
+                    t.p[k] = Vector3Transform({ p[0], p[1], p[2] }, sources[s].transform);
+                    t.uv[k] = mesh.texcoords ? Vector2{ mesh.texcoords[(v + k)*2], mesh.texcoords[(v + k)*2 + 1] } : Vector2{ 0.0f, 0.0f };
+                }
+                Vector3 cross = Vector3CrossProduct(Vector3Subtract(t.p[1], t.p[0]), Vector3Subtract(t.p[2], t.p[0]));
+                if (Vector3LengthSqr(cross) < 1e-12f) continue;  // Degenerate
+                t.normal = Vector3Normalize(cross);
+                t.dist = Vector3DotProduct(t.normal, t.p[0]);
+                tris.push_back(t);
+                world.bounceTriangles.push_back({ t.p[0], t.p[1], t.p[2], t.normal, albedos[&model][model.meshMaterial[m]] });
+            }
+        }
+    }
+    if (sources.size() == 1) world.propTriangleStart = (int)world.bounceTriangles.size();
 
     // Charts: triangles in the same plane, joined where they share a corner
     std::vector<int> parent(tris.size());
@@ -275,6 +351,7 @@ void BuildLightmapLayout(World &world)
         Vector3 reference = (fabsf(chart.normal.y) < 0.9f) ? Vector3{ 0.0f, 1.0f, 0.0f } : Vector3{ 1.0f, 0.0f, 0.0f };
         chart.u = Vector3Normalize(Vector3CrossProduct(reference, chart.normal));
         chart.v = Vector3CrossProduct(chart.normal, chart.u);
+        TextureDirections(chart, tris);
 
         float maxU = -FLT_MAX, maxV = -FLT_MAX;
         chart.minU = chart.minV = FLT_MAX;
@@ -287,8 +364,8 @@ void BuildLightmapLayout(World &world)
                 chart.minV = fminf(chart.minV, pv); maxV = fmaxf(maxV, pv);
             }
         }
-        chart.width = (int)ceilf((maxU - chart.minU)*LIGHTMAP_DENSITY) + 1 + 2*PAD;
-        chart.height = (int)ceilf((maxV - chart.minV)*LIGHTMAP_DENSITY) + 1 + 2*PAD;
+        chart.width = (int)ceilf((maxU - chart.minU)*density) + 1 + 2*PAD;
+        chart.height = (int)ceilf((maxV - chart.minV)*density) + 1 + 2*PAD;
     }
 
     // Packed in rows, tallest first, into a power of two wide lightmap about as wide as it is tall
@@ -327,9 +404,14 @@ void BuildLightmapLayout(World &world)
     world.lightmapWidth = width;
     world.lightmapHeight = height;
 
-    // Lightmap texture coordinates for the world mesh, at the middle of the texels each corner lands in
-    std::vector<float *> texcoords2(model.meshCount);
-    for (int m = 0; m < model.meshCount; m++) texcoords2[m] = (float *)RL_CALLOC(model.meshes[m].vertexCount*2, sizeof(float));
+    // Lightmap texture coordinates for each source's meshes, at the middle of the texels each corner lands in
+    std::vector<std::vector<float *>> texcoords2(sources.size());
+    for (size_t s = 0; s < sources.size(); s++)
+    {
+        const Model &model = *sources[s].model;
+        texcoords2[s].resize(model.meshCount);
+        for (int m = 0; m < model.meshCount; m++) texcoords2[s][m] = (float *)RL_CALLOC(model.meshes[m].vertexCount*2, sizeof(float));
+    }
     for (const Chart &chart : charts)
     {
         for (int t : chart.triangles)
@@ -337,37 +419,47 @@ void BuildLightmapLayout(World &world)
             for (int k = 0; k < 3; k++)
             {
                 const Vector3 &p = tris[t].p[k];
-                float texelX = chart.x + PAD + 0.5f + (Vector3DotProduct(p, chart.u) - chart.minU)*LIGHTMAP_DENSITY;
-                float texelY = chart.y + PAD + 0.5f + (Vector3DotProduct(p, chart.v) - chart.minV)*LIGHTMAP_DENSITY;
-                float *uv = &texcoords2[tris[t].mesh][(tris[t].vertex + k)*2];
+                float texelX = chart.x + PAD + 0.5f + (Vector3DotProduct(p, chart.u) - chart.minU)*density;
+                float texelY = chart.y + PAD + 0.5f + (Vector3DotProduct(p, chart.v) - chart.minV)*density;
+                float *uv = &texcoords2[tris[t].source][tris[t].mesh][(tris[t].vertex + k)*2];
                 uv[0] = texelX/(float)width;
                 uv[1] = texelY/(float)height;
             }
         }
     }
-    for (int m = 0; m < model.meshCount; m++)
+
+    // The world model's meshes are rebuilt with them. Each static prop gets its own copies of its model's
+    // meshes, since two props of the same model sit in different parts of the lightmap
+    for (int m = 0; m < world.model.meshCount; m++)
     {
-        Mesh rebuilt = WithTexcoords2(model.meshes[m], texcoords2[m]);
-        UnloadMesh(model.meshes[m]);
-        model.meshes[m] = rebuilt;
+        Mesh rebuilt = WithTexcoords2(world.model.meshes[m], texcoords2[0][m]);
+        UnloadMesh(world.model.meshes[m]);
+        world.model.meshes[m] = rebuilt;
+    }
+    for (size_t s = 1; s < sources.size(); s++)
+    {
+        WorldProp &prop = world.props[sources[s].prop];
+        for (Mesh &mesh : prop.lightmapMeshes) UnloadMesh(mesh);
+        prop.lightmapMeshes.clear();
+        for (int m = 0; m < sources[s].model->meshCount; m++) prop.lightmapMeshes.push_back(WithTexcoords2(sources[s].model->meshes[m], texcoords2[s][m]));
     }
 
     // The texels that lie on the world. Ones in a chart's padding, or in a gap between its triangles, are
     // filled from their neighbours after the bake instead
     world.lightmapTexels.clear();
-    const float margin = 0.75f/LIGHTMAP_DENSITY;  // About half a texel's diagonal, so texels along edges count
+    const float margin = 0.75f/density;  // About half a texel's diagonal, so texels along edges count
     for (const Chart &chart : charts)
     {
         for (int j = 0; j < chart.height; j++)
         {
             for (int i = 0; i < chart.width; i++)
             {
-                float pu = chart.minU + (i - PAD)/LIGHTMAP_DENSITY;
-                float pv = chart.minV + (j - PAD)/LIGHTMAP_DENSITY;
+                float pu = chart.minU + (i - PAD)/density;
+                float pv = chart.minV + (j - PAD)/density;
                 if (!OnChart(chart, tris, pu, pv, margin)) continue;
 
                 Vector3 position = Vector3Add(Vector3Add(Vector3Scale(chart.u, pu), Vector3Scale(chart.v, pv)), Vector3Scale(chart.normal, chart.dist));
-                world.lightmapTexels.push_back({ position, chart.normal, chart.x + i, chart.y + j });
+                world.lightmapTexels.push_back({ position, chart.normal, chart.tangent, chart.bitangent, chart.x + i, chart.y + j });
             }
         }
     }
@@ -378,11 +470,14 @@ void BuildLightmapLayout(World &world)
     Hash(key, &width, sizeof(width));
     Hash(key, &height, sizeof(height));
     for (const BounceTriangle &tri : world.bounceTriangles) Hash(key, &tri, sizeof(tri));
-    world.lightmapGeometryKey = key;
-    world.lightmapKey = 0;
+    if (density != LIGHTMAP_DENSITY) Hash(key, &density, sizeof(density));  // Only when not the default, so lightmaps saved before the setting existed still match
 
-    TraceLog(LOG_INFO, "LIGHTMAP: %d triangles in %d charts, %dx%d lightmap, %d texels on the world",
-             (int)tris.size(), (int)charts.size(), width, height, (int)world.lightmapTexels.size());
+    // Laid out again the same, like after props were placed again where they were: the lightmap still fits
+    if (key != world.lightmapGeometryKey) world.lightmapKey = 0;
+    world.lightmapGeometryKey = key;
+
+    TraceLog(LOG_INFO, "LIGHTMAP: %d triangles in %d charts (%d static props), %dx%d lightmap, %d texels on the world",
+             (int)tris.size(), (int)charts.size(), (int)sources.size() - 1, width, height, (int)world.lightmapTexels.size());
 }
 
 unsigned long long LightmapKey(const World &world)
@@ -412,6 +507,7 @@ struct LightmapJob
 
     // Copies of what the bake reads, so the world can carry on being used meanwhile
     std::vector<BounceTriangle> triangles;
+    int propTriangleStart;  // Triangles from here on are static props', which the sun traces check too
     std::vector<LightmapTexel> texels;
     World traceWorld;  // Only its collision brushes and bounds, for the traces towards the sun
     Sun sun;
@@ -459,6 +555,61 @@ static void Dilate(std::vector<Color> &pixels, std::vector<bool> &filled, int wi
     }
 }
 
+// A rotation of the 26 directions for one texel (and which of its sets), random but the same every bake,
+// so bakes come out identical. Shoemake's method turns three random numbers into an even random rotation
+static Quaternion TexelRotation(int x, int y, int set)
+{
+    unsigned int state = (unsigned int)x*73856093u ^ (unsigned int)y*19349663u ^ (unsigned int)(set + 1)*83492791u;
+    auto next = [&state]()
+    {
+        state ^= state << 13; state ^= state >> 17; state ^= state << 5;  // xorshift
+        return (float)(state & 0xFFFFFF)/16777216.0f;
+    };
+    next();
+    float u1 = next(), u2 = next(), u3 = next();
+    float a = sqrtf(1.0f - u1), b = sqrtf(u1);
+    return { a*sinf(2.0f*PI*u2), a*cosf(2.0f*PI*u2), b*sinf(2.0f*PI*u3), b*cosf(2.0f*PI*u3) };
+}
+
+// Averages each baked texel with the baked texels around it, within SMOOTH_RADIUS. Only baked texels count,
+// and charts are kept apart by their padding, so light never bleeds from one surface to another
+static void Smooth(std::vector<Vector3> &light, const std::vector<bool> &filled, int width, int height)
+{
+    std::vector<Vector3> smoothed = light;
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            if (!filled[(size_t)y*width + x]) continue;
+            Vector3 sum = { 0.0f, 0.0f, 0.0f };
+            int count = 0;
+            for (int dy = -SMOOTH_RADIUS; dy <= SMOOTH_RADIUS; dy++)
+            {
+                for (int dx = -SMOOTH_RADIUS; dx <= SMOOTH_RADIUS; dx++)
+                {
+                    int nx = x + dx, ny = y + dy;
+                    if (nx < 0 || ny < 0 || nx >= width || ny >= height || !filled[(size_t)ny*width + nx]) continue;
+                    sum = Vector3Add(sum, light[(size_t)ny*width + nx]);
+                    count++;
+                }
+            }
+            smoothed[(size_t)y*width + x] = Vector3Scale(sum, 1.0f/(float)count);
+        }
+    }
+    light = smoothed;
+}
+
+// Whether a static prop is in the way between a point and the sun. Props aren't collision brushes (a solid
+// prop only blocks with the box around it), so this checks their triangles
+static bool PropsBlockSun(const LightmapJob &job, Vector3 point, Vector3 towardSun)
+{
+    for (size_t i = job.propTriangleStart; i < job.triangles.size(); i++)
+    {
+        if (RayTriangle(point, towardSun, job.triangles[i]) > 0.0f) return true;
+    }
+    return false;
+}
+
 static void RunBake(LightmapJob *job)
 {
     auto start = std::chrono::steady_clock::now();
@@ -467,21 +618,36 @@ static void RunBake(LightmapJob *job)
     Vector3 sunLight = Vector3Scale({ sun.color.r/255.0f, sun.color.g/255.0f, sun.color.b/255.0f }, sun.intensity);
     std::vector<Vector3> directions = TraceDirections();
 
-    // Each trace stands for 1/26 of all directions. Light from a surface that bounces evenly (Lambert)
-    // reaches the texel as albedo*irradiance/pi from that direction, times the share of directions, 4*pi/26
-    const float weight = 4.0f/(float)directions.size();
+    // Each trace stands for 1/(26*DIRECTION_SETS) of all directions. Light from a surface that bounces evenly
+    // (Lambert) reaches the texel as albedo*irradiance/pi from that direction, times its share of directions
+    const float weight = 4.0f/(float)(directions.size()*DIRECTION_SETS);
 
-    job->pixels.assign((size_t)job->width*job->height, { 0, 0, 0, 255 });
-    std::vector<bool> filled((size_t)job->width*job->height, false);
+    // Four layers: the bounce reaching the surface head on, then from each of Half-Life 2's three directions
+    // (its "radiosity normal mapping" basis), which tilt 55 degrees off the surface, evenly spread around it.
+    // Bump mapped materials blend those three by which way each texel's bump faces
+    size_t texelCount = (size_t)job->width*job->height;
+    std::vector<Vector3> light(texelCount*LIGHTMAP_LAYERS, { 0.0f, 0.0f, 0.0f });
+    std::vector<bool> filled(texelCount, false);
 
     for (const LightmapTexel &texel : job->texels)
     {
         if (job->cancel) return;
 
-        Vector3 origin = Vector3Add(texel.position, Vector3Scale(texel.normal, SURFACE_OFFSET));
-        Vector3 bounce = { 0.0f, 0.0f, 0.0f };
-        for (Vector3 dir : directions)
+        Vector3 basis[3];
+        for (int k = 0; k < 3; k++)
         {
+            basis[k] = Vector3Add(Vector3Add(Vector3Scale(texel.tangent, BUMP_BASIS[k].x), Vector3Scale(texel.bitangent, BUMP_BASIS[k].y)),
+                                  Vector3Scale(texel.normal, BUMP_BASIS[k].z));
+        }
+
+        Vector3 origin = Vector3Add(texel.position, Vector3Scale(texel.normal, SURFACE_OFFSET));
+        Vector3 bounce[LIGHTMAP_LAYERS] = {};
+        for (int set = 0; set < DIRECTION_SETS; set++)
+        for (Vector3 base : directions)
+        {
+            // The 26 directions turned by this texel's own rotation, so neighbouring texels don't all trace
+            // the same directions (which repeats shapes across the lightmap)
+            Vector3 dir = Vector3RotateByQuaternion(base, TexelRotation(texel.x, texel.y, set));
             float facing = Vector3DotProduct(texel.normal, dir);
             if (facing <= 0.0f) continue;  // Behind the surface
 
@@ -498,19 +664,41 @@ static void RunBake(LightmapJob *job)
 
             Vector3 hitPoint = Vector3Add(Vector3Add(origin, Vector3Scale(dir, distance)), Vector3Scale(hitNormal, SURFACE_OFFSET));
             job->stats.rays++;
-            if (!SunReaches(job->traceWorld, hitPoint, towardSun)) continue;
+            if (!SunReaches(job->traceWorld, hitPoint, towardSun) || PropsBlockSun(*job, hitPoint, towardSun)) continue;
 
-            Vector3 reflected = Vector3Multiply(tri.albedo, Vector3Scale(sunLight, sunFacing));
-            bounce = Vector3Add(bounce, Vector3Scale(reflected, facing*weight));
+            // The same ray counts for all four layers, weighed by how much it faces each one
+            Vector3 reflected = Vector3Scale(Vector3Multiply(tri.albedo, Vector3Scale(sunLight, sunFacing)), weight);
+            bounce[0] = Vector3Add(bounce[0], Vector3Scale(reflected, facing));
+            for (int k = 0; k < 3; k++)
+            {
+                float basisFacing = Vector3DotProduct(basis[k], dir);
+                if (basisFacing > 0.0f) bounce[1 + k] = Vector3Add(bounce[1 + k], Vector3Scale(reflected, basisFacing*BUMP_BASIS_SCALE));
+            }
         }
 
-        auto channel = [](float v) { return (unsigned char)Clamp(v/BOUNCE_RANGE*255.0f, 0.0f, 255.0f); };
         size_t index = (size_t)texel.y*job->width + texel.x;
-        job->pixels[index] = { channel(bounce.x), channel(bounce.y), channel(bounce.z), 255 };
+        for (int layer = 0; layer < LIGHTMAP_LAYERS; layer++) light[layer*texelCount + index] = bounce[layer];
         filled[index] = true;
     }
 
-    Dilate(job->pixels, filled, job->width, job->height, PAD + 1);
+    // Each layer is smoothed (what noise is left from the turned directions), stored in 8 bits, and filled
+    // out past its charts' edges, then stacked one above the next
+    auto channel = [](float v) { return (unsigned char)Clamp(v/BOUNCE_RANGE*255.0f, 0.0f, 255.0f); };
+    job->pixels.clear();
+    for (int layer = 0; layer < LIGHTMAP_LAYERS; layer++)
+    {
+        std::vector<Vector3> layerLight(light.begin() + layer*texelCount, light.begin() + (layer + 1)*texelCount);
+        Smooth(layerLight, filled, job->width, job->height);
+
+        std::vector<Color> pixels(texelCount, { 0, 0, 0, 255 });
+        for (size_t i = 0; i < texelCount; i++)
+        {
+            if (filled[i]) pixels[i] = { channel(layerLight[i].x), channel(layerLight[i].y), channel(layerLight[i].z), 255 };
+        }
+        std::vector<bool> layerFilled = filled;  // Dilate fills it in as it goes
+        Dilate(pixels, layerFilled, job->width, job->height, PAD + 1);
+        job->pixels.insert(job->pixels.end(), pixels.begin(), pixels.end());
+    }
 
     job->stats.width = job->width;
     job->stats.height = job->height;
@@ -526,6 +714,7 @@ void StartLightmapBake(World &world)
 
     auto job = std::make_shared<LightmapJob>();
     job->triangles = world.bounceTriangles;
+    job->propTriangleStart = world.propTriangleStart;
     job->texels = world.lightmapTexels;
     job->traceWorld.colliders = world.colliders;
     job->traceWorld.bounds = world.bounds;
@@ -542,16 +731,16 @@ void StartLightmapBake(World &world)
 static void ApplyBake(World &world, BounceStats *stats)
 {
     LightmapJob &job = *world.lightmapJob;
-    if (world.lightmap.id != 0 && world.lightmap.width == job.width && world.lightmap.height == job.height)
+    if (world.lightmap.id != 0 && world.lightmap.width == job.width && world.lightmap.height == job.height*LIGHTMAP_LAYERS)
     {
         UpdateTexture(world.lightmap, job.pixels.data());
     }
     else
     {
         if (world.lightmap.id != 0) UnloadTexture(world.lightmap);
-        Image image = { job.pixels.data(), job.width, job.height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+        Image image = { job.pixels.data(), job.width, job.height*LIGHTMAP_LAYERS, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
         world.lightmap = LoadTextureFromImage(image);
-        SetTextureFilter(world.lightmap, TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(world.lightmap, world.lightmapFiltered ? TEXTURE_FILTER_BILINEAR : TEXTURE_FILTER_POINT);
         SetTextureWrap(world.lightmap, TEXTURE_WRAP_CLAMP);
     }
     world.lighting.lightmapTexture = world.lightmap.id;
@@ -559,6 +748,27 @@ static void ApplyBake(World &world, BounceStats *stats)
     world.lightmapKey = job.key;
     if (stats) *stats = job.stats;
     world.lightmapJob.reset();
+}
+
+void SetLightmapSettings(World &world, float density, bool filtered)
+{
+    if (filtered != world.lightmapFiltered)
+    {
+        world.lightmapFiltered = filtered;
+        if (world.lightmap.id != 0) SetTextureFilter(world.lightmap, filtered ? TEXTURE_FILTER_BILINEAR : TEXTURE_FILTER_POINT);
+    }
+
+    float current = (world.lightmapDensity > 0.0f) ? world.lightmapDensity : LIGHTMAP_DENSITY;
+    if (density <= 0.0f) density = LIGHTMAP_DENSITY;
+    if (density == current) return;
+    world.lightmapDensity = density;
+    if (world.model.meshCount == 0) return;  // Laid out when the world loads
+
+    // A new layout makes the lightmap there is now useless, and gives the world a new key, so it gets baked again
+    CancelLightmapBake(world);
+    BuildLightmapLayout(world);
+    world.bounceBaked = false;
+    world.lighting.lightmapTexture = 0;
 }
 
 bool UpdateLightmapBake(World &world, BounceStats *stats)
@@ -625,9 +835,9 @@ bool LoadLightmap(World &world, const char *path, const std::string &keyText)
 
     Image image = LoadImage(path);  // Through the game data, so it can come from gamedata.zip
     if (image.data == nullptr) return false;
-    if (image.width != world.lightmapWidth || image.height != world.lightmapHeight)
+    if (image.width != world.lightmapWidth || image.height != world.lightmapHeight*LIGHTMAP_LAYERS)
     {
-        TraceLog(LOG_WARNING, "LIGHTMAP: [%s] Is %dx%d, but the world's lightmap layout is %dx%d", path, image.width, image.height, world.lightmapWidth, world.lightmapHeight);
+        TraceLog(LOG_WARNING, "LIGHTMAP: [%s] Is %dx%d, but the world's lightmap layout is %dx%d", path, image.width, image.height, world.lightmapWidth, world.lightmapHeight*LIGHTMAP_LAYERS);
         UnloadImage(image);
         return false;
     }
@@ -636,7 +846,7 @@ bool LoadLightmap(World &world, const char *path, const std::string &keyText)
     CancelLightmapBake(world);
     if (world.lightmap.id != 0) UnloadTexture(world.lightmap);
     world.lightmap = LoadTextureFromImage(image);
-    SetTextureFilter(world.lightmap, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(world.lightmap, world.lightmapFiltered ? TEXTURE_FILTER_BILINEAR : TEXTURE_FILTER_POINT);
     SetTextureWrap(world.lightmap, TEXTURE_WRAP_CLAMP);
     UnloadImage(image);
     world.lighting.lightmapTexture = world.lightmap.id;

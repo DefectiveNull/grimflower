@@ -16,19 +16,29 @@
 
 #include <string>
 
-static const float LIGHTMAP_DENSITY = 2.0f;  // Texels per world unit: 16 Quake units each, like Quake's lightmaps
+// The lightmap texture has the layout's height four times over: the bounce reaching each texel head on, then
+// from each of three tilted directions, for bump mapped materials (Half-Life 2's radiosity normal mapping).
+// The lighting shader reads them the same way
+static const int LIGHTMAP_LAYERS = 4;
+
+static const float LIGHTMAP_DENSITY = 2.0f;  // Default texels per world unit: 16 Quake units each, like Quake's lightmaps
 
 struct BounceStats
 {
     int width, height;     // The lightmap's size
     int texels;            // Texels that lie on the world, and get baked
-    long long rays;        // Traces: 26 per texel (the ones in front of it), plus one towards the sun per hit
+    long long rays;        // Traces: 52 per texel (the ones in front of it), plus one towards the sun per hit
     double bakeMs;         // How long the bake took, on its thread
 };
 
 // Groups the world into charts, lays them out in the lightmap, and gives the world mesh lightmap texture
 // coordinates. LoadWorld calls this
 void BuildLightmapLayout(World &world);
+
+// The level's lightmap settings. density: texels (luxels) per world unit, 0 for LIGHTMAP_DENSITY. Changing it
+// lays the lightmap out again, so it needs a new bake. filtered: smooth (bilinear) or blocky (nearest) like
+// software Quake, which takes effect right away. Call before LoadWorld, or any time after
+void SetLightmapSettings(World &world, float density, bool filtered);
 
 // Starts baking the bounce of world.lighting.sun on a background thread, cancelling any bake still running
 void StartLightmapBake(World &world);

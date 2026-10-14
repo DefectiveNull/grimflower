@@ -169,7 +169,7 @@ static Mesh UploadMeshData(const MeshData &data)
 
 // Loads the world model with one mesh per material, from the OBJ's usemtl lines. raylib's own OBJ
 // loader reads the .mtl straight from disk, so it couldn't tell faces apart when running from gamedata.zip
-static Model LoadWorldModel(const char *objPath)
+static Model LoadWorldModel(const char *objPath, std::vector<WorldMaterial> &worldMaterials)
 {
     Model model = { 0 };
     model.transform = MatrixIdentity();
@@ -293,6 +293,10 @@ static Model LoadWorldModel(const char *objPath)
         }
     }
 
+    // Each material's diffuse texture names its entry in .materials
+    worldMaterials.assign(model.materialCount, WorldMaterial());
+    for (int i = 0; i < model.materialCount; i++) worldMaterials[i].diffusePath = materials[i].texturePath;
+
     TraceLog(LOG_INFO, "WORLD: [%s] Loaded %d meshes, one per material used", objPath, meshCount);
     return model;
 }
@@ -321,8 +325,9 @@ bool LoadWorld(World &world, const char *objPath, float scale)
     if (world.colliders.empty()) return false;
     world.bounds = ComputeBounds(world.colliders);
 
-    world.model = LoadWorldModel(objPath);
+    world.model = LoadWorldModel(objPath, world.materials);
     world.model.transform = MatrixScale(scale, scale, scale);
+    ApplyMaterials(world, LoadMaterialLibrary());
 
     InitLighting(world.lighting, world.bounds);
     for (int i = 0; i < world.model.materialCount; i++) world.model.materials[i].shader = world.lighting.shader;
@@ -332,16 +337,18 @@ bool LoadWorld(World &world, const char *objPath, float scale)
     return true;
 }
 
+static void UnloadWorldModel(Model &model, std::vector<WorldMaterial> &materials);
+
 void UnloadWorld(World &world)
 {
-    // UnloadModel leaves shaders and textures alone, since they can be shared between models.
-    // The world's textures are its own, so unload them first, or every reload would leak them
-    for (int i = 0; i < world.model.materialCount; i++)
+    UnloadWorldModel(world.model, world.materials);
+    for (PropModel &propModel : world.propModels)
     {
-        Texture texture = world.model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
-        if (texture.id != rlGetTextureIdDefault()) UnloadTexture(texture);
+        if (propModel.model.meshCount > 0) UnloadWorldModel(propModel.model, propModel.materials);
     }
-    UnloadModel(world.model);
+    world.propModels.clear();
+    ClearProps(world);
+    ClearCubemaps(world);
     UnloadLighting(world.lighting);
     UnloadAmbientOcclusion(world.ao);
     UnloadSkybox(world.skybox);
@@ -359,7 +366,9 @@ void UnloadWorld(World &world)
 
 void RenderWorldShadows(World &world)
 {
-    RenderShadowMap(world.lighting, world.model);
+    std::vector<ShadowCaster> casters = { { &world.model, world.model.transform } };
+    if (!world.propsHidden) for (const WorldProp &prop : world.props) casters.push_back({ &world.propModels[prop.model].model, prop.transform });
+    RenderShadowMap(world.lighting, casters);
 }
 
 void RenderWorldAO(World &world, Camera camera, int width, int height, bool enabled, float radius)
@@ -376,14 +385,266 @@ void RenderWorldAO(World &world, Camera camera, int width, int height, bool enab
     world.lighting.aoScreenSize = { (float)width, (float)height };
 }
 
+// A material map, through the game data. Warns and gives an empty texture if it can't be loaded
+static Texture LoadMaterialMap(const std::string &path, const std::string &diffusePath, const char *kind)
+{
+    Texture texture = { 0 };
+    if (path.empty()) return texture;
+    if (!LoadGameTexture(path.c_str(), texture))
+    {
+        TraceLog(LOG_WARNING, "MATERIALS: [%s] Couldn't load its %s %s", diffusePath.c_str(), kind, path.c_str());
+        texture = { 0 };
+    }
+    return texture;
+}
+
+static void ApplyMaterialList(std::vector<WorldMaterial> &materials, const MaterialLibrary &library)
+{
+    for (WorldMaterial &material : materials)
+    {
+        for (Texture *map : { &material.bumpmap, &material.specularmap, &material.glossmap })
+        {
+            if (map->id != 0) UnloadTexture(*map);
+            *map = { 0 };
+        }
+        material.def = FindMaterial(library, material.diffusePath);
+        material.bumpmap = LoadMaterialMap(material.def.bumpmap, material.diffusePath, "bump map");
+        material.specularmap = LoadMaterialMap(material.def.specularmap, material.diffusePath, "specular map");
+        material.glossmap = LoadMaterialMap(material.def.glossmap, material.diffusePath, "gloss map");
+    }
+}
+
+void ApplyMaterials(World &world, const MaterialLibrary &library)
+{
+    ApplyMaterialList(world.materials, library);
+    for (PropModel &propModel : world.propModels) ApplyMaterialList(propModel.materials, library);
+}
+
+// Unloads a model loaded by LoadWorldModel: its own textures, its maps, then the model
+static void UnloadWorldModel(Model &model, std::vector<WorldMaterial> &materials)
+{
+    // UnloadModel leaves shaders and textures alone, since they can be shared between models.
+    // These textures are the model's own, so unload them first, or every reload would leak them
+    for (int i = 0; i < model.materialCount; i++)
+    {
+        Texture texture = model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
+        if (texture.id != rlGetTextureIdDefault()) UnloadTexture(texture);
+    }
+    ApplyMaterialList(materials, MaterialLibrary());  // Unloads their maps
+    materials.clear();
+    UnloadModel(model);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Props
+
+int LoadPropModel(World &world, const std::string &objPath)
+{
+    for (size_t i = 0; i < world.propModels.size(); i++)
+    {
+        if (world.propModels[i].path == objPath) return (world.propModels[i].model.meshCount > 0) ? (int)i : -1;
+    }
+
+    // Remembered even if it fails, so a bad path isn't tried again for every prop that uses it
+    PropModel propModel = {};
+    propModel.path = objPath;
+    if (GameDataFileExists(objPath.c_str()))
+    {
+        propModel.model = LoadWorldModel(objPath.c_str(), propModel.materials);
+        for (int i = 0; i < propModel.model.materialCount; i++) propModel.model.materials[i].shader = world.lighting.shader;
+        propModel.bounds = GetModelBoundingBox(propModel.model);
+        ApplyMaterialList(propModel.materials, LoadMaterialLibrary());
+    }
+    else
+    {
+        TraceLog(LOG_WARNING, "WORLD: [%s] Prop model not found", objPath.c_str());
+    }
+    world.propModels.push_back(propModel);
+    return (propModel.model.meshCount > 0) ? (int)world.propModels.size() - 1 : -1;
+}
+
+void AddProp(World &world, int model, Vector3 origin, float angle, float scale, bool isStatic, bool solid)
+{
+    if (model < 0 || model >= (int)world.propModels.size()) return;
+
+    WorldProp prop;
+    prop.model = model;
+    prop.transform = MatrixMultiply(MatrixMultiply(MatrixScale(scale, scale, scale), MatrixRotateY(angle*DEG2RAD)),
+                                    MatrixTranslate(origin.x, origin.y, origin.z));
+
+    // The box around its 8 turned corners
+    BoundingBox local = world.propModels[model].bounds;
+    prop.bounds = { { FLT_MAX, FLT_MAX, FLT_MAX }, { -FLT_MAX, -FLT_MAX, -FLT_MAX } };
+    for (int corner = 0; corner < 8; corner++)
+    {
+        Vector3 p = { (corner & 1) ? local.max.x : local.min.x, (corner & 2) ? local.max.y : local.min.y, (corner & 4) ? local.max.z : local.min.z };
+        p = Vector3Transform(p, prop.transform);
+        prop.bounds.min = Vector3Min(prop.bounds.min, p);
+        prop.bounds.max = Vector3Max(prop.bounds.max, p);
+    }
+
+    prop.isStatic = isStatic;
+    world.props.push_back(prop);
+    if (isStatic && solid) world.propColliders.push_back(MakeBoxBrush(prop.bounds));
+}
+
+void ClearProps(World &world)
+{
+    for (WorldProp &prop : world.props)
+    {
+        for (Mesh &mesh : prop.lightmapMeshes) UnloadMesh(mesh);
+    }
+    world.props.clear();
+    world.propColliders.clear();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Materials outside the world model and props
+
+WorldMaterial LoadWorldMaterial(const std::string &diffusePath, const MaterialLibrary &library)
+{
+    std::vector<WorldMaterial> materials(1);
+    materials[0].diffusePath = diffusePath;
+    ApplyMaterialList(materials, library);
+    return materials[0];
+}
+
+void UnloadWorldMaterial(WorldMaterial &material)
+{
+    std::vector<WorldMaterial> materials = { material };
+    ApplyMaterialList(materials, MaterialLibrary());  // Unloads its maps
+    material = WorldMaterial();
+}
+
+void SetLightingWorldMaterial(const Lighting &lighting, const WorldMaterial &material)
+{
+    SetLightingMaterial(lighting, material.bumpmap.id, material.specularmap.id, material.glossmap.id,
+                        material.def.bumpmapOpenGL, material.def.specular, material.def.gloss, material.def.reflection);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cubemaps
+
+void AddCubemap(World &world, Vector3 position, int size)
+{
+    WorldCubemap cubemap;
+    cubemap.position = position;
+    cubemap.size = size;
+    cubemap.texture = rlLoadTextureCubemap(nullptr, size, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+    rlTextureParameters(cubemap.texture, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_LINEAR);
+    rlTextureParameters(cubemap.texture, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_LINEAR);
+    world.cubemaps.push_back(cubemap);
+    world.lighting.cubemapPositions.push_back(position);
+    world.lighting.cubemapTextures.push_back(cubemap.texture);
+    world.cubemapsStale = true;
+}
+
+void ClearCubemaps(World &world)
+{
+    for (const WorldCubemap &cubemap : world.cubemaps) rlUnloadTexture(cubemap.texture);
+    world.cubemaps.clear();
+    world.lighting.cubemapPositions.clear();
+    world.lighting.cubemapTextures.clear();
+}
+
+void CaptureCubemaps(World &world)
+{
+    if (world.cubemaps.empty()) return;
+
+    // Lit the way it is right now. Without reflections, so cubemaps don't show each other, and without the
+    // screen's ambient occlusion, which only fits the player's view
+    RenderWorldShadows(world);
+    world.lighting.capturingCubemaps = true;
+    unsigned int aoTexture = world.lighting.aoTexture;
+    world.lighting.aoTexture = 0;
+
+    // The six faces, the way OpenGL lays out a cubemap: +X, -X, +Y, -Y, +Z, -Z
+    const Vector3 directions[6] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
+    const Vector3 ups[6] = { { 0, -1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 }, { 0, -1, 0 }, { 0, -1, 0 } };
+
+    rlDrawRenderBatchActive();
+    for (const WorldCubemap &cubemap : world.cubemaps)
+    {
+        unsigned int framebuffer = rlLoadFramebuffer();
+        unsigned int depth = rlLoadTextureDepth(cubemap.size, cubemap.size, true);
+        rlFramebufferAttach(framebuffer, depth, RL_ATTACHMENT_DEPTH, RL_ATTACHMENT_RENDERBUFFER, 0);
+
+        for (int face = 0; face < 6; face++)
+        {
+            rlFramebufferAttach(framebuffer, cubemap.texture, RL_ATTACHMENT_COLOR_CHANNEL0, RL_ATTACHMENT_CUBEMAP_POSITIVE_X + face, 0);
+            rlEnableFramebuffer(framebuffer);
+            rlViewport(0, 0, cubemap.size, cubemap.size);
+            rlClearColor(245, 245, 245, 255);  // RAYWHITE, like the game's background where there's no sky
+            rlClearScreenBuffers();
+
+            Camera camera = { cubemap.position, Vector3Add(cubemap.position, directions[face]), ups[face], 90.0f, CAMERA_PERSPECTIVE };
+            rlSetMatrixProjection(MatrixPerspective(90.0*DEG2RAD, 1.0, 0.05, 1000.0));
+            rlSetMatrixModelview(MatrixLookAt(camera.position, camera.target, camera.up));
+            rlEnableDepthTest();
+            DrawSkybox(world.skybox, camera);
+            DrawWorld(world, false);
+            rlDrawRenderBatchActive();
+        }
+        rlDisableFramebuffer();
+        rlUnloadFramebuffer(framebuffer);  // Also unloads the depth buffer attached to it
+    }
+
+    rlViewport(0, 0, GetRenderWidth(), GetRenderHeight());
+    world.lighting.capturingCubemaps = false;
+    world.lighting.aoTexture = aoTexture;
+    world.cubemapsStale = false;
+
+    // Back to drawing on the screen in 2D, the way EndTextureMode leaves it, so this can run mid-frame
+    rlMatrixMode(RL_PROJECTION);
+    rlLoadIdentity();
+    rlOrtho(0, GetRenderWidth(), GetRenderHeight(), 0, 0.0f, 1.0f);
+    rlMatrixMode(RL_MODELVIEW);
+    rlLoadIdentity();
+    TraceLog(LOG_INFO, "WORLD: Captured %d cubemaps", (int)world.cubemaps.size());
+}
+
 void DrawWorld(const World &world, bool showColliders)
 {
     BeginLighting(world.lighting);
         // Only the world mesh gets ambient occlusion and baked bounce
         SetLightingAO(world.lighting, true);
         SetLightingBounce(world.lighting, world.bounceBaked);
-        DrawModel(world.model, { 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
+
+        // A mesh per material, each with its maps
+        const Model &model = world.model;
+        for (int i = 0; i < model.meshCount; i++)
+        {
+            int index = model.meshMaterial[i];
+            if (index < (int)world.materials.size())
+            {
+                SetLightingWorldMaterial(world.lighting, world.materials[index]);
+            }
+            DrawMesh(model.meshes[i], model.materials[index], model.transform);
+        }
+        ClearLightingMaterial(world.lighting);
+
         SetLightingAO(world.lighting, false);
+        SetLightingBounce(world.lighting, false);
+
+        // Props, with their own materials. Static ones have their part of the bounce lightmap once the layout
+        // has them. No ambient occlusion, which is worked out for the world mesh only
+        for (const WorldProp &prop : world.props)
+        {
+            if (world.propsHidden) break;
+            const PropModel &propModel = world.propModels[prop.model];
+            bool baked = !prop.lightmapMeshes.empty();
+            SetLightingBounce(world.lighting, baked && world.bounceBaked);
+            for (int i = 0; i < propModel.model.meshCount; i++)
+            {
+                int index = propModel.model.meshMaterial[i];
+                if (index < (int)propModel.materials.size())
+                {
+                    SetLightingWorldMaterial(world.lighting, propModel.materials[index]);
+                }
+                DrawMesh(baked ? prop.lightmapMeshes[i] : propModel.model.meshes[i], propModel.model.materials[index], prop.transform);
+            }
+        }
+        ClearLightingMaterial(world.lighting);
         SetLightingBounce(world.lighting, false);
         DrawModelWires(world.model, { 0.0f, 0.0f, 0.0f }, 1.0f, Fade(BLACK, 0.6f));
     EndLighting();
@@ -395,6 +656,13 @@ void DrawWorld(const World &world, bool showColliders)
             for (const std::vector<Vector3> &face : brush.faces)
             {
                 for (size_t i = 0; i < face.size(); i++) DrawLine3D(face[i], face[(i + 1)%face.size()], LIME);
+            }
+        }
+        for (const Brush &brush : world.propColliders)
+        {
+            for (const std::vector<Vector3> &face : brush.faces)
+            {
+                for (size_t i = 0; i < face.size(); i++) DrawLine3D(face[i], face[(i + 1)%face.size()], SKYBLUE);
             }
         }
     }
@@ -650,6 +918,7 @@ Trace TraceBox(const World &world, Vector3 start, Vector3 end, Vector3 mins, Vec
 
     for (const Brush &brush : world.colliders) ClipBoxToBrush(trace, brush, start, end, mins, maxs);
     for (const Brush &brush : world.movers) ClipBoxToBrush(trace, brush, start, end, mins, maxs);
+    for (const Brush &brush : world.propColliders) ClipBoxToBrush(trace, brush, start, end, mins, maxs);
 
     trace.endPos = Vector3Lerp(start, end, trace.fraction);
     return trace;

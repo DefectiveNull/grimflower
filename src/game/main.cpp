@@ -162,7 +162,12 @@ int main(int argc, char **argv)
         if (worldLoaded && UpdateLightmapBake(world, &bake))
         {
             ConsolePrintf("Baked the bounce lightmap (%dx%d, %d texels) in %.0f ms", bake.width, bake.height, bake.texels, bake.bakeMs);
+            world.cubemapsStale = true;  // So reflections show the bounce light too
         }
+
+        // Cubemaps are captured once, when the level loads, and again when its bounce bake finishes: lights
+        // that move after that don't change what's reflected
+        if (worldLoaded && world.cubemapsStale) CaptureCubemaps(world);
 
         // Esc backs out of the options screen first, unless it's waiting for a key to bind: then Esc cancels that
         bool escapePressed = !consoleFocused && IsKeyPressed(KEY_ESCAPE);
@@ -228,6 +233,9 @@ int main(int argc, char **argv)
             // The console or pause menu has the controls now, so let go of any held buttons
             ReleaseBinds();
         }
+
+        // Soundscapes follow the player's ears, also while paused so they don't jump when the game resumes
+        UpdateSoundscapes(volumes, GetPlayerCamera(player).position, player.yaw);
 
         BeginDrawing();
             world.lighting.pointShadows = r_use_pointlight_shadows.value != 0.0f;

@@ -34,6 +34,9 @@ static const float SWIM_SPEED_SCALE = 0.8f;                    // Half-Life swim
 static const float SINK_SPEED = 1.875f;                        // 60, drifting down with no input
 static const float CLIMB_SPEED = 3.75f;                        // MAX_CLIMB_SPEED 200 at Half-Life's speeds
 static const float CLIMB_DOWN_PITCH = -30.0f*DEG2RAD;          // Looking further down than this, forward climbs down
+static const float WATER_JUMP_REACH = 1.25f;                   // Highest ledge above the waist a water jump climbs onto
+static const float WATER_JUMP_SPEED = 3.0f;                    // Towards the ledge while jumping out
+static const float WATER_JUMP_TIME = 1.0f;                     // Longest a water jump lasts, if it never lands
 
 static const int BLOCKED_FLOOR = 1;
 static const int BLOCKED_STEP = 2;
@@ -343,6 +346,50 @@ static void WaterMove(Player &player, const World &world, float dt)
     FlyMove(player, world, dt);
 }
 
+// Swimming forward into a wall near the surface, with a ledge in reach above it, jumps out of the water
+// onto the ledge (PM_CheckWaterJump). Unlike Quake's fixed jump speed, it jumps just high enough for the
+// ledge it found, so a water surface a little below the ledge works too
+static void CheckWaterJump(Player &player, const World &world)
+{
+    if (player.waterJumpTime > 0.0f || player.waterLevel == 0 || player.waterLevel == 3 || player.onGround) return;
+    if (!inputButtons.forward || inputButtons.back) return;
+
+    // A wall right in front, that the player is facing
+    Vector3 forward = { -sinf(player.yaw), 0.0f, -cosf(player.yaw) };
+    Vector3 maxs = HullMaxs(player);
+    Trace wall = TraceBox(world, player.position, Vector3Add(player.position, Vector3Scale(forward, 0.3f)), PLAYER_MINS, maxs);
+    if (wall.fraction == 1.0f || wall.startSolid || fabsf(wall.normal.y) > 0.1f) return;
+    if (Vector3DotProduct(forward, wall.normal) > -0.5f) return;
+
+    // Room to rise up above the ledge, and to move over it from there
+    Trace up = TraceBox(world, player.position, Vector3Add(player.position, { 0.0f, WATER_JUMP_REACH, 0.0f }), PLAYER_MINS, maxs);
+    Trace over = TraceBox(world, up.endPos, Vector3Add(up.endPos, Vector3Scale(forward, 0.3f)), PLAYER_MINS, maxs);
+    if (over.fraction < 1.0f || over.startSolid) return;
+
+    // The ledge's top, which has to be above where the player is now, and flat enough to stand on
+    Trace down = TraceBox(world, over.endPos, { over.endPos.x, player.position.y, over.endPos.z }, PLAYER_MINS, maxs);
+    if (down.fraction == 1.0f || down.startSolid || down.normal.y < MIN_FLOOR_NORMAL) return;
+    float rise = down.endPos.y - player.position.y;
+    if (rise <= 0.0f) return;
+
+    // Just fast enough to clear it, with a little to spare to move over the edge
+    player.velocity = Vector3Scale(forward, WATER_JUMP_SPEED);
+    player.velocity.y = sqrtf(2.0f*GRAVITY*(rise + 0.15f));
+    player.waterJumpDir = forward;
+    player.waterJumpTime = WATER_JUMP_TIME;
+}
+
+// Jumping out of the water: carried towards the ledge under gravity, without control, until landing
+static void WaterJumpMove(Player &player, const World &world, float dt)
+{
+    player.waterJumpTime -= dt;
+    player.velocity.x = player.waterJumpDir.x*WATER_JUMP_SPEED;
+    player.velocity.z = player.waterJumpDir.z*WATER_JUMP_SPEED;
+    player.velocity.y -= GRAVITY*dt;
+    WalkMove(player, world, dt);
+    if (player.onGround) player.waterJumpTime = 0.0f;
+}
+
 void UpdatePlayer(Player &player, const World &world, const Volumes &volumes, float dt)
 {
     // Capturing the mouse moves the cursor to the middle of the window, and that jump shows up as mouse
@@ -411,6 +458,12 @@ void UpdatePlayer(Player &player, const World &world, const Volumes &volumes, fl
     if (player.onLadder)
     {
         LadderMove(player, world, dt);
+        return;
+    }
+    CheckWaterJump(player, world);
+    if (player.waterJumpTime > 0.0f)
+    {
+        WaterJumpMove(player, world, dt);
         return;
     }
     if (player.waterLevel >= 2)

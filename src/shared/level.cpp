@@ -89,6 +89,15 @@ float EntityFloat(const LevelEntity &entity, const char *key, float fallback)
     return GetNumber(entity.properties, key, fallback);
 }
 
+bool EntityBool(const LevelEntity &entity, const char *key, bool fallback)
+{
+    auto it = entity.properties.find(key);
+    if (it == entity.properties.end()) return fallback;
+    if (it->is_boolean()) return it->get<bool>();
+    if (it->is_number()) return it->get<float>() != 0.0f;
+    return fallback;
+}
+
 Vector3 EntityVector(const LevelEntity &entity, const char *key, Vector3 fallback)
 {
     auto it = entity.properties.find(key);
@@ -138,6 +147,8 @@ bool LoadLevel(Level &level, const char *path)
     level.info.saved = GetString(info, "saved", "");
     level.info.skybox = GetString(info, "skybox", "");
     level.info.lightmapKey = GetString(info, "lightmapKey", "");
+    level.info.luxelsPerUnit = Clamp(GetNumber(info, "luxelsPerUnit", 2.0f), 0.25f, 16.0f);
+    level.info.lightmapFiltered = GetString(info, "lightmapFilter", "bilinear") != "nearest";
     level.info.entityCount = (int)GetNumber(info, "entityCount", 0.0f);
 
     const json &world = Section(root, "world");
@@ -198,6 +209,8 @@ bool SaveLevel(Level &level, const char *path)
     root["info"]["saved"] = level.info.saved;
     root["info"]["skybox"] = level.info.skybox;
     if (!level.info.lightmapKey.empty()) root["info"]["lightmapKey"] = level.info.lightmapKey;
+    root["info"]["luxelsPerUnit"] = level.info.luxelsPerUnit;
+    root["info"]["lightmapFilter"] = level.info.lightmapFiltered ? "bilinear" : "nearest";
     root["info"]["entityCount"] = level.info.entityCount;
 
     root["world"]["model"] = level.worldModel;

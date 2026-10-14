@@ -13,7 +13,7 @@
 #include <vector>
 
 CameraButtons cameraButtons = {};
-EditorSettings editorSettings = { 200, 70.0f, 8.0f, true, true, 0.25f, true, 0.003f, false };
+EditorSettings editorSettings = { 200, 70.0f, 8.0f, true, true, true, true, false, 0.25f, true, 0.003f, false };
 
 static const char *CONFIG_FILE = "editor.cfg";
 
@@ -226,7 +226,7 @@ static void Cmd_SaveLevelAs(const Args &) { SaveCurrentLevel(*current, true); }
 static void Cmd_ExitEditor(const Args &) { RequestAction(*current, ACTION_EXIT); }
 static void Cmd_DeleteEntity(const Args &) { DeleteSelectedEntity(*current); }
 static void Cmd_Deselect(const Args &) { current->selected = -1; }
-static void Cmd_CreateEntity(const Args &) { OpenDialog(*current, DIALOG_CREATE_ENTITY); }
+static void Cmd_CreateEntity(const Args &) { ShowCreateEntityList(*current); }
 static void Cmd_CreateWorld(const Args &) { OpenDialog(*current, DIALOG_CREATE_WORLD); }
 static void Cmd_WorldSettings(const Args &) { OpenDialog(*current, DIALOG_WORLD_SETTINGS); }
 static void Cmd_EditorInfo(const Args &) { OpenDialog(*current, DIALOG_EDITOR_INFO); }
@@ -310,6 +310,9 @@ static const Setting settings[] =
     { "ed_movespeed", &editorSettings.moveSpeed, nullptr, nullptr },
     { "ed_showgrid", nullptr, &editorSettings.showGrid, nullptr },
     { "ed_showlabels", nullptr, &editorSettings.showLabels, nullptr },
+    { "ed_showpointentities", nullptr, &editorSettings.showPointEntities, nullptr },
+    { "ed_showvolumes", nullptr, &editorSettings.showVolumes, nullptr },
+    { "ed_showcolliders", nullptr, &editorSettings.showColliders, nullptr },
     { "ed_gridsize", &editorSettings.gridSize, nullptr, nullptr },
     { "ed_snap", nullptr, &editorSettings.snapToGrid, nullptr },
     { "ed_sensitivity", &editorSettings.lookSensitivity, nullptr, nullptr },

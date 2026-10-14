@@ -2,6 +2,7 @@
 
 #include "raylib.h"
 #include "lighting.h"
+#include "materials.h"
 #include "skybox.h"
 #include "ssao.h"
 #include <memory>
@@ -34,27 +35,73 @@ struct LightmapTexel
 {
     Vector3 position;
     Vector3 normal;
+    Vector3 tangent, bitangent;  // Which ways its texture's x and y run across it, for bump mapped bounce
     int x, y;
 };
 
 struct LightmapJob;  // A background bake, see bounce.cpp
+
+// A world model material's maps besides its diffuse texture, from .materials (materials.h)
+struct WorldMaterial
+{
+    std::string diffusePath;   // Its diffuse texture, as the .mtl names it. The material is looked up by this
+    MaterialDef def;
+    Texture bumpmap, specularmap, glossmap;  // id 0 where it has none
+};
+
+// What the level looks like from one spot, in all six directions, for reflections (env_cubemap)
+struct WorldCubemap
+{
+    Vector3 position;
+    int size;              // Pixels along each face's side
+    unsigned int texture;  // The cubemap
+};
+
+// A model props are made from, loaded once however many props use it
+struct PropModel
+{
+    std::string path;                       // The .obj, as a game data path
+    Model model;                            // meshCount 0 if it couldn't be loaded
+    std::vector<WorldMaterial> materials;
+    BoundingBox bounds;                     // In the model's own units
+};
+
+// A model placed in the level, like a crate or a lamp (prop_model)
+struct WorldProp
+{
+    int model;           // Index into World::propModels
+    Matrix transform;    // Its scale, turn and place
+    BoundingBox bounds;  // Around it in world space
+    bool isStatic;       // Solid, and part of the bounce bake
+    std::vector<Mesh> lightmapMeshes;  // A static prop's own copies of its model's meshes, with lightmap coordinates. Empty until BuildLightmapLayout
+};
 
 struct World
 {
     Model model;
     std::vector<Brush> colliders;
     std::vector<Brush> movers;  // Solids that move, like doors. Whoever moves them rebuilds this every frame
+    std::vector<Brush> propColliders;  // Boxes around solid props. Kept apart from colliders, so bounce bakes don't see them
+    std::vector<PropModel> propModels;
+    std::vector<WorldProp> props;
+    bool propsHidden;    // Not drawn and casting no shadows, like when the editor hides them. Still baked
+    std::vector<WorldCubemap> cubemaps;
+    bool cubemapsStale;  // Added, or the lighting changed (like a bounce bake finishing): capture them again with CaptureCubemaps
     BoundingBox bounds;   // Around all the level geometry
     Lighting lighting;    // Sun, point lights and shadows
     Skybox skybox;        // From the level's info.skybox, if it has one
     AmbientOcclusion ao;  // Screen space ambient occlusion of the world mesh, see RenderWorldAO
+    std::vector<WorldMaterial> materials;  // One per model material, in the same order
 
     // Sun bounce light, in a lightmap texture (bounce.cpp). The lightmap's layout comes from the world
     // model alone, worked out when it loads, so a lightmap saved by the editor fits it in the game
     bool bounceBaked;                                // lightmap holds a bake
     Texture2D lightmap;
+    float lightmapDensity = 0.0f;                    // Texels per world unit, 0 for LIGHTMAP_DENSITY. See SetLightmapSettings
+    bool lightmapFiltered = true;                    // Bilinear, or nearest for blocky luxels
     int lightmapWidth, lightmapHeight;
-    std::vector<BounceTriangle> bounceTriangles;     // What bounce traces hit
+    std::vector<BounceTriangle> bounceTriangles;     // What bounce traces hit: the world's triangles, then static props'
+    int propTriangleStart;                           // Where static props' start in bounceTriangles
     std::vector<LightmapTexel> lightmapTexels;       // Where each lightmap texel is in the world
     std::shared_ptr<LightmapJob> lightmapJob;        // A bake running in the background, if any
     unsigned long long lightmapGeometryKey;          // Fingerprint of the triangles, colors and layout, see LightmapKey
@@ -81,6 +128,39 @@ void RenderWorldShadows(World &world);
 // mesh only. Call each frame before BeginMode3D, with the screen size. enabled false turns it off.
 // radius: in world units, how far around each point to look for things hemming it in
 void RenderWorldAO(World &world, Camera camera, int width, int height, bool enabled, float radius);
+
+// Loads each world and prop material's bump, specular and gloss maps from the library, replacing the ones
+// it had. LoadWorld does this with .materials; the editor again after changing a material
+void ApplyMaterials(World &world, const MaterialLibrary &library);
+
+// Props: loads a model for them (once per path, through the game data, with its .mtl textures and
+// .materials). Returns its index in world.propModels, or -1 if it couldn't be loaded
+int LoadPropModel(World &world, const std::string &objPath);
+
+// Places a prop: scaled from the model's units, turned angle degrees around the vertical axis (like
+// info_player_start's angle) and moved to origin. Props are drawn with the world and cast shadows.
+// A static one is there for good: it blocks movement with the box around it (unless solid is false, like
+// in the editor), and it's part of the bounce bake, with its own part of the lightmap. Lay the lightmap
+// out again (BuildLightmapLayout) after placing static props
+void AddProp(World &world, int model, Vector3 origin, float angle, float scale, bool isStatic, bool solid = true);
+void ClearProps(World &world);  // Removes every prop placed, keeping their models loaded
+
+// A material for something besides the world model and props, like a door: its maps from the library,
+// looked up by its diffuse texture. Unload it when done
+WorldMaterial LoadWorldMaterial(const std::string &diffusePath, const MaterialLibrary &library);
+void UnloadWorldMaterial(WorldMaterial &material);
+
+// Between BeginLighting and EndLighting: what's drawn next uses this material's maps and settings
+void SetLightingWorldMaterial(const Lighting &lighting, const WorldMaterial &material);
+
+// Cubemaps for reflections (env_cubemap): size is the pixels along each face. They're black until captured
+void AddCubemap(World &world, Vector3 position, int size);
+void ClearCubemaps(World &world);
+
+// Renders the level into every cubemap, with its lights where they are now and its lightmap as it is: the
+// game does it once when a level loads (and again when a bounce bake finishes), so lights that move later
+// don't change what's reflected. Call outside BeginTextureMode
+void CaptureCubemaps(World &world);
 
 // Draws the level lit by the sun and point lights. With showColliders, also draws the collision brushes
 void DrawWorld(const World &world, bool showColliders);

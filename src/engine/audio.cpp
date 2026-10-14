@@ -27,6 +27,17 @@ static unsigned char *musicData = nullptr;
 static bool musicLoaded = false;
 static std::string musicPath;
 
+// Ambient sounds, streamed and looping like music, but on the world channel. A stopped one leaves a free
+// slot, so handles stay valid while others start and stop
+struct AmbientSound
+{
+    Music stream;
+    unsigned char *data;  // The file in memory, which the stream reads from
+    float volume;         // Before the world channel's volume
+    bool playing;
+};
+static std::vector<AmbientSound> ambientSounds;
+
 static float Clamp01(float value)
 {
     return (value < 0.0f) ? 0.0f : (value > 1.0f) ? 1.0f : value;
@@ -79,6 +90,8 @@ void InitAudio()
 void CloseAudio()
 {
     StopMusic();
+    for (int i = 0; i < (int)ambientSounds.size(); i++) StopAmbientSound(i);
+    ambientSounds.clear();
     for (auto &entry : worldSounds)
     {
         if (entry.second.frameCount > 0) UnloadSound(entry.second);
@@ -111,6 +124,65 @@ void UpdateAudio()
         SetMusicVolume(music, music_volume.value);
         UpdateMusicStream(music);
     }
+
+    for (AmbientSound &ambient : ambientSounds)
+    {
+        if (!ambient.playing) continue;
+        SetMusicVolume(ambient.stream, ambient.volume*world_volume.value);
+        UpdateMusicStream(ambient.stream);
+    }
+}
+
+int StartAmbientSound(const char *path)
+{
+    if (!audioReady) return -1;
+
+    int size = 0;
+    unsigned char *data = LoadFileData(path, &size);
+    if (data == nullptr)
+    {
+        TraceLog(LOG_WARNING, "AUDIO: [%s] Couldn't find the ambient sound", path);
+        return -1;
+    }
+    Music stream = LoadMusicStreamFromMemory(GetFileExtension(path), data, size);
+    if (!IsMusicValid(stream))
+    {
+        TraceLog(LOG_WARNING, "AUDIO: [%s] Couldn't load the ambient sound, it needs to be .ogg, .mp3, .wav, .flac or .qoa", path);
+        UnloadFileData(data);
+        return -1;
+    }
+    stream.looping = true;
+    SetMusicVolume(stream, 0.0f);
+    PlayMusicStream(stream);
+
+    AmbientSound ambient = { stream, data, 0.0f, true };
+    for (size_t i = 0; i < ambientSounds.size(); i++)
+    {
+        if (ambientSounds[i].playing) continue;
+        ambientSounds[i] = ambient;
+        return (int)i;
+    }
+    ambientSounds.push_back(ambient);
+    return (int)ambientSounds.size() - 1;
+}
+
+void SetAmbientSound(int handle, float volume, float pan)
+{
+    if (handle < 0 || handle >= (int)ambientSounds.size() || !ambientSounds[handle].playing) return;
+    AmbientSound &ambient = ambientSounds[handle];
+    ambient.volume = Clamp01(volume);
+    SetMusicVolume(ambient.stream, ambient.volume*world_volume.value);
+    SetMusicPan(ambient.stream, (pan < -1.0f) ? -1.0f : (pan > 1.0f) ? 1.0f : pan);
+}
+
+void StopAmbientSound(int handle)
+{
+    if (handle < 0 || handle >= (int)ambientSounds.size() || !ambientSounds[handle].playing) return;
+    AmbientSound &ambient = ambientSounds[handle];
+    StopMusicStream(ambient.stream);
+    UnloadMusicStream(ambient.stream);
+    UnloadFileData(ambient.data);
+    ambient = {};
 }
 
 bool PlayWorldSound(const char *path)

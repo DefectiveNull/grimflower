@@ -191,6 +191,7 @@ nlohmann::ordered_json DefaultParamValue(const EntityParamInfo &param)
     }
 
     double number = numbers.empty() ? 0.0 : numbers[0];
+    if (param.type == "bool") return number != 0.0;
     if (param.type == "angle" && number == (int)number) return (int)number;
     return number;
 }
@@ -210,6 +211,21 @@ float EntityNumberOrDefault(const LevelEntity &entity, const char *name, float f
     nlohmann::ordered_json value;
     if (DefaultFor(entity, name, value) && value.is_number()) fallback = value.get<float>();
     return EntityFloat(entity, name, fallback);
+}
+
+bool EntityBoolOrDefault(const LevelEntity &entity, const char *name, bool fallback)
+{
+    nlohmann::ordered_json value;
+    if (DefaultFor(entity, name, value) && value.is_boolean()) fallback = value.get<bool>();
+    return EntityBool(entity, name, fallback);
+}
+
+std::string EntityTextOrDefault(const LevelEntity &entity, const char *name, const std::string &fallback)
+{
+    nlohmann::ordered_json value;
+    std::string result = fallback;
+    if (DefaultFor(entity, name, value) && value.is_string()) result = value.get<std::string>();
+    return EntityText(entity, name, result);
 }
 
 Vector3 EntityVectorOrDefault(const LevelEntity &entity, const char *name, Vector3 fallback)
