@@ -15,13 +15,11 @@ static const float ROW_HEIGHT = 30.0f;
 static const float LABEL_WIDTH = 120.0f;
 
 // Text being typed into the current dialog's fields
-static char modelInput[256];
-static char scaleInput[32];
 static char nameInput[128];
 static char skyboxInput[256];
 
 // World Settings: the bounce lightmap's resolution, as an index into LUXEL_OPTIONS, and its filtering (0 smooth, 1 blocky)
-static const float LUXEL_OPTIONS[] = { 1.0f, 2.0f, 4.0f, 8.0f };
+static const float LUXEL_OPTIONS[] = { 32.0f, 16.0f, 8.0f, 4.0f };  // World units per luxel
 static int luxelChoice, luxelChoiceOpened;
 static int filterChoice;
 
@@ -46,8 +44,6 @@ void OpenDialog(EditorState &editor, DialogId dialog)
     activeField = -1;
 
     const Level &level = editor.level;
-    snprintf(modelInput, sizeof(modelInput), "%s", level.worldModel.empty() ? "model/" : level.worldModel.c_str());
-    snprintf(scaleInput, sizeof(scaleInput), "%g", level.worldScale);
     snprintf(nameInput, sizeof(nameInput), "%s", level.info.name.c_str());
     snprintf(skyboxInput, sizeof(skyboxInput), "%s", level.info.skybox.c_str());
 
@@ -55,7 +51,7 @@ void OpenDialog(EditorState &editor, DialogId dialog)
     luxelChoice = 0;
     for (int i = 1; i < 4; i++)
     {
-        if (fabsf(LUXEL_OPTIONS[i] - level.info.luxelsPerUnit) < fabsf(LUXEL_OPTIONS[luxelChoice] - level.info.luxelsPerUnit)) luxelChoice = i;
+        if (fabsf(LUXEL_OPTIONS[i] - level.info.luxelSize) < fabsf(LUXEL_OPTIONS[luxelChoice] - level.info.luxelSize)) luxelChoice = i;
     }
     luxelChoiceOpened = luxelChoice;
     filterChoice = level.info.lightmapFiltered ? 0 : 1;
@@ -103,43 +99,6 @@ static Rectangle BottomButton(Rectangle bounds, int indexFromRight)
              bounds.y + bounds.height - PADDING - height, width, height };
 }
 
-static void DrawCreateWorldDialog(EditorState &editor)
-{
-    bool closed;
-    Rectangle bounds = DialogWindow("Create World", 620, 200, closed);
-    Layout layout = StartLayout(bounds);
-
-    GuiLabel({ bounds.x + PADDING, layout.y, bounds.width - 2*PADDING, 20 },
-             "OBJ used for drawing and collision. Each object in it must be convex");
-    layout.Next(30);
-
-    GuiLabel(layout.Label(), "World model");
-    TextField(0, layout.Field(100), modelInput, sizeof(modelInput));
-    Rectangle browse = { layout.Field().x + layout.Field().width - 94, layout.y, 94, ROW_HEIGHT - 4 };
-    if (GuiButton(browse, "Browse..."))
-    {
-        std::string path;
-        if (ShowOpenFileDialog(GetWindowHandle(), "Choose World Model", "OBJ models (*.obj)\0*.obj\0", editor.dataRoot + "/model", path))
-        {
-            snprintf(modelInput, sizeof(modelInput), "%s", ToDataPath(editor, path).c_str());
-        }
-    }
-    layout.Next();
-
-    GuiLabel(layout.Label(), "Scale");
-    TextField(1, layout.Field(250), scaleInput, sizeof(scaleInput));
-    GuiLabel({ layout.Field(250).x + layout.Field(250).width + 10, layout.y, 240, ROW_HEIGHT - 4 }, "0.03125 = Quake units");
-    layout.Next();
-
-    if (GuiButton(BottomButton(bounds, 1), "Create"))
-    {
-        float scale = (float)atof(scaleInput);
-        if (scale <= 0.0f) SetStatus(editor, "Scale has to be a number above 0");
-        else if (CreateWorld(editor, modelInput, scale)) CloseDialog(editor);
-    }
-    if (GuiButton(BottomButton(bounds, 0), "Cancel") || closed) CloseDialog(editor);
-}
-
 static void DrawWorldSettingsDialog(EditorState &editor)
 {
     const Level &level = editor.level;
@@ -167,12 +126,12 @@ static void DrawWorldSettingsDialog(EditorState &editor)
     layout.Next();
 
     // The sun's bounce lightmap, which the game uses the same way
-    GuiLabel(layout.Label(), "Luxel resolution");
-    GuiToggleGroup({ layout.Field().x, layout.y, 60, ROW_HEIGHT - 4 }, "1;2;4;8", &luxelChoice);
+    GuiLabel(layout.Label(), "Luxel size");
+    GuiToggleGroup({ layout.Field().x, layout.y, 60, ROW_HEIGHT - 4 }, "32;16;8;4", &luxelChoice);
     layout.Next();
-    float luxelSize = 1.0f/LUXEL_OPTIONS[luxelChoice];
-    DrawUITextWrapped(TextFormat("Luxels per world unit: each is %g units (%g Quake units). Higher is sharper, but bakes slower",
-                                 luxelSize, luxelSize*32.0f), layout.Field().x, layout.y, layout.Field().width, 14, UIMutedTextColor());
+    float luxelSize = LUXEL_OPTIONS[luxelChoice];
+    DrawUITextWrapped(TextFormat("World units per luxel: %g. Smaller is sharper, but bakes slower. 16 is Quake's", luxelSize),
+                      layout.Field().x, layout.y, layout.Field().width, 14, UIMutedTextColor());
     layout.Next(40);
 
     GuiLabel(layout.Label(), "Lightmap filtering");
@@ -195,8 +154,8 @@ static void DrawWorldSettingsDialog(EditorState &editor)
     GuiLabel(layout.Field(), TextFormat("%d placed", (int)level.entities.size()));
     layout.Next();
 
-    GuiLabel(layout.Label(), "World model");
-    GuiLabel(layout.Field(), level.worldModel.empty() ? "None, see Edit > Create World" : TextFormat("%s at scale %g", level.worldModel.c_str(), level.worldScale));
+    GuiLabel(layout.Label(), "Geometry");
+    GuiLabel(layout.Field(), TextFormat("%d meshes, %d shapes", (int)level.geometry.meshes.size(), (int)level.geometry.shapes.size()));
     layout.Next();
 
     if (GuiButton(BottomButton(bounds, 1), "Apply"))
@@ -208,7 +167,7 @@ static void DrawWorldSettingsDialog(EditorState &editor)
             RecordUndo(editor, "Change world settings");
             editor.level.info.name = nameInput;
             editor.level.info.skybox = skyboxInput;
-            if (luxelsChanged) editor.level.info.luxelsPerUnit = LUXEL_OPTIONS[luxelChoice];
+            if (luxelsChanged) editor.level.info.luxelSize = LUXEL_OPTIONS[luxelChoice];
             editor.level.info.lightmapFiltered = (filterChoice == 0);
             SetStatus(editor, luxelsChanged ? "World settings changed, re-baking the bounce lightmap" : "World settings changed");
         }
@@ -421,7 +380,7 @@ static void DrawEditorInfoDialog(EditorState &editor)
 
     const char *about[] = {
         "A level editor for Grimflower. Levels are JSON files",
-        "in maps/ that say which world model to use, where entities like",
+        "in maps/ with the level's geometry (edited in Edit mode), where entities like",
         "the player start, the sun and lights go, and map-wide settings",
         "like the name and skybox. Levels are drawn with the game's lighting.",
     };
@@ -596,7 +555,6 @@ void DrawDialog(EditorState &editor)
 
     switch (editor.dialog)
     {
-        case DIALOG_CREATE_WORLD: DrawCreateWorldDialog(editor); break;
         case DIALOG_WORLD_SETTINGS: DrawWorldSettingsDialog(editor); break;
         case DIALOG_PREFERENCES: DrawPreferencesDialog(editor); break;
         case DIALOG_EDITOR_INFO: DrawEditorInfoDialog(editor); break;

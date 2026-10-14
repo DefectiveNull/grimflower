@@ -272,12 +272,12 @@ static void DrawLevelDetails(EditorState &editor, Rectangle panel, float y)
     GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, editor.levelPath.empty() ? "Not saved yet" : ToDataPath(editor, editor.levelPath).c_str());
     y += ROW_HEIGHT;
 
-    GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, "World model");
-    GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, level.worldModel.empty() ? "None" : level.worldModel.c_str());
+    GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, "Geometry");
+    GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, TextFormat("%d meshes, %d shapes", (int)level.geometry.meshes.size(), (int)level.geometry.shapes.size()));
     y += ROW_HEIGHT;
 
-    GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, "Scale");
-    GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, TextFormat("%g", level.worldScale));
+    GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, "Mode");
+    GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, (editor.mode == MODE_EDIT) ? "Edit (Tab: Object)" : "Object (Tab: Edit)");
     y += ROW_HEIGHT + 6;
 
     // Create Entity sits at the bottom of the panel, so work out its height first: the placed entities

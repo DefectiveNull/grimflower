@@ -32,8 +32,8 @@ static const MenuItem EDIT_ITEMS[] = {
     { "Undo History...", nullptr, nullptr, nullptr },
     { nullptr, nullptr, nullptr, nullptr },
     { "Create Entity", nullptr, nullptr, nullptr },
-    { "Create World...", nullptr, nullptr, nullptr },
-    { "Reload World Model", nullptr, nullptr, nullptr },
+    { "Import OBJ as Meshes...", nullptr, nullptr, nullptr },
+    { "Object/Edit Mode", "Tab", nullptr, nullptr },
     { "Global World Settings...", nullptr, nullptr, nullptr },
     { nullptr, nullptr, nullptr, nullptr },
     { "Dark Mode", nullptr, DarkModeStatus, nullptr },
@@ -113,8 +113,8 @@ static void RunMenuItem(EditorState &editor, MenuId menu, int item)
             case 1: Redo(editor); break;
             case 2: OpenDialog(editor, DIALOG_UNDO_HISTORY); break;
             case 4: ShowCreateEntityList(editor); break;
-            case 5: OpenDialog(editor, DIALOG_CREATE_WORLD); break;
-            case 6: ReloadWorld(editor); break;
+            case 5: ImportObjFromDialog(editor); break;
+            case 6: SetEditorMode(editor, (editor.mode == MODE_EDIT) ? MODE_OBJECT : MODE_EDIT); break;
             case 7: OpenDialog(editor, DIALOG_WORLD_SETTINGS); break;
             case 9: ToggleDarkMode(); break;
             case 10: OpenDialog(editor, DIALOG_PREFERENCES); break;

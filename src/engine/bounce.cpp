@@ -19,8 +19,8 @@ static const int DIRECTION_SETS = 2;   // Turned copies of the 26 directions eac
 static const int SMOOTH_RADIUS = 1;    // Texels around each one it's averaged with after baking. Keep under PAD + 1
 static const int PAD = 2;                    // Texels of border around each chart, filled from its edge, so filtering never reads the next chart
 static const int MAX_LIGHTMAP_SIZE = 4096;
-static const float TRACE_DISTANCE = 64.0f;   // How far a bounce trace looks for a surface
-static const float SURFACE_OFFSET = 0.02f;   // Traces start this far off a surface, so they don't hit it
+static const float TRACE_DISTANCE = 2048.0f; // How far a bounce trace looks for a surface
+static const float SURFACE_OFFSET = 0.64f;   // Traces start this far off a surface, so they don't hit it
 static const float MAX_ALBEDO = 0.9f;        // No surface bounces all the light that hits it
 
 // The lightmap is 8 bits per channel, storing bounce/BOUNCE_RANGE so it can go above 1. The lighting
@@ -254,7 +254,8 @@ static Mesh WithTexcoords2(const Mesh &old, float *texcoords2)
 
 void BuildLightmapLayout(World &world)
 {
-    const float density = (world.lightmapDensity > 0.0f) ? world.lightmapDensity : LIGHTMAP_DENSITY;
+    const float luxelSize = (world.lightmapLuxelSize > 0.0f) ? world.lightmapLuxelSize : LIGHTMAP_LUXEL_SIZE;
+    const float density = 1.0f/luxelSize;  // Luxels per world unit
 
     // The world model, then the static props. Other props move, so they can't have baked light
     std::vector<LayoutSource> sources = { { &world.model, world.model.transform, -1 } };
@@ -470,7 +471,7 @@ void BuildLightmapLayout(World &world)
     Hash(key, &width, sizeof(width));
     Hash(key, &height, sizeof(height));
     for (const BounceTriangle &tri : world.bounceTriangles) Hash(key, &tri, sizeof(tri));
-    if (density != LIGHTMAP_DENSITY) Hash(key, &density, sizeof(density));  // Only when not the default, so lightmaps saved before the setting existed still match
+    if (luxelSize != LIGHTMAP_LUXEL_SIZE) Hash(key, &luxelSize, sizeof(luxelSize));  // Only when not the default
 
     // Laid out again the same, like after props were placed again where they were: the lightmap still fits
     if (key != world.lightmapGeometryKey) world.lightmapKey = 0;
@@ -750,7 +751,7 @@ static void ApplyBake(World &world, BounceStats *stats)
     world.lightmapJob.reset();
 }
 
-void SetLightmapSettings(World &world, float density, bool filtered)
+void SetLightmapSettings(World &world, float luxelSize, bool filtered)
 {
     if (filtered != world.lightmapFiltered)
     {
@@ -758,10 +759,10 @@ void SetLightmapSettings(World &world, float density, bool filtered)
         if (world.lightmap.id != 0) SetTextureFilter(world.lightmap, filtered ? TEXTURE_FILTER_BILINEAR : TEXTURE_FILTER_POINT);
     }
 
-    float current = (world.lightmapDensity > 0.0f) ? world.lightmapDensity : LIGHTMAP_DENSITY;
-    if (density <= 0.0f) density = LIGHTMAP_DENSITY;
-    if (density == current) return;
-    world.lightmapDensity = density;
+    float current = (world.lightmapLuxelSize > 0.0f) ? world.lightmapLuxelSize : LIGHTMAP_LUXEL_SIZE;
+    if (luxelSize <= 0.0f) luxelSize = LIGHTMAP_LUXEL_SIZE;
+    if (luxelSize == current) return;
+    world.lightmapLuxelSize = luxelSize;
     if (world.model.meshCount == 0) return;  // Laid out when the world loads
 
     // A new layout makes the lightmap there is now useless, and gives the world a new key, so it gets baked again
@@ -825,11 +826,11 @@ bool LoadLightmap(World &world, const char *path, const std::string &keyText)
 {
     if (!GameDataFileExists(path)) return false;
 
-    // Checked before reading the file: a lightmap baked for another world model, textures or sun is no use
+    // Checked before reading the file: a lightmap baked for other geometry, textures or sun is no use
     unsigned long long key = LightmapKey(world);
     if (keyText != LightmapKeyToText(key))
     {
-        TraceLog(LOG_INFO, "LIGHTMAP: [%s] Is out of date: the world model, its textures or the sun changed since it was baked", path);
+        TraceLog(LOG_INFO, "LIGHTMAP: [%s] Is out of date: the geometry, its textures or the sun changed since it was baked", path);
         return false;
     }
 

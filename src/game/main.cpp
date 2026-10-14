@@ -16,6 +16,7 @@
 #include "volumes.h"
 #include "world.h"
 #include "worlddebug.h"
+#include "rlgl.h"
 
 #include <cstring>
 
@@ -92,6 +93,7 @@ int main(int argc, char **argv)
     ConsoleInit(GAME_NAME);  // Before InitWindow, so the console also shows raylib's startup messages
     AddGameCommands();       // Before the configs, which bind keys to them
     InitWindow(1280, 720, GAME_NAME);
+    rlSetClipPlanes(VIEW_NEAR, VIEW_FAR);  // In Quake units: the default 4000 is too short for a big level
     InitAudio();  // Before the configs, which set the volumes
     InitSettings();  // Before the configs, which set the settings cvars
 

@@ -1,13 +1,19 @@
 #pragma once
 
 #include "raylib.h"
+#include "geometry.h"
 #include "lighting.h"
 #include "materials.h"
 #include "skybox.h"
 #include "ssao.h"
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
+
+// How near and far the camera sees, in world units (Quake units). Set with rlSetClipPlanes when the window opens
+static const double VIEW_NEAR = 1.0;
+static const double VIEW_FAR = 16384.0;
 
 struct Plane
 {
@@ -41,10 +47,10 @@ struct LightmapTexel
 
 struct LightmapJob;  // A background bake, see bounce.cpp
 
-// A world model material's maps besides its diffuse texture, from .materials (materials.h)
+// A material's maps besides its diffuse texture, from .materials (materials.h)
 struct WorldMaterial
 {
-    std::string diffusePath;   // Its diffuse texture, as the .mtl names it. The material is looked up by this
+    std::string diffusePath;   // Its diffuse texture, as a game data path. The material is looked up by this
     MaterialDef def;
     Texture bumpmap, specularmap, glossmap;  // id 0 where it has none
 };
@@ -78,8 +84,12 @@ struct WorldProp
 
 struct World
 {
+    // The level's geometry (geometry.h), drawn as one model with a mesh per material, in world space
     Model model;
-    std::vector<Brush> colliders;
+    std::vector<Brush> colliders;     // Each mesh's convex pieces, see GeoConvexPieces
+    bool hasGeometryBuilt;            // SetWorldGeometry has run with full on: colliders and the lightmap layout match the model
+    std::map<std::string, Texture> textureCache;          // Diffuse textures by path, kept while the geometry is rebuilt
+    std::map<std::string, WorldMaterial> materialCache;   // And their materials
     std::vector<Brush> movers;  // Solids that move, like doors. Whoever moves them rebuilds this every frame
     std::vector<Brush> propColliders;  // Boxes around solid props. Kept apart from colliders, so bounce bakes don't see them
     std::vector<PropModel> propModels;
@@ -97,7 +107,7 @@ struct World
     // model alone, worked out when it loads, so a lightmap saved by the editor fits it in the game
     bool bounceBaked;                                // lightmap holds a bake
     Texture2D lightmap;
-    float lightmapDensity = 0.0f;                    // Texels per world unit, 0 for LIGHTMAP_DENSITY. See SetLightmapSettings
+    float lightmapLuxelSize = 0.0f;                  // World units per lightmap texel, 0 for LIGHTMAP_LUXEL_SIZE. See SetLightmapSettings
     bool lightmapFiltered = true;                    // Bilinear, or nearest for blocky luxels
     int lightmapWidth, lightmapHeight;
     std::vector<BounceTriangle> bounceTriangles;     // What bounce traces hit: the world's triangles, then static props'
@@ -117,9 +127,20 @@ struct Trace
     bool startSolid;  // The box started inside a collider
 };
 
-// scale converts the OBJ's units to world units, for both drawing and collision
-bool LoadWorld(World &world, const char *objPath, float scale);
+// Sets up an empty world: its lighting, with a default sun. Then give it geometry with SetWorldGeometry
+void CreateWorld(World &world);
 void UnloadWorld(World &world);
+
+// Builds the world's model from the level's geometry. full also works out its collision (convex pieces)
+// and its bounce lightmap layout, which takes longer: the editor leaves those out while geometry is being
+// edited, and the world has no bounce light until a full build. Its bounds come from the geometry
+void SetWorldGeometry(World &world, const Geometry &geometry, bool full);
+
+// A convex brush from its faces' outlines, with the bevel planes collision needs
+Brush MakeConvexBrush(const std::vector<std::vector<Vector3>> &faces);
+
+// A texture's size in pixels, read from its file through the game data without loading it
+bool GetGameTextureSize(const char *path, int &width, int &height);
 
 // Renders the sun's shadow map. Call each frame before BeginMode3D
 void RenderWorldShadows(World &world);
@@ -130,7 +151,7 @@ void RenderWorldShadows(World &world);
 void RenderWorldAO(World &world, Camera camera, int width, int height, bool enabled, float radius);
 
 // Loads each world and prop material's bump, specular and gloss maps from the library, replacing the ones
-// it had. LoadWorld does this with .materials; the editor again after changing a material
+// it had. SetWorldGeometry does this with .materials; the editor again after changing a material
 void ApplyMaterials(World &world, const MaterialLibrary &library);
 
 // Props: loads a model for them (once per path, through the game data, with its .mtl textures and
@@ -171,9 +192,6 @@ Brush MakeBoxBrush(BoundingBox box);
 // Loads a texture through the game data, so it can come from gamedata.zip. TGAs work too, which the
 // prebuilt raylib can't read. Returns false if it couldn't be loaded
 bool LoadGameTexture(const char *path, Texture &texture);
-
-// Builds one convex brush per object ("o"/"g") in an OBJ file. Each object must be convex.
-std::vector<Brush> ComputeColliders(const char *objPath, float scale);
 
 // Sweeps a box with the given extents (relative to its origin) from start to end, against the colliders and the movers
 Trace TraceBox(const World &world, Vector3 start, Vector3 end, Vector3 mins, Vector3 maxs);

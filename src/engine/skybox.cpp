@@ -78,7 +78,7 @@ bool LoadSkybox(Skybox &skybox, const char *path)
     skybox.exposureLoc = GetShaderLocation(skybox.shader, "exposure");
     skybox.exposure = 1.0f;
 
-    skybox.cube = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
+    skybox.cube = LoadModelFromMesh(GenMeshCube(64.0f, 64.0f, 64.0f));
     skybox.cube.materials[0].shader = skybox.shader;
     skybox.cube.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = skybox.texture;
 

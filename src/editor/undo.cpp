@@ -16,6 +16,8 @@ static void Restore(EditorState &editor, const UndoStep &step)
     editor.stateId = step.stateId;
     editor.unsavedChanges = (editor.stateId != editor.savedStateId);
     editor.dragging = false;
+    editor.edit.edges.clear();  // Picked by vertex, which the restored shapes may number differently
+    GeometryChanged(editor);
     SyncWorldWithLevel(editor);
 }
 

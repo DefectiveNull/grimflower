@@ -25,7 +25,7 @@ static const int BUMP_MAP_SLOT = 7;      // A material's maps. Under 16, the few
 static const int SPECULAR_MAP_SLOT = 8;
 static const int GLOSS_MAP_SLOT = 9;
 static const int FIRST_CUBEMAP_SLOT = 1;  // Cubemaps on 1 to 4: raylib only binds slot 0, the diffuse texture
-static const float POINT_SHADOW_NEAR = 0.05f;
+static const float POINT_SHADOW_NEAR = 1.6f;
 
 // Per-pixel lighting. The vertex shader only passes the world position and normal along;
 // all the lighting happens per pixel in the fragment shader
@@ -114,6 +114,7 @@ uniform int hasGlossMap;
 uniform float specularStrength;
 uniform float glossiness;
 uniform vec3 viewPosition;     // The camera, for highlights
+uniform int unlit;             // 1: just the textures, no lighting at all
 uniform float reflection;      // How much of the nearest cubemap the material mirrors, masked by its specular map
 
 // The env_cubemaps nearest the camera (up to 4): what the level looks like from each. Each pixel reflects
@@ -198,7 +199,7 @@ float SunShadow(vec3 normal, float facing)
     if (coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0 || coords.z > 1.0) return 0.0;
 
     // Surfaces at a grazing angle to the sun need more bias to avoid shadow acne. In world units, then to depth
-    float bias = mix(0.05, 0.01, facing)*shadowDepthScale;
+    float bias = mix(1.6, 0.32, facing)*shadowDepthScale;
 
     // Percentage-closer filtering: a 4x4 grid of filtered lookups, each already a blend of 2x2 texels,
     // so the edge fades smoothly over about 5 texels
@@ -240,7 +241,7 @@ float PointShadow(int i, int slot, vec3 fromLight, float facing)
 
     // Stored values are distance/radius, so the bias is too
     float current = length(fromLight)/lightRadii[i];
-    float bias = mix(0.05, 0.01, facing)/lightRadii[i];
+    float bias = mix(1.6, 0.32, facing)/lightRadii[i];
 
     // Filtered lookups like the sun's, in a 2x2 grid so they stay inside the tile's margin
     float lit = 0.0;
@@ -257,6 +258,11 @@ float PointShadow(int i, int slot, vec3 fromLight, float facing)
 void main()
 {
     vec4 texel = texture(texture0, fragTexCoord)*colDiffuse*fragColor;
+    if (unlit == 1)
+    {
+        finalColor = texel;  // Shaded unlit, the editor's view: textures only
+        return;
+    }
 
     // The face's own normal decides what's in shadow and what faces away from a light. The bump map's
     // normal, if there is one, decides how much light each texel catches and where its highlights are
@@ -416,10 +422,11 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.cubemapPositions.clear();
     lighting.cubemapTextures.clear();
     lighting.capturingCubemaps = false;
+    lighting.unlit = false;
 
     // Sun above one corner of the area, shining toward its center, so the light comes in at an angle
     Vector3 center = Vector3Scale(Vector3Add(bounds.min, bounds.max), 0.5f);
-    lighting.sun.position = { bounds.min.x, bounds.max.y + 10.0f, bounds.min.z };
+    lighting.sun.position = { bounds.min.x, bounds.max.y + 320.0f, bounds.min.z };
     lighting.sun.direction = Vector3Normalize(Vector3Subtract(center, lighting.sun.position));
     lighting.sun.color = { 255, 244, 214, 255 };  // Slightly warm white
     lighting.sun.intensity = 1.0f;
@@ -466,6 +473,7 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.glossinessLoc = GetShaderLocation(shader, "glossiness");
     lighting.viewPositionLoc = GetShaderLocation(shader, "viewPosition");
     lighting.reflectionLoc = GetShaderLocation(shader, "reflection");
+    lighting.unlitLoc = GetShaderLocation(shader, "unlit");
     for (int i = 0; i < MAX_CUBEMAPS; i++) lighting.cubemapLocs[i] = GetShaderLocation(shader, TextFormat("cubemap%d", i));
     lighting.cubemapPositionsLoc = GetShaderLocation(shader, "cubemapPositions");
     lighting.cubemapCountLoc = GetShaderLocation(shader, "cubemapCount");
@@ -573,14 +581,14 @@ void RenderShadowMap(Lighting &lighting, const std::vector<ShadowCaster> &caster
     // Orthographic camera looking along the sun's direction, framing the whole area. Its clip planes are fitted
     // tightly around the area, so the shadow map's depth precision isn't spread over empty space
     Camera camera = { 0 };
-    camera.position = Vector3Subtract(center, Vector3Scale(direction, radius + 1.0f));
+    camera.position = Vector3Subtract(center, Vector3Scale(direction, radius + 32.0f));
     camera.target = center;
     camera.up = (fabsf(direction.y) > 0.99f) ? Vector3{ 0.0f, 0.0f, 1.0f } : Vector3{ 0.0f, 1.0f, 0.0f };
     camera.fovy = radius*2.0f;
     camera.projection = CAMERA_ORTHOGRAPHIC;
 
-    const double nearPlane = 0.1;
-    const double farPlane = 2.0*radius + 2.0;
+    const double nearPlane = 3.2;
+    const double farPlane = 2.0*radius + 64.0;
     lighting.shadowDepthScale = (float)(1.0/(farPlane - nearPlane));
 
     double oldNear = rlGetCullDistanceNear();
@@ -629,7 +637,7 @@ void BeginLighting(const Lighting &lighting)
         if (count == MAX_POINT_LIGHTS) break;
         positions[count] = light.position;
         colors[count] = ColorToVector(light.color, light.intensity);
-        radii[count] = fmaxf(light.radius, 0.001f);
+        radii[count] = fmaxf(light.radius, 0.032f);
         count++;
     }
     SetShaderValue(shader, lighting.lightCountLoc, &count, SHADER_UNIFORM_INT);
@@ -680,6 +688,8 @@ void BeginLighting(const Lighting &lighting)
     Matrix cameraToWorld = MatrixInvert(rlGetMatrixModelview());
     Vector3 viewPosition = { cameraToWorld.m12, cameraToWorld.m13, cameraToWorld.m14 };
     SetShaderValue(shader, lighting.viewPositionLoc, &viewPosition, SHADER_UNIFORM_VEC3);
+    int unlit = lighting.unlit ? 1 : 0;
+    SetShaderValue(shader, lighting.unlitLoc, &unlit, SHADER_UNIFORM_INT);
     ClearLightingMaterial(lighting);
 
     // Cubemaps: the ones nearest the camera, none while capturing them. Every sampler gets its own slot

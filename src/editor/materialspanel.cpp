@@ -362,3 +362,8 @@ void DrawMaterialsPanel(EditorState &editor, Rectangle area)
 
     if (activeField >= 0) editor.textEditing = true;
 }
+
+std::string GetPickedMaterial()
+{
+    return picked;
+}

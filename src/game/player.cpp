@@ -6,36 +6,36 @@
 
 #include <cmath>
 
-// Quake 1 movement values, scaled at 1 world unit = 32 Quake units (Quake's value in the comment)
-static const Vector3 PLAYER_MINS = { -0.5f, -0.75f, -0.5f };   // -16 -16 -24
-static const Vector3 PLAYER_MAXS = { 0.5f, 1.0f, 0.5f };       // 16 16 32
-static const float VIEW_HEIGHT = 0.6875f;                      // view_ofs 22
-static const float MAX_SPEED = 6.0f;                          // sv_maxspeed 320
+// Quake 1 movement values. World units are Quake units
+static const Vector3 PLAYER_MINS = { -16.0f, -24.0f, -16.0f };  // Quake's hull, with y up
+static const Vector3 PLAYER_MAXS = { 16.0f, 32.0f, 16.0f };
+static const float VIEW_HEIGHT = 22.0f;                         // view_ofs
+static const float MAX_SPEED = 192.0f;                          // Slower than sv_maxspeed 320, as it was tuned
 static const float ACCELERATE = 10.0f;                         // sv_accelerate 10
-static const float AIR_SPEED_CAP = 0.9375f;                    // 30 in SV_AirAccelerate
+static const float AIR_SPEED_CAP = 30.0f;                       // In SV_AirAccelerate
 static const float FRICTION = 4.0f;                            // sv_friction 4
-static const float STOP_SPEED = 3.125f;                        // sv_stopspeed 100
-static const float GRAVITY = 25.0f;                            // sv_gravity 800
-static const float JUMP_SPEED = 8.4375f;                       // 270 in PlayerJump
-static const float STEP_SIZE = 0.5625f;                        // STEPSIZE 18
-static const float STOP_EPSILON = 0.003f;                      // STOP_EPSILON 0.1
+static const float STOP_SPEED = 100.0f;                         // sv_stopspeed
+static const float GRAVITY = 800.0f;                            // sv_gravity
+static const float JUMP_SPEED = 270.0f;                         // In PlayerJump
+static const float STEP_SIZE = 18.0f;                           // STEPSIZE
+static const float STOP_EPSILON = 0.1f;                         // STOP_EPSILON
 static const float MIN_FLOOR_NORMAL = 0.7f;                    // Steeper than this is a wall
 
 static const float SENSITIVITY_SCALE = 0.001f;                 // Radians per pixel at sensitivity 1
 static const float MAX_PITCH = 89.0f*DEG2RAD;
-static const float KILL_HEIGHT = -50.0f;                       // Respawn when falling below this
+static const float KILL_HEIGHT = -1600.0f;                      // Respawn when falling below this
 
 // Crouching halves the hull's height, keeping the feet where they are, like Half-Life's duck hull
-static const Vector3 DUCK_MAXS = { 0.5f, 0.125f, 0.5f };
+static const Vector3 DUCK_MAXS = { 16.0f, 4.0f, 16.0f };
 static const float DUCK_VIEW_HEIGHT = 0.0f;
 static const float DUCK_SPEED_SCALE = 0.333f;                  // PLAYER_DUCKING_MULTIPLIER
 
 static const float SWIM_SPEED_SCALE = 0.8f;                    // Half-Life swims at 80% of the walking speed
-static const float SINK_SPEED = 1.875f;                        // 60, drifting down with no input
-static const float CLIMB_SPEED = 3.75f;                        // MAX_CLIMB_SPEED 200 at Half-Life's speeds
+static const float SINK_SPEED = 60.0f;                          // Drifting down with no input
+static const float CLIMB_SPEED = 120.0f;                        // MAX_CLIMB_SPEED 200 at Half-Life's speeds, scaled like MAX_SPEED
 static const float CLIMB_DOWN_PITCH = -30.0f*DEG2RAD;          // Looking further down than this, forward climbs down
-static const float WATER_JUMP_REACH = 1.25f;                   // Highest ledge above the waist a water jump climbs onto
-static const float WATER_JUMP_SPEED = 3.0f;                    // Towards the ledge while jumping out
+static const float WATER_JUMP_REACH = 40.0f;                   // Highest ledge above the waist a water jump climbs onto
+static const float WATER_JUMP_SPEED = 96.0f;                   // Towards the ledge while jumping out
 static const float WATER_JUMP_TIME = 1.0f;                     // Longest a water jump lasts, if it never lands
 
 static const int BLOCKED_FLOOR = 1;
@@ -254,7 +254,7 @@ static float ViewHeight(const Player &player)
 // How deep in water the player is, checking the feet, the waist (the origin) and the eyes (PM_CheckWater)
 static int WaterLevel(const Player &player, const Volumes &volumes)
 {
-    Vector3 feet = { player.position.x, player.position.y + PLAYER_MINS.y + 0.05f, player.position.z };
+    Vector3 feet = { player.position.x, player.position.y + PLAYER_MINS.y + 1.0f, player.position.z };
     if (!(PointContents(volumes, feet) & CONTENTS_WATER)) return 0;
     if (!(PointContents(volumes, player.position) & CONTENTS_WATER)) return 1;
 
@@ -274,7 +274,7 @@ static void UpdateDuck(Player &player, const World &world, bool canDuck)
 
     // Checked from a hair higher: standing exactly on the floor counts as being inside it otherwise,
     // and the player could never stand up without jumping first
-    Vector3 checkFrom = Vector3Add(player.position, { 0.0f, 0.01f, 0.0f });
+    Vector3 checkFrom = Vector3Add(player.position, { 0.0f, 0.25f, 0.0f });
     Trace room = TraceBox(world, checkFrom, checkFrom, PLAYER_MINS, PLAYER_MAXS);
     if (!room.startSolid) player.ducked = false;
 }
@@ -357,13 +357,13 @@ static void CheckWaterJump(Player &player, const World &world)
     // A wall right in front, that the player is facing
     Vector3 forward = { -sinf(player.yaw), 0.0f, -cosf(player.yaw) };
     Vector3 maxs = HullMaxs(player);
-    Trace wall = TraceBox(world, player.position, Vector3Add(player.position, Vector3Scale(forward, 0.3f)), PLAYER_MINS, maxs);
+    Trace wall = TraceBox(world, player.position, Vector3Add(player.position, Vector3Scale(forward, 10.0f)), PLAYER_MINS, maxs);
     if (wall.fraction == 1.0f || wall.startSolid || fabsf(wall.normal.y) > 0.1f) return;
     if (Vector3DotProduct(forward, wall.normal) > -0.5f) return;
 
     // Room to rise up above the ledge, and to move over it from there
     Trace up = TraceBox(world, player.position, Vector3Add(player.position, { 0.0f, WATER_JUMP_REACH, 0.0f }), PLAYER_MINS, maxs);
-    Trace over = TraceBox(world, up.endPos, Vector3Add(up.endPos, Vector3Scale(forward, 0.3f)), PLAYER_MINS, maxs);
+    Trace over = TraceBox(world, up.endPos, Vector3Add(up.endPos, Vector3Scale(forward, 10.0f)), PLAYER_MINS, maxs);
     if (over.fraction < 1.0f || over.startSolid) return;
 
     // The ledge's top, which has to be above where the player is now, and flat enough to stand on
@@ -374,7 +374,7 @@ static void CheckWaterJump(Player &player, const World &world)
 
     // Just fast enough to clear it, with a little to spare to move over the edge
     player.velocity = Vector3Scale(forward, WATER_JUMP_SPEED);
-    player.velocity.y = sqrtf(2.0f*GRAVITY*(rise + 0.15f));
+    player.velocity.y = sqrtf(2.0f*GRAVITY*(rise + 5.0f));
     player.waterJumpDir = forward;
     player.waterJumpTime = WATER_JUMP_TIME;
 }

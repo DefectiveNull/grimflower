@@ -1,6 +1,7 @@
 // Level editor for Grimflower: a separate program from the game, built to build/editor.exe
 
 #include "raylib.h"
+#include "rlgl.h"
 #include "raygui.h"
 
 #include "config.h"
@@ -32,11 +33,14 @@ static void DrawStatusBar(const EditorState &editor)
 
     // Recent messages, then a reminder of the controls
     bool recent = !editor.status.empty() && GetTime() - editor.statusTime < 6.0;
-    const char *text = recent ? editor.status.c_str()
-                              : "Hold right mouse: look around, with WASD/Q/E to move (Shift: faster) | Left click: select | Delete: delete entity | [ ]: grid size";
+    const char *controls = (editor.mode == MODE_EDIT)
+        ? "Edit mode | Hold right mouse: look around, with WASD/Q/E | Tab: Object mode | [ ]: grid size | Esc: cancel"
+        : "Hold right mouse: look around, with WASD/Q/E to move (Shift: faster) | Left click: select | Tab: Edit mode | [ ]: grid size";
+    const char *text = recent ? editor.status.c_str() : controls;
     DrawUIText(text, 8, (float)(y + (STATUS_BAR_HEIGHT - 16)/2), 16, recent ? UITextColor() : UIMutedTextColor());
 
-    const char *count = TextFormat("Grid %g%s  |  %d entities", editorSettings.gridSize, editorSettings.snapToGrid ? "" : " (no snap)", (int)editor.level.entities.size());
+    const char *count = TextFormat("%s  |  Grid %g%s  |  %d meshes  |  %d entities", (editor.mode == MODE_EDIT) ? "EDIT" : "OBJECT", editorSettings.gridSize,
+                                   editorSettings.snapToGrid ? "" : " (no snap)", (int)editor.level.geometry.meshes.size(), (int)editor.level.entities.size());
     DrawUIText(count, GetScreenWidth() - MeasureUIText(count, 16) - 8, (float)(y + (STATUS_BAR_HEIGHT - 16)/2), 16, UIMutedTextColor());
 }
 
@@ -50,6 +54,7 @@ static void HandleKeys(EditorState &editor)
     {
         if (editor.openMenu != MENU_NONE) editor.openMenu = MENU_NONE;
         else if (editor.pointing) CancelPointAt(editor);
+        else if (editor.mode == MODE_EDIT) EditModeEscape(editor);  // What the tool's doing, then the tool, then the selection
         else editor.selected = -1;
     }
 }
@@ -58,6 +63,7 @@ int main()
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(1600, 900, EDITOR_NAME);
+    rlSetClipPlanes(VIEW_NEAR, VIEW_FAR);  // In Quake units: the default 4000 is too short for a big level
     SetWindowMinSize(1000, 600);
     SetExitKey(KEY_NULL);  // Esc closes menus and dialogs instead
     SetTargetFPS(144);
@@ -80,10 +86,11 @@ int main()
     {
         if (WindowShouldClose()) RequestAction(editor, ACTION_EXIT);
         UpdateConfigSaving();
-        UpdateHotReload(editor);  // entitylist.txt and the world model, when they change on disk
+        UpdateHotReload(editor);  // entitylist.txt and editor.cfg, when they change on disk
 
         // Keys are off while typing or in a dialog
-        if (editor.dialog == DIALOG_NONE && !editor.textEditing) HandleKeys(editor);
+        editor.keysFree = (editor.dialog == DIALOG_NONE && !editor.textEditing);
+        if (editor.keysFree) HandleKeys(editor);
         else ReleaseEditorBinds();
         editor.textEditing = false;  // Set again while drawing if a text field still has the keyboard
 

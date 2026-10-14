@@ -1,4 +1,5 @@
 #include "editor.h"
+#include "editinput.h"
 #include "raymath.h"
 #include "rlgl.h"
 #include "bounce.h"
@@ -20,17 +21,18 @@ Rectangle GetViewportRect()
 bool IsMouseOverViewport(const EditorState &editor)
 {
     if (editor.openMenu != MENU_NONE || editor.dialog != DIALOG_NONE) return false;
-    return CheckCollisionPointRec(GetMousePosition(), GetViewportRect());
+    if (IsMouseOverViewportUI()) return false;  // The mode and tool buttons, and the view menu
+    return CheckCollisionPointRec(EdMousePosition(), GetViewportRect());
 }
 
 // How big an entity's marker is, for clicking on it
 static float PickRadius(const LevelEntity &entity)
 {
     const EntityClassInfo *entityClass = FindEntityClass(entity.classname);
-    if (entityClass == nullptr) return 0.35f;
-    if (entityClass->shape == "volume") return 0.35f;  // Just the handle at its origin, so a big volume doesn't block clicks on what's inside
+    if (entityClass == nullptr) return 11.0f;
+    if (entityClass->shape == "volume") return 11.0f;  // Just the handle at its origin, so a big volume doesn't block clicks on what's inside
     if (entityClass->shape == "box") return Vector3Length(Vector3Subtract(entityClass->maxs, entityClass->mins))*0.4f;
-    return fmaxf(entityClass->radius*1.2f, 0.35f);
+    return fmaxf(entityClass->radius*1.2f, 11.0f);
 }
 
 static void UpdateCamera(EditorState &editor)
@@ -70,11 +72,11 @@ static void UpdateCamera(EditorState &editor)
         editor.camera.position = Vector3Add(editor.camera.position, Vector3Scale(move, speed));
     }
 
-    // Mouse wheel moves forward and back
-    if (IsMouseOverViewport(editor))
+    // Mouse wheel moves forward and back, unless bevelling, which scrolls for more steps
+    if (IsMouseOverViewport(editor) && !editor.edit.beveling)
     {
         float wheel = GetMouseWheelMove();
-        editor.camera.position = Vector3Add(editor.camera.position, Vector3Scale(forward, wheel*2.0f));
+        editor.camera.position = Vector3Add(editor.camera.position, Vector3Scale(forward, wheel*64.0f));
     }
 
     editor.camera.fovy = editorSettings.fieldOfView;
@@ -82,10 +84,10 @@ static void UpdateCamera(EditorState &editor)
 }
 
 // The ray under the mouse. The 3D view is rendered at the viewport's size, so work in its coordinates
-static Ray MouseRay(const EditorState &editor)
+Ray GetViewportMouseRay(const EditorState &editor)
 {
     Rectangle view = GetViewportRect();
-    Vector2 mouse = { GetMousePosition().x - view.x, GetMousePosition().y - view.y };
+    Vector2 mouse = { EdMousePosition().x - view.x, EdMousePosition().y - view.y };
     return GetScreenToWorldRayEx(mouse, editor.camera, (int)view.width, (int)view.height);
 }
 
@@ -250,7 +252,7 @@ static void UpdateResize(EditorState &editor, Ray ray)
     float face = SnapToGrid(Axis(hit, axis) + editor.resizeOffset);
 
     // A face that would cross the opposite one, or leave the box flat, stays where it was
-    const float MIN_SIZE = 0.0625f;
+    const float MIN_SIZE = 2.0f;
     if (isMax ? (face - Axis(box.min, axis) < MIN_SIZE) : (Axis(box.max, axis) - face < MIN_SIZE)) return;
     Axis(isMax ? box.max : box.min, axis) = face;
 
@@ -268,7 +270,7 @@ static void UpdateDrag(EditorState &editor)
     bool valid = editor.selected >= 0 && editor.selected < (int)editor.level.entities.size();
     if (valid && editor.resizeFace >= 0 && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !editor.looking)
     {
-        UpdateResize(editor, MouseRay(editor));
+        UpdateResize(editor, GetViewportMouseRay(editor));
         return;
     }
     if (valid && editor.resizeFace >= 0)
@@ -296,7 +298,7 @@ static void UpdateDrag(EditorState &editor)
     }
 
     // A few pixels of wiggle still count as a click, so selecting never nudges anything
-    Ray ray = MouseRay(editor);
+    Ray ray = GetViewportMouseRay(editor);
     if (!editor.dragMoved)
     {
         if (Vector2Distance(GetMousePosition(), editor.dragStartMouse) < 4.0f) return;
@@ -345,14 +347,14 @@ static void UpdatePointAt(EditorState &editor)
     if (editor.looking || !IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || !IsMouseOverViewport(editor)) return;
 
     Vector3 target;
-    if (!RaycastWorld(editor, MouseRay(editor), target, nullptr))
+    if (!RaycastWorld(editor, GetViewportMouseRay(editor), target, nullptr))
     {
         SetStatus(editor, "That's empty space, click on the level to point at it");
         return;
     }
 
     Vector3 toTarget = Vector3Subtract(target, entity->origin);
-    if (Vector3Length(toTarget) < 0.001f)
+    if (Vector3Length(toTarget) < 0.03f)
     {
         SetStatus(editor, "That's where the %s is, click somewhere else", entity->classname.c_str());
         return;
@@ -373,9 +375,9 @@ static void DrawPointAtPreview(EditorState &editor)
     if (entity == nullptr || !IsMouseOverViewport(editor)) return;
 
     Vector3 target;
-    if (!RaycastWorld(editor, MouseRay(editor), target, nullptr)) return;
+    if (!RaycastWorld(editor, GetViewportMouseRay(editor), target, nullptr)) return;
     DrawLine3D(entity->origin, target, YELLOW);
-    DrawSphere(target, 0.12f, YELLOW);
+    DrawSphere(target, 4.0f, YELLOW);
 }
 
 static void UpdateSelection(EditorState &editor)
@@ -392,7 +394,7 @@ static void UpdateSelection(EditorState &editor)
         return;
     }
 
-    Ray ray = MouseRay(editor);
+    Ray ray = GetViewportMouseRay(editor);
     int closest = -1;
     float closestDistance = 0.0f;
     for (size_t i = 0; i < editor.level.entities.size(); i++)
@@ -415,6 +417,14 @@ static void UpdateSelection(EditorState &editor)
 void UpdateViewport(EditorState &editor)
 {
     UpdateCamera(editor);
+
+    // Tab switches between Object and Edit mode. In Edit mode the tools take the mouse and keys instead
+    if (editor.keysFree && !editor.looking && EdKeyPressed(KEY_TAB)) SetEditorMode(editor, (editor.mode == MODE_EDIT) ? MODE_OBJECT : MODE_EDIT);
+    if (editor.mode == MODE_EDIT)
+    {
+        UpdateEditMode(editor, editor.keysFree && !editor.looking, IsMouseOverViewport(editor) && !editor.looking);
+        return;
+    }
     if (editor.pointing)
     {
         UpdatePointAt(editor);  // Clicks aim instead of selecting while Point At is on
@@ -432,8 +442,8 @@ static void DrawEntityMarker(const LevelEntity &entity, bool selected)
     const EntityClassInfo *entityClass = FindEntityClass(entity.classname);
     if (entityClass == nullptr)
     {
-        DrawCube(origin, 0.4f, 0.4f, 0.4f, MAGENTA);  // Not in entitylist.txt
-        if (selected) DrawCubeWires(origin, 0.5f, 0.5f, 0.5f, WHITE);
+        DrawCube(origin, 12.0f, 12.0f, 12.0f, MAGENTA);  // Not in entitylist.txt
+        if (selected) DrawCubeWires(origin, 16.0f, 16.0f, 16.0f, WHITE);
         return;
     }
 
@@ -451,13 +461,13 @@ static void DrawEntityMarker(const LevelEntity &entity, bool selected)
         BoundingBox box = VolumeBox(entity);
         DrawCubeV(Vector3Scale(Vector3Add(box.min, box.max), 0.5f), Vector3Subtract(box.max, box.min), Fade(color, 0.15f));
         DrawBoundingBox(box, selected ? WHITE : color);
-        DrawCube(origin, 0.25f, 0.25f, 0.25f, color);
-        if (selected) DrawCubeWires(origin, 0.35f, 0.35f, 0.35f, WHITE);
+        DrawCube(origin, 8.0f, 8.0f, 8.0f, color);
+        if (selected) DrawCubeWires(origin, 11.0f, 11.0f, 11.0f, WHITE);
     }
     else
     {
         DrawSphere(origin, entityClass->radius, color);
-        if (selected) DrawSphereWires(origin, entityClass->radius*1.3f + 0.05f, 8, 8, WHITE);
+        if (selected) DrawSphereWires(origin, entityClass->radius*1.3f + 1.5f, 8, 8, WHITE);
     }
 
     for (const EntityParamInfo &param : entityClass->params)
@@ -466,12 +476,12 @@ static void DrawEntityMarker(const LevelEntity &entity, bool selected)
         {
             float angle = EntityNumberOrDefault(entity, param.name.c_str(), 0.0f)*DEG2RAD;
             Vector3 facing = { -sinf(angle), 0.0f, -cosf(angle) };
-            DrawLine3D(origin, Vector3Add(origin, Vector3Scale(facing, 1.2f)), selected ? WHITE : color);
+            DrawLine3D(origin, Vector3Add(origin, Vector3Scale(facing, 40.0f)), selected ? WHITE : color);
         }
         else if (param.type == "direction")
         {
             Vector3 direction = Vector3Normalize(EntityVectorOrDefault(entity, param.name.c_str(), { 0.0f, -1.0f, 0.0f }));
-            DrawLine3D(origin, Vector3Add(origin, Vector3Scale(direction, 3.0f)), ORANGE);
+            DrawLine3D(origin, Vector3Add(origin, Vector3Scale(direction, 96.0f)), ORANGE);
         }
         else if (param.type == "radius")
         {
@@ -560,9 +570,9 @@ static void DrawEditorGrid(const EditorState &editor)
     float size = editorSettings.gridSize;
     if (size <= 0.0f) return;
 
-    // About 64 units across for the big sizes, capped at 256 lines for the small ones. An even count,
+    // About 2048 units across for the big sizes, capped at 256 lines for the small ones. An even count,
     // so there's a line through the centre
-    int slices = (int)(64.0f/size);
+    int slices = (int)(2048.0f/size);
     if (slices > 256) slices = 256;
     if (slices < 16) slices = 16;
     slices -= slices%2;
@@ -574,7 +584,7 @@ static void DrawEditorGrid(const EditorState &editor)
 }
 
 // Keeps the sun's bounce lightmap up to date. Whenever its key changes, because the sun moved, turned or
-// changed color or intensity, or the world model was reloaded, a new bake starts in the background, once
+// changed color or intensity, or the geometry was rebuilt leaving Edit mode, a new bake starts in the background, once
 // things have been still for a moment so dragging doesn't start one every frame. A level's saved lightmap
 // is used instead when it still matches. The lightmap updates when a bake finishes
 static void UpdateEditorBounce(EditorState &editor)
@@ -642,7 +652,7 @@ static void SyncProps(EditorState &editor)
     {
         if (entity.classname != "prop_model") continue;
         wanted.push_back({ EntityTextOrDefault(entity, "model", ""), entity.origin, EntityNumberOrDefault(entity, "angle", 0.0f),
-                           EntityNumberOrDefault(entity, "scale", 0.03125f), EntityBoolOrDefault(entity, "static", true) });
+                           EntityNumberOrDefault(entity, "scale", 1.0f), EntityBoolOrDefault(entity, "static", true) });
     }
     editor.world.propsHidden = !editorSettings.showPointEntities;
 
@@ -745,30 +755,48 @@ void DrawViewport(EditorState &editor)
     {
         // Lights come from the level's entities every frame, so edits in the details panel show up right away
         ApplyLevelLights(editor.level, editor.world.lighting, editor.defaultSun, GetEntityListParamReader());
-        SetLightmapSettings(editor.world, editor.level.info.luxelsPerUnit, editor.level.info.lightmapFiltered);  // From World Settings, or an undo
+        SetLightmapSettings(editor.world, editor.level.info.luxelSize, editor.level.info.lightmapFiltered);  // From World Settings, or an undo
         SyncProps(editor);
         UpdateEditorBounce(editor);
         SyncCubemaps(editor);
         RenderWorldShadows(editor.world);
     }
 
+    // The view menu's modes: everything, textures without lighting, or lines only
+    editor.world.lighting.unlit = (editor.viewMode != VIEW_LIT);
+
     BeginTextureMode(viewTarget);
         ClearBackground(ViewportBackground());
         BeginMode3D(editor.camera);
-            DrawSkybox(editor.skybox, editor.camera);  // First, so the world draws over it
-            if (editor.worldLoaded) DrawWorld(editor.world, editorSettings.showColliders);
+            if (editor.viewMode != VIEW_WIREFRAME) DrawSkybox(editor.skybox, editor.camera);  // First, so the world draws over it
+            if (editor.worldLoaded)
+            {
+                if (editor.viewMode == VIEW_WIREFRAME)
+                {
+                    rlDrawRenderBatchActive();
+                    rlEnableWireMode();
+                }
+                DrawWorld(editor.world, editorSettings.showColliders);
+                if (editor.viewMode == VIEW_WIREFRAME)
+                {
+                    rlDrawRenderBatchActive();
+                    rlDisableWireMode();
+                }
+            }
             if (editorSettings.showGrid) DrawEditorGrid(editor);
             for (size_t i = 0; i < editor.level.entities.size(); i++)
             {
                 if (IsEntityShown(editor.level.entities[i])) DrawEntityMarker(editor.level.entities[i], (int)i == editor.selected);
             }
             DrawPointAtPreview(editor);
-            DrawResizeHandles(editor);
+            if (editor.mode == MODE_OBJECT) DrawResizeHandles(editor);
+            DrawEditModeOverlay(editor);
         EndMode3D();
     EndTextureMode();
 
     // Render textures are stored upside down, hence the negative height
     DrawTextureRec(viewTarget.texture, { 0.0f, 0.0f, view.width, -view.height }, { view.x, view.y }, WHITE);
+    DrawViewportUI(editor);
 
     if (editorSettings.showLabels) DrawEntityLabels(editor);
 
@@ -781,9 +809,14 @@ void DrawViewport(EditorState &editor)
         DrawUIText(hint, x, view.y + 14, 18, YELLOW);
     }
 
-    if (!editor.worldLoaded)
+    if (editor.level.geometry.meshes.empty() && editor.mode == MODE_OBJECT)
     {
-        const char *hint = "No world model yet. Use Edit > Create World, or File > Open Level";
-        DrawUIText(hint, view.x + (view.width - MeasureUIText(hint, 20))/2, view.y + 20, 20, UIMutedTextColor());
+        const char *hint = "No geometry yet. Press Tab for Edit mode and B to draw a cube, or File > Import OBJ";
+        DrawUIText(hint, view.x + (view.width - MeasureUIText(hint, 20))/2, view.y + 80, 20, UIMutedTextColor());
     }
+}
+
+Texture2D GetViewportTexture()
+{
+    return viewTarget.texture;
 }

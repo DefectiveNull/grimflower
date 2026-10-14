@@ -3,8 +3,8 @@
 // Sun bounce light: a simplified, one bounce radiosity bake, from the sun only, stored in a lightmap.
 //
 // Layout: when the world loads, its triangles are grouped into flat charts (connected triangles in one
-// plane), each given a rectangle in one lightmap texture, at LIGHTMAP_DENSITY texels per world unit. The
-// world mesh gets lightmap texture coordinates to match. It's worked out from the world model alone, so
+// plane), each given a rectangle in one lightmap texture, one texel (luxel) per LIGHTMAP_LUXEL_SIZE world units. The
+// world mesh gets lightmap texture coordinates to match. It's worked out from the level's geometry alone, so
 // the game and the editor always agree on it, and a saved lightmap fits.
 //
 // Bake: every lightmap texel on the world traces 26 directions (the 6 axes, the 12 edge and the 8 corner
@@ -21,7 +21,7 @@
 // The lighting shader reads them the same way
 static const int LIGHTMAP_LAYERS = 4;
 
-static const float LIGHTMAP_DENSITY = 2.0f;  // Default texels per world unit: 16 Quake units each, like Quake's lightmaps
+static const float LIGHTMAP_LUXEL_SIZE = 16.0f;  // Default world units per lightmap texel, like Quake's lightmaps
 
 struct BounceStats
 {
@@ -32,13 +32,13 @@ struct BounceStats
 };
 
 // Groups the world into charts, lays them out in the lightmap, and gives the world mesh lightmap texture
-// coordinates. LoadWorld calls this
+// coordinates. SetWorldGeometry calls this, when it builds everything
 void BuildLightmapLayout(World &world);
 
-// The level's lightmap settings. density: texels (luxels) per world unit, 0 for LIGHTMAP_DENSITY. Changing it
+// The level's lightmap settings. luxelSize: world units per lightmap texel, 0 for LIGHTMAP_LUXEL_SIZE. Changing it
 // lays the lightmap out again, so it needs a new bake. filtered: smooth (bilinear) or blocky (nearest) like
-// software Quake, which takes effect right away. Call before LoadWorld, or any time after
-void SetLightmapSettings(World &world, float density, bool filtered);
+// software Quake, which takes effect right away. Call before SetWorldGeometry, or any time after
+void SetLightmapSettings(World &world, float luxelSize, bool filtered);
 
 // Starts baking the bounce of world.lighting.sun on a background thread, cancelling any bake still running
 void StartLightmapBake(World &world);
@@ -66,7 +66,7 @@ std::string LightmapKeyToText(unsigned long long key);
 std::string LightmapPath(const std::string &levelPath);
 
 // Saves the baked lightmap as a PNG. Loading reads it through the game data, and only uses it if keyText,
-// the key saved with it, matches the world's key now: if the world model, its textures or the sun have
+// the key saved with it, matches the world's key now: if the geometry, its textures or the sun have
 // changed since, it returns false, and the world needs a fresh bake
 bool SaveLightmap(const World &world, const char *path);
 bool LoadLightmap(World &world, const char *path, const std::string &keyText);
