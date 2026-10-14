@@ -376,7 +376,7 @@ static void DrawEditorInfoDialog(EditorState &editor)
     DrawUIText(EDITOR_NAME, textX, layout.y, 22, UITextColor());
     GuiLabel({ textX, layout.y + 26, textWidth, 20 }, "Version " EDITOR_VERSION);
     GuiLabel({ textX, layout.y + 50, textWidth, 20 }, TextFormat("raylib %s, raygui %s", RAYLIB_VERSION, RAYGUI_VERSION));
-    GuiLabel({ textX, layout.y + 74, textWidth, 20 }, "Created by Claude Opus 5.5");
+    GuiLabel({ textX, layout.y + 74, textWidth, 20 }, "Created by Defective Null");
 
     const char *about[] = {
         "A level editor for Grimflower. Levels are JSON files",
