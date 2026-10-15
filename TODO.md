@@ -2,6 +2,16 @@
 
 Known gaps and loose ends, collected while building the game and the editor. Sections that are all done move to [TODO_ARCHIVE.md](TODO_ARCHIVE.md).
 
+
+# Geo Editing
+
+- [X] Add a marker for where in the world cut tool is aimed at: the cut tool's dot follows the mouse over meshes, on the grid point a click would cut through.
+- [ ] Add proper shaded unlit view
+- [ ] Add proper "copy unique" functionality.
+- [ ] Add texture manpulation and autostitch tools
+- [ ] Add hotspot textures and the editor.
+- [ ] Fix the shortcuts problem
+- [X] Add the current grid size to the toolbar
 ## Game
 
 - [ ] **Sounds**: the audio system is in (`src/engine/audio.cpp`), with a world and a music channel, each with its own volume in the options, and the `play` and `music` console commands. There are no sound files yet, and nothing in the game plays any: footsteps, jumping, landing, and music per level are next.

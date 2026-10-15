@@ -176,6 +176,100 @@ void GeoMoveFace(GeoShape &shape, int face, float distance)
     GeoFixBentFaces(shape);
 }
 
+int GeoDeleteFaces(GeoShape &shape, int face)
+{
+    // The face, then every face sharing an edge with one already in, on the same plane
+    std::vector<Vector3> start = FacePoints(shape, shape.faces[face]);
+    Vector3 normal = GeoPolygonNormal(start);
+    float dist = Vector3DotProduct(normal, start[0]);
+    std::vector<bool> doomed(shape.faces.size(), false);
+    std::vector<int> queue = { face };
+    doomed[face] = true;
+    while (!queue.empty())
+    {
+        int f = queue.back();
+        queue.pop_back();
+        std::set<std::pair<int, int>> edges;
+        const std::vector<int> &c = shape.faces[f].corners;
+        for (size_t k = 0; k < c.size(); k++) edges.insert({ std::min(c[k], c[(k + 1)%c.size()]), std::max(c[k], c[(k + 1)%c.size()]) });
+        for (size_t other = 0; other < shape.faces.size(); other++)
+        {
+            if (doomed[other]) continue;
+            std::vector<Vector3> points = FacePoints(shape, shape.faces[other]);
+            Vector3 n = GeoPolygonNormal(points);
+            if (Vector3DotProduct(n, normal) < 0.999f || fabsf(Vector3DotProduct(n, points[0]) - dist) > SAME_POINT) continue;
+            const std::vector<int> &o = shape.faces[other].corners;
+            bool touches = false;
+            for (size_t k = 0; k < o.size() && !touches; k++) touches = edges.count({ std::min(o[k], o[(k + 1)%o.size()]), std::max(o[k], o[(k + 1)%o.size()]) }) > 0;
+            if (!touches) continue;
+            doomed[other] = true;
+            queue.push_back((int)other);
+        }
+    }
+
+    std::vector<GeoFace> kept;
+    int removed = 0;
+    for (size_t f = 0; f < shape.faces.size(); f++)
+    {
+        if (doomed[f]) removed++;
+        else kept.push_back(shape.faces[f]);
+    }
+    shape.faces = kept;
+    RemoveUnusedVertices(shape);
+    return removed;
+}
+
+std::vector<std::pair<int, int>> GeoExtrudeEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edges, Vector3 offset, Quaternion rotation)
+{
+    std::map<int, int> copies;
+    auto copyOf = [&](int vertex)
+    {
+        auto found = copies.find(vertex);
+        if (found != copies.end()) return found->second;
+        shape.vertices.push_back(Vector3Add(shape.vertices[vertex], offset));
+        return copies[vertex] = (int)shape.vertices.size() - 1;
+    };
+
+    for (auto [a, b] : edges)
+    {
+        // The new face runs along the edge the other way from the face already there, so the two wind alike
+        int from = FaceWithEdge(shape, a, b);
+        if (from < 0)
+        {
+            from = FaceWithEdge(shape, b, a);
+            std::swap(a, b);
+        }
+        int a2 = copyOf(a), b2 = copyOf(b);
+        GeoFace face = NewFace((from >= 0) ? shape.faces[from] : GeoFace(), { b, a, a2, b2 });
+        GeoResetTexture(face, Vector3RotateByQuaternion(GeoPolygonNormal(FacePoints(shape, face)), rotation));
+        shape.faces.push_back(face);
+    }
+    std::vector<std::pair<int, int>> moved;
+    for (auto [a, b] : edges) moved.push_back({ copies[a], copies[b] });
+    return moved;
+}
+
+void GeoFlipShape(GeoShape &shape, Quaternion rotation)
+{
+    for (GeoFace &face : shape.faces)
+    {
+        Vector3 before = Vector3RotateByQuaternion(GeoPolygonNormal(FacePoints(shape, face)), rotation);
+        std::reverse(face.corners.begin(), face.corners.end());
+
+        // Still on the default alignment for the way it faced: the default for the way it faces now, so its
+        // texture reads the right way round from inside
+        Vector3 u, v;
+        GeoParaxialAxes(before, u, v);
+        if (Vector3Equals(face.uAxis, u) && Vector3Equals(face.vAxis, v))
+        {
+            Vector2 offset = face.offset, scale = face.scale;
+            GeoParaxialAxes(Vector3Negate(before), face.uAxis, face.vAxis);
+            face.offset = offset;
+            face.scale = scale;
+        }
+    }
+}
+
 void GeoMoveVertices(GeoShape &shape, const std::vector<int> &vertices, Vector3 offset)
 {
     std::set<int> unique(vertices.begin(), vertices.end());

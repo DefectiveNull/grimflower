@@ -2,7 +2,9 @@
 //
 //   Select (default)   click a mesh to select it, drag to move it (Alt: up and down), Ctrl+drag to drag out an
 //                      instance of it, Shift+drag a face to resize the mesh that way, Shift+click a face to give
-//                      it the material picked in the Materials tab. Delete deletes the selected mesh
+//                      it the material picked in the Materials tab. Ctrl+F flips the selected mesh's normals (inside
+//                      out, for interiors). Shift+D deletes the face under the mouse, and the rest of its flat surface,
+//                      for cleaning up. Delete deletes the selected mesh
 //   Cube (B)           click, draw a rectangle on the surface, click, pull out its depth, click; Enter makes it
 //   Rotate (R)         turns the selected mesh around its origin in 15 degree steps: left and right arrows
 //                      around the vertical, up and down around the horizontal axis most across the view
@@ -10,7 +12,8 @@
 //   Extrude (Ctrl+Shift)  drag a face out (or in), Blender style. P puts a pivot at the mouse: drag it to move
 //                      it, then dragging a face swings it around the pivot instead, for curves. P again removes it
 //   Push/Pull (Alt+Shift) drag a face out to extrude it, or in to cut its outline into the mesh, through it if far enough
-//   Edge (E)           click edges to select them (Ctrl+click for more), drag one to move them (Alt: up and down)
+//   Edge (E)           click edges to select them (Ctrl+click for more), drag one to move them (Alt: up and down),
+//                      Ctrl+drag a selected one to extrude them into new faces
 //   Bevel (B, with edges selected)  move the mouse right for the width, scroll for more steps; click or Enter applies
 //
 // Everything snaps to the grid. Drags redo their change from the geometry as it was when they started, every
@@ -55,6 +58,13 @@ static bool RayPlane(Ray ray, Vector3 planePoint, Vector3 planeNormal, Vector3 &
 
 static Vector3 SnapPoint(Vector3 p) { return { SnapToGrid(p.x), SnapToGrid(p.y), SnapToGrid(p.z) }; }
 
+// Where a cut would go through a face: the point on the grid nearest the mouse's spot, kept on the face's plane
+static Vector3 CutPoint(const GeoPick &pick)
+{
+    Vector3 snapped = SnapPoint(pick.point);
+    return Vector3Add(snapped, Vector3Scale(pick.normal, Vector3DotProduct(Vector3Subtract(pick.point, snapped), pick.normal)));
+}
+
 static std::string CurrentMaterial()
 {
     std::string material = GetPickedMaterial();
@@ -62,6 +72,15 @@ static std::string CurrentMaterial()
 }
 
 static bool ValidMesh(const EditorState &editor, int mesh) { return mesh >= 0 && mesh < (int)editor.level.geometry.meshes.size(); }
+
+// Whether a pick is still a face of a mesh: after geometry changes, an old one may not be
+static bool ValidPick(const EditorState &editor, const GeoPick &pick)
+{
+    if (!ValidMesh(editor, pick.mesh)) return false;
+    const GeoMesh &mesh = editor.level.geometry.meshes[pick.mesh];
+    return mesh.shape >= 0 && mesh.shape < (int)editor.level.geometry.shapes.size() && pick.face >= 0 &&
+           pick.face < (int)editor.level.geometry.shapes[mesh.shape].faces.size();
+}
 static GeoShape &MeshShape(EditorState &editor, int mesh) { return editor.level.geometry.shapes[editor.level.geometry.meshes[mesh].shape]; }
 static Matrix MeshTransform(const EditorState &editor, int mesh) { return GeoMeshTransform(editor.level.geometry.meshes[mesh]); }
 
@@ -131,7 +150,7 @@ static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
 static bool HoveredEdge(const EditorState &editor, GeoEdge &edge)
 {
     const GeoPick &hover = editor.edit.hover;
-    if (hover.mesh < 0) return false;
+    if (!ValidPick(editor, hover)) return false;
     const GeoShape &shape = editor.level.geometry.shapes[editor.level.geometry.meshes[hover.mesh].shape];
     const GeoFace &face = shape.faces[hover.face];
     Matrix transform = MeshTransform(editor, hover.mesh);
@@ -340,7 +359,24 @@ static void UpdateDragChange(EditorState &editor, Ray ray)
         case EditState::DRAG_EDGES:
         {
             Vector3 offset;
+            e.extrudedEdges = e.edges;
             if (!MoveOffset(editor, ray, offset)) break;
+            if (e.duplicated)
+            {
+                // Ctrl: extrude them, each instanced shape once, through the first of its meshes picked
+                if (Vector3LengthSqr(offset) == 0.0f) break;
+                std::map<int, std::vector<size_t>> byShape;
+                for (size_t i = 0; i < e.edges.size(); i++) byShape[geometry.meshes[e.edges[i].mesh].shape].push_back(i);
+                for (auto &[shapeIndex, picked] : byShape)
+                {
+                    int edgeMesh = e.edges[picked[0]].mesh;
+                    std::vector<std::pair<int, int>> pairs;
+                    for (size_t i : picked) pairs.push_back({ e.edges[i].a, e.edges[i].b });
+                    pairs = GeoExtrudeEdges(geometry.shapes[shapeIndex], pairs, ToMeshDirection(editor, edgeMesh, offset), geometry.meshes[edgeMesh].rotation);
+                    for (size_t k = 0; k < picked.size(); k++) e.extrudedEdges[picked[k]] = { edgeMesh, std::min(pairs[k].first, pairs[k].second), std::max(pairs[k].first, pairs[k].second) };
+                }
+                break;
+            }
             std::map<int, std::vector<int>> byMesh;
             for (const GeoEdge &edge : e.edges) { byMesh[edge.mesh].push_back(edge.a); byMesh[edge.mesh].push_back(edge.b); }
             std::set<int> shapesMoved;
@@ -374,7 +410,14 @@ static void EndDrag(EditorState &editor)
         case EditState::DRAG_RESIZE: CommitDrag(editor, "Resize face"); break;
         case EditState::DRAG_EXTRUDE: CommitDrag(editor, e.pivotPlaced ? "Extrude around pivot" : "Extrude face"); break;
         case EditState::DRAG_PUSHPULL: CommitDrag(editor, "Push/pull face"); break;
-        case EditState::DRAG_EDGES: CommitDrag(editor, "Move edges"); break;
+        case EditState::DRAG_EDGES:
+            if (e.duplicated)
+            {
+                if (e.dragMoved) e.edges = e.extrudedEdges;  // Carry on from the new edges, so Ctrl+dragging again extrudes further
+                CommitDrag(editor, "Extrude edges");
+            }
+            else CommitDrag(editor, "Move edges");
+            break;
         case EditState::DRAG_PIVOT: e.drag = EditState::DRAG_NONE; break;
         default: e.drag = EditState::DRAG_NONE; break;
     }
@@ -406,8 +449,58 @@ static void DeleteSelectedMesh(EditorState &editor)
     GeoDeleteMesh(editor.level.geometry, e.selectedMesh);
     e.selectedMesh = -1;
     e.edges.clear();
+    e.hover = GeoPick();  // Picked from the geometry as it was: the mesh may not be there any more
+    e.cutStage = 0;
     ShowGeometry(editor);
     SetStatus(editor, "Deleted the mesh");
+}
+
+// Shift+D: the face under the mouse, and the faces joined to it on the same flat surface, gone. For cleaning up
+// broken meshes. A mesh with no faces left goes too
+static void DeleteHoveredFaces(EditorState &editor)
+{
+    EditState &e = editor.edit;
+    if (!ValidPick(editor, e.hover))
+    {
+        SetStatus(editor, "Point at a face to delete it");
+        return;
+    }
+    RecordUndo(editor, "Delete faces");
+    int mesh = e.hover.mesh;
+    int removed = GeoDeleteFaces(MeshShape(editor, mesh), e.hover.face);
+    bool meshGone = MeshShape(editor, mesh).faces.empty();
+    if (meshGone)
+    {
+        GeoDeleteMesh(editor.level.geometry, mesh);
+        e.selectedMesh = -1;
+    }
+    e.hover = GeoPick();  // The face isn't there any more
+    e.edges.clear();
+    e.cutStage = 0;
+    ShowGeometry(editor);
+    if (meshGone) SetStatus(editor, "Deleted %d faces, the mesh's last", removed);
+    else SetStatus(editor, "Deleted %d face%s. The mesh has a hole there now", removed, removed == 1 ? "" : "s");
+}
+
+// Ctrl+F: the selected mesh inside out, for interiors. Its shape changes, so every instance of it does too
+static void FlipSelected(EditorState &editor)
+{
+    EditState &e = editor.edit;
+    if (!ValidMesh(editor, e.selectedMesh))
+    {
+        SetStatus(editor, "Click a mesh to flip first");
+        return;
+    }
+    int shape = editor.level.geometry.meshes[e.selectedMesh].shape;
+    int instances = 0;
+    for (const GeoMesh &mesh : editor.level.geometry.meshes) instances += (mesh.shape == shape) ? 1 : 0;
+
+    RecordUndo(editor, "Flip normals");
+    GeoFlipShape(MeshShape(editor, e.selectedMesh), editor.level.geometry.meshes[e.selectedMesh].rotation);
+    e.edges.clear();
+    ShowGeometry(editor);
+    if (instances > 1) SetStatus(editor, "Flipped the mesh's normals, and its %d other instances'", instances - 1);
+    else SetStatus(editor, "Flipped the mesh's normals: its faces look the other way now");
 }
 
 static void RotateSelected(EditorState &editor, Vector3 axis, float degrees)
@@ -606,6 +699,8 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
             else SetTool(editor, TOOL_CUBE);
         }
         if (plain && EdKeyPressed(KEY_R)) SetTool(editor, TOOL_ROTATE);
+        if (ctrl && !shift && !alt && EdKeyPressed(KEY_F)) FlipSelected(editor);
+        if (shift && !ctrl && !alt && EdKeyPressed(KEY_D)) DeleteHoveredFaces(editor);
         if (plain && EdKeyPressed(KEY_C)) SetTool(editor, TOOL_CUT);
         if (plain && EdKeyPressed(KEY_E)) SetTool(editor, TOOL_EDGE);
         if (EdKeyPressed(KEY_DELETE) && e.tool != TOOL_EDGE) DeleteSelectedMesh(editor);
@@ -660,6 +755,14 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
             {
                 e.drag = EditState::DRAG_NONE;
                 ApplyMaterial(editor, e.dragPick);
+                return;
+            }
+            // Ctrl+click on a selected edge without moving: deselect it
+            if (e.drag == EditState::DRAG_EDGES && e.duplicated && !e.dragMoved)
+            {
+                e.drag = EditState::DRAG_NONE;
+                auto found = std::find_if(e.edges.begin(), e.edges.end(), [&](const GeoEdge &x) { return SameEdge(x, e.pressedEdge); });
+                if (found != e.edges.end()) e.edges.erase(found);
                 return;
             }
             EndDrag(editor);
@@ -803,9 +906,7 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
             {
                 if (!pressed || hover.mesh < 0) break;
                 e.cutPick = hover;
-                // The cut's point on the grid, kept on the face's plane
-                Vector3 snapped = SnapPoint(hover.point);
-                e.cutPick.point = Vector3Add(snapped, Vector3Scale(hover.normal, Vector3DotProduct(Vector3Subtract(hover.point, snapped), hover.normal)));
+                e.cutPick.point = CutPoint(hover);
                 e.cutStage = 1;
             }
             else if (e.cutStage == 1)
@@ -844,10 +945,18 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
                 break;
             }
             auto found = std::find_if(e.edges.begin(), e.edges.end(), [&](const GeoEdge &x) { return SameEdge(x, edge); });
+            if (CtrlDown() && found == e.edges.end())
+            {
+                e.edges.push_back(edge);
+                break;
+            }
             if (CtrlDown())
             {
-                if (found != e.edges.end()) e.edges.erase(found);
-                else e.edges.push_back(edge);
+                // On a selected edge: dragging extrudes the selected edges, a click deselects it
+                e.pressedEdge = edge;
+                e.selectedMesh = edge.mesh;
+                BeginDrag(editor, EditState::DRAG_EDGES, hover, ray);
+                e.duplicated = true;
                 break;
             }
             if (found == e.edges.end()) e.edges = { edge };
@@ -908,7 +1017,7 @@ void DrawEditModeOverlay(const EditorState &editor)
     rlDrawRenderBatchActive();
     rlDisableDepthTest();
 
-    if (e.hover.mesh >= 0 && e.tool != TOOL_CUBE && e.tool != TOOL_EDGE)
+    if (ValidPick(editor, e.hover) && e.tool != TOOL_CUBE && e.tool != TOOL_EDGE)
     {
         const GeoShape &shape = geometry.shapes[geometry.meshes[e.hover.mesh].shape];
         std::vector<Vector3> points = GeoFacePoints(shape, shape.faces[e.hover.face], MeshTransform(editor, e.hover.mesh));
@@ -939,7 +1048,8 @@ void DrawEditModeOverlay(const EditorState &editor)
 
     if (e.tool == TOOL_EDGE || e.tool == TOOL_BEVEL)
     {
-        for (const GeoEdge &edge : e.edges)
+        bool extruding = e.drag == EditState::DRAG_EDGES && e.duplicated && e.dragMoved;
+        for (const GeoEdge &edge : extruding ? e.extrudedEdges : e.edges)
         {
             if (!ValidMesh(editor, edge.mesh)) continue;
             const GeoShape &shape = geometry.shapes[geometry.meshes[edge.mesh].shape];
@@ -993,6 +1103,13 @@ void DrawEditModeOverlay(const EditorState &editor)
         }
     }
 
+    // Before the first click, the dot follows the mouse over the meshes: where a click would put the cut
+    if (e.tool == TOOL_CUT && e.cutStage == 0 && ValidPick(editor, e.hover))
+    {
+        Vector3 point = CutPoint(e.hover);
+        DrawSphere(point, Vector3Distance(editor.camera.position, point)*0.01f, Fade(YELLOW, 0.8f));
+    }
+
     if (e.tool == TOOL_CUT && e.cutStage > 0)
     {
         float size = Vector3Distance(editor.camera.position, e.cutPick.point)*0.01f;
@@ -1040,7 +1157,7 @@ static const char *ToolHint(const EditorState &editor)
     const EditState &e = editor.edit;
     switch (e.tool)
     {
-        case TOOL_SELECT: return "Click: select mesh | Drag: move (Alt: up/down) | Ctrl+drag: duplicate | Shift+drag face: resize | Shift+click face: apply material | Del: delete";
+        case TOOL_SELECT: return "Click: select mesh | Drag: move (Alt: up/down) | Ctrl+drag: duplicate | Shift+drag face: resize | Shift+click face: apply material | Ctrl+F: flip normals | Shift+D: delete face | Del: delete";
         case TOOL_CUBE:
             if (e.cubeStage == 0) return "Cube: click on a surface or the grid to start";
             if (e.cubeStage == 1) return "Cube: move to draw the rectangle, click to lock it";
@@ -1054,7 +1171,7 @@ static const char *ToolHint(const EditorState &editor)
         case TOOL_EXTRUDE: return e.pivotPlaced ? "Extrude around pivot: drag the pivot to move it, drag a face to swing it around | P: remove the pivot"
                                                 : "Extrude: drag a face out or in | P: place a pivot at the mouse, to extrude around it";
         case TOOL_PUSHPULL: return "Push/Pull: drag a face out to extrude it, or in to cut its outline into the mesh (through it, if far enough)";
-        case TOOL_EDGE: return "Edge: click edges (Ctrl+click: more), drag to move them (Alt: up/down) | B: bevel the selected edges";
+        case TOOL_EDGE: return "Edge: click edges (Ctrl+click: more), drag to move them (Alt: up/down), Ctrl+drag to extrude them | B: bevel the selected edges";
         case TOOL_BEVEL: return "Bevel: move the mouse right for the width, scroll for steps | Click or Enter applies, Esc cancels";
         default: return "";
     }

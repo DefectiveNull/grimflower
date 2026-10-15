@@ -52,5 +52,20 @@ void GeoPushPull(Geometry &geometry, int mesh, int face, float distance);
 // Returns false, changing nothing, if they don't; error says why
 bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edges, float &width, int segments, std::string &error);
 
+// Turns a shape inside out: every face turns to face the other way, so a box becomes a room seen from inside,
+// and collision makes it solid outside its faces instead (see GeoConvexPieces). rotation is the mesh's, so
+// faces still world aligned the default way get the default for the way they face now; others keep theirs
+void GeoFlipShape(GeoShape &shape, Quaternion rotation);
+
+// Deletes a face, and the faces joined to it on the same flat surface (the pieces cuts left of it), for cleaning
+// up broken meshes. Leaves a hole: the shape isn't closed any more. Returns how many faces went
+int GeoDeleteFaces(GeoShape &shape, int face);
+
+// Extrudes edges (pairs of vertices): copies of them, moved by offset, joined to them by new faces, wound to
+// carry on from the face already on each edge and with its material. Edges that share an end share its copy.
+// Pulling an open edge (Shift+D left a hole) carries the surface on; an edge with faces both sides grows a
+// fin. rotation is the mesh's, for world aligning the new faces. Returns the copies, in the same order
+std::vector<std::pair<int, int>> GeoExtrudeEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edges, Vector3 offset, Quaternion rotation);
+
 // Splits faces that aren't flat any more into triangles
 void GeoFixBentFaces(GeoShape &shape);

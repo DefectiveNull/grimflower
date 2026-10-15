@@ -13,6 +13,7 @@
 #include <sstream>
 
 static const float ON_PLANE_EPSILON = 0.01f;   // World units: points this close to a plane are on it
+static const float WALL_THICKNESS = 16.0f;     // How thick an inside out shape's walls are for collision, see GeoConvexPieces
 
 Matrix GeoMeshTransform(const GeoMesh &mesh)
 {
@@ -242,9 +243,11 @@ std::vector<std::vector<std::vector<Vector3>>> GeoConvexPieces(const GeoShape &s
     }
     if (polygons.empty()) return pieces;
 
-    // The box around the shape, a little bigger, keeps every region bounded even if the shape has a gap
-    bounds.min = Vector3SubtractValue(bounds.min, 1.0f);
-    bounds.max = Vector3AddValue(bounds.max, 1.0f);
+    // The box around the shape, bigger by WALL_THICKNESS, keeps every region bounded even if the shape has a gap.
+    // An inside out shape (a room, made by flipping its normals) is solid outside its faces: out to this box, so
+    // that's how thick its walls, floor and ceiling are for collision
+    bounds.min = Vector3SubtractValue(bounds.min, WALL_THICKNESS);
+    bounds.max = Vector3AddValue(bounds.max, WALL_THICKNESS);
     std::vector<Plane> constraints = {
         { { 1, 0, 0 }, bounds.max.x }, { { -1, 0, 0 }, -bounds.min.x },
         { { 0, 1, 0 }, bounds.max.y }, { { 0, -1, 0 }, -bounds.min.y },

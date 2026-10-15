@@ -17,6 +17,7 @@ static void Restore(EditorState &editor, const UndoStep &step)
     editor.unsavedChanges = (editor.stateId != editor.savedStateId);
     editor.dragging = false;
     editor.edit.edges.clear();  // Picked by vertex, which the restored shapes may number differently
+    editor.edit.hover = GeoPick();  // And the face under the mouse may not be there any more
     GeometryChanged(editor);
     SyncWorldWithLevel(editor);
 }

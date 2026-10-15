@@ -80,7 +80,7 @@ struct EditState
     Vector3 planePoint = { 0.0f, 0.0f, 0.0f }, planeNormal = { 0.0f, 1.0f, 0.0f };  // The mouse moves things along this plane...
     Vector3 dragStart = { 0.0f, 0.0f, 0.0f };   // ...from where it met it when the drag started
     bool dragVertical = false;        // Alt: up and down instead of along the floor
-    bool duplicated = false;          // Ctrl: the drag moves a copy
+    bool duplicated = false;          // Ctrl: the drag moves a copy (of edges: extrudes them)
 
     // Create Cube: a rectangle on a plane, then how deep
     int cubeStage = 0;                // 0 waiting for a click, 1 drawing the rectangle, 2 setting the depth, 3 ready for Enter
@@ -100,6 +100,8 @@ struct EditState
 
     // Edges, and bevelling them
     std::vector<GeoEdge> edges;
+    std::vector<GeoEdge> extrudedEdges;  // While Ctrl+dragging edges: their copies, selected once it's done
+    GeoEdge pressedEdge = { -1, 0, 0 };  // The edge Ctrl+pressed on: a click without dragging deselects it
     bool beveling = false;
     float bevelWidth = 0.0f;
     int bevelSegments = 1;
