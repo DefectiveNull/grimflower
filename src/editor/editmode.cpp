@@ -340,6 +340,15 @@ static void UpdateDragChange(EditorState &editor, Ray ray)
                 Vector3 axis = Vector3CrossProduct(e.dragPick.normal, toPivot);
                 if (Vector3LengthSqr(axis) < 0.0001f) axis = { 0.0f, 1.0f, 0.0f };
                 axis = Vector3Normalize(axis);
+                // The click point is anywhere on the face, so the pivot is rarely exactly level with it, which
+                // tips the axis. Snap it to the world axis it's closest to, flattened into the face's plane so
+                // the turn stays square to the face (on a face that's on the grid, that's the world axis itself)
+                Vector3 worldAxis = { 0.0f, 0.0f, 0.0f };
+                if (fabsf(axis.x) >= fabsf(axis.y) && fabsf(axis.x) >= fabsf(axis.z)) worldAxis.x = (axis.x < 0.0f) ? -1.0f : 1.0f;
+                else if (fabsf(axis.y) >= fabsf(axis.z)) worldAxis.y = (axis.y < 0.0f) ? -1.0f : 1.0f;
+                else worldAxis.z = (axis.z < 0.0f) ? -1.0f : 1.0f;
+                worldAxis = Vector3Subtract(worldAxis, Vector3Scale(e.dragPick.normal, Vector3DotProduct(worldAxis, e.dragPick.normal)));
+                if (Vector3LengthSqr(worldAxis) > 0.0001f) axis = Vector3Normalize(worldAxis);
                 float radius = fmaxf(Vector3Length(Vector3Subtract(toPivot, Vector3Scale(axis, Vector3DotProduct(toPivot, axis)))), 1.0f);
                 float degrees = roundf(fabsf(distance)/radius*RAD2DEG/15.0f)*15.0f;
                 if (degrees <= 0.0f) break;
