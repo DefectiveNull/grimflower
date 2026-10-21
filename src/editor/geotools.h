@@ -47,8 +47,10 @@ void GeoExtrudeFaceAround(GeoShape &shape, int face, Vector3 pivot, Vector3 axis
 void GeoPushPull(Geometry &geometry, int mesh, int face, float distance);
 
 // Bevels edges (pairs of vertices), rounding them off over width with segments flat steps (1 is a plain
-// chamfer). width is cut down to the most the faces next to the edges allow. Each edge's ends must have
-// exactly three faces meeting, and no two of the edges can share an end.
+// chamfer) in a circular arc. Outside edges are rounded off; inside ones (the top corners of a doorway) are
+// filled in. width is cut down to the most the faces next to the edges allow; two bevelled edges on the same
+// face can go halfway each, so they meet (a doorway's two top corners make an arch). The faces at each end of an
+// edge must be flat across, in one piece at an outside corner, and no two of the edges can share an end.
 // Returns false, changing nothing, if they don't; error says why
 bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edges, float &width, int segments, std::string &error);
 

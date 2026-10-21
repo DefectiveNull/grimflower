@@ -656,6 +656,14 @@ void GeoPushPull(Geometry &geometry, int mesh, int faceIndex, float distance)
 // ---------------------------------------------------------------------------------------------
 // Bevel
 
+// Whether the edge from one vertex to another runs along direction
+static bool RunsAlong(const GeoShape &shape, int from, int to, Vector3 direction)
+{
+    Vector3 d = Vector3Subtract(shape.vertices[to], shape.vertices[from]);
+    float length = Vector3Length(d);
+    return length > SAME_POINT && Vector3DotProduct(Vector3Scale(d, 1.0f/length), direction) > 0.999f;
+}
+
 bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edges, float &width, int segments, std::string &error)
 {
     if (width <= 0.0f || segments < 1) return true;
@@ -667,7 +675,6 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
     };
     std::vector<BevelPlan> plans;
     std::set<int> ends;
-    float widest = FLT_MAX;
     for (const auto &[a, b] : edges)
     {
         if (ends.count(a) || ends.count(b))
@@ -684,16 +691,6 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
             error = "An edge isn't between two faces";
             return false;
         }
-        for (int corner : { a, b })
-        {
-            int faces = 0;
-            for (const GeoFace &face : shape.faces) faces += (int)std::count(face.corners.begin(), face.corners.end(), corner);
-            if (faces != 3)
-            {
-                error = "Bevel needs exactly three faces meeting at each end of an edge, like a box's corners";
-                return false;
-            }
-        }
 
         // The corners next to each end in the two faces: f1 runs a to b, f2 runs b to a
         auto neighbour = [&](int face, int corner, int step)
@@ -706,12 +703,53 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
         plan.b1 = neighbour(plan.f1, b, 1);
         plan.a2 = neighbour(plan.f2, a, 1);
         plan.b2 = neighbour(plan.f2, b, -1);
-        // No wider than the faces next to the edge allow
-        for (auto [end, other] : { std::pair<int, int>{ a, plan.a1 }, { a, plan.a2 }, { b, plan.b1 }, { b, plan.b2 } })
+
+        // The other faces at each end, its end faces, have to be flat across. An inside corner (like the top of a
+        // doorway) can have its end face in pieces there, the way a wall with a hole through it does; an outside one can't
+        Vector3 n1 = GeoPolygonNormal(FacePoints(shape, shape.faces[plan.f1]));
+        Vector3 towards2 = Vector3Subtract(shape.vertices[plan.a2], shape.vertices[a]);
+        bool inside = Vector3DotProduct(n1, towards2) > 0.0f;
+        for (int corner : { a, b })
         {
-            widest = fminf(widest, Vector3Distance(shape.vertices[end], shape.vertices[other]) - 0.5f);
+            std::vector<int> endFaces;
+            for (size_t f = 0; f < shape.faces.size(); f++)
+            {
+                if ((int)f == plan.f1 || (int)f == plan.f2) continue;
+                if (std::count(shape.faces[f].corners.begin(), shape.faces[f].corners.end(), corner)) endFaces.push_back((int)f);
+            }
+            if (endFaces.empty())
+            {
+                error = "An edge's end isn't closed off by another face";
+                return false;
+            }
+            Vector3 endNormal = GeoPolygonNormal(FacePoints(shape, shape.faces[endFaces[0]]));
+            for (int f : endFaces)
+            {
+                if (Vector3DotProduct(GeoPolygonNormal(FacePoints(shape, shape.faces[f])), endNormal) < 0.999f)
+                {
+                    error = "The faces at each end of an edge have to be flat across, like a box's corners or a doorway's";
+                    return false;
+                }
+            }
+            if (endFaces.size() > 1 && !inside)
+            {
+                error = "An outside corner's end face is cut into pieces at the edge's end";
+                return false;
+            }
         }
         plans.push_back(plan);
+    }
+
+    // No wider than the faces next to the edges allow. Two bevels along the same edge (the top corners of a
+    // doorway) can go halfway each, so they meet in an arch
+    float widest = FLT_MAX;
+    for (const BevelPlan &plan : plans)
+    {
+        for (auto [end, other] : { std::pair<int, int>{ plan.a, plan.a1 }, { plan.a, plan.a2 }, { plan.b, plan.b1 }, { plan.b, plan.b2 } })
+        {
+            float length = Vector3Distance(shape.vertices[end], shape.vertices[other]);
+            widest = fminf(widest, ends.count(other) ? length*0.5f : length - 0.5f);
+        }
     }
     if (widest <= 0.0f)
     {
@@ -722,20 +760,33 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
 
     for (const BevelPlan &plan : plans)
     {
-        // The rounded profile at each end: from the point on the edge to x1, round to the point on the edge to
-        // x2, a curve pulled towards the old corner
+        // The rounded profile at each end: a circular arc from the point width along the edge to x1, round to
+        // the point width along the edge to x2, meeting both edges square. Points where another bevel's profile
+        // already is are shared, so two that meet join up
         auto profile = [&](int end, int towards1, int towards2)
         {
             Vector3 corner = shape.vertices[end];
-            Vector3 p1 = Vector3Add(corner, Vector3Scale(Vector3Normalize(Vector3Subtract(shape.vertices[towards1], corner)), width));
-            Vector3 p2 = Vector3Add(corner, Vector3Scale(Vector3Normalize(Vector3Subtract(shape.vertices[towards2], corner)), width));
+            Vector3 d1 = Vector3Normalize(Vector3Subtract(shape.vertices[towards1], corner));
+            Vector3 d2 = Vector3Normalize(Vector3Subtract(shape.vertices[towards2], corner));
+            Vector3 p1 = Vector3Add(corner, Vector3Scale(d1, width));
+            Vector3 p2 = Vector3Add(corner, Vector3Scale(d2, width));
+            float half = acosf(Clamp(Vector3DotProduct(d1, d2), -1.0f, 1.0f))*0.5f;
+            Vector3 bisector = Vector3Add(d1, d2);
+            bool round = segments > 1 && half > 0.01f && half < PI*0.5f - 0.01f && Vector3LengthSqr(bisector) > 1e-6f;
+            Vector3 center = round ? Vector3Add(corner, Vector3Scale(Vector3Normalize(bisector), width/cosf(half))) : corner;
+            Vector3 from = Vector3Subtract(p1, center);
+            Vector3 axis = Vector3CrossProduct(from, Vector3Subtract(p2, center));
+            float sweep = PI - 2.0f*half;
             std::vector<int> points;
             for (int k = 0; k <= segments; k++)
             {
                 float t = (float)k/(float)segments;
-                Vector3 p = Vector3Add(Vector3Add(Vector3Scale(p1, (1 - t)*(1 - t)), Vector3Scale(corner, 2*t*(1 - t))), Vector3Scale(p2, t*t));
-                shape.vertices.push_back(p);
-                points.push_back((int)shape.vertices.size() - 1);
+                Vector3 p;
+                if (k == 0) p = p1;
+                else if (k == segments) p = p2;
+                else if (round && Vector3LengthSqr(axis) > 1e-6f) p = Vector3Add(center, Vector3RotateByAxisAngle(from, Vector3Normalize(axis), sweep*t));
+                else p = Vector3Lerp(p1, p2, t);
+                points.push_back(FindOrAddVertex(shape, p));
             }
             return points;
         };
@@ -754,21 +805,49 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
                 auto it = std::find(c.begin(), c.end(), end);
                 if (it == c.end()) continue;
                 const std::vector<int> &prof = (end == plan.a) ? profileA : profileB;
-                int other = (end == plan.a) ? plan.b : plan.a;
-                int n1 = (end == plan.a) ? plan.a1 : plan.b1;
-                if ((int)f == plan.f1) *it = prof.front();
-                else if ((int)f == plan.f2) *it = prof.back();
-                else
+                if ((int)f == plan.f1)
                 {
-                    // The third face: the profile runs from its corner next to n1 round to the other one
-                    size_t k = it - c.begin();
-                    int previous = c[(k + c.size() - 1)%c.size()];
-                    std::vector<int> run = prof;
-                    if (previous != n1) std::reverse(run.begin(), run.end());
+                    *it = prof.front();
+                    continue;
+                }
+                if ((int)f == plan.f2)
+                {
+                    *it = prof.back();
+                    continue;
+                }
+
+                // An end face. Which of its edges at the corner run along the two faces, the profile's two sides
+                Vector3 corner = shape.vertices[end];
+                Vector3 d1 = Vector3Normalize(Vector3Subtract(shape.vertices[(end == plan.a) ? plan.a1 : plan.b1], corner));
+                Vector3 d2 = Vector3Normalize(Vector3Subtract(shape.vertices[(end == plan.a) ? plan.a2 : plan.b2], corner));
+                size_t k = it - c.begin();
+                int previous = c[(k + c.size() - 1)%c.size()], next = c[(k + 1)%c.size()];
+                bool previous1 = RunsAlong(shape, end, previous, d1), next1 = RunsAlong(shape, end, next, d1);
+                bool previous2 = RunsAlong(shape, end, previous, d2), next2 = RunsAlong(shape, end, next, d2);
+                std::vector<int> run = prof;
+                if ((previous1 || next1) && (previous2 || next2))
+                {
+                    // All of the end face at the corner: the profile takes the corner's place
+                    if (!previous1) std::reverse(run.begin(), run.end());
                     c.erase(c.begin() + k);
                     c.insert(c.begin() + k, run.begin(), run.end());
                 }
-                (void)other;
+                else if (previous1 || next1)
+                {
+                    // The end face is in pieces at an inside corner, and this piece is along the first face: it
+                    // takes in the corner the bevel fills, keeping its corner, round the profile to the first face
+                    if (next1)
+                    {
+                        std::reverse(run.begin(), run.end());
+                        c.insert(c.begin() + k + 1, run.begin(), run.end());
+                    }
+                    else c.insert(c.begin() + k, run.begin(), run.end());
+                }
+                else if (previous2 || next2)
+                {
+                    // ...and this piece is along the second face, which now ends where the profile does
+                    c.insert(c.begin() + k + (next2 ? 1 : 0), prof.back());
+                }
             }
         }
 
@@ -781,6 +860,20 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
             shape.faces.push_back(strip);
         }
     }
+
+    // Where two bevels met, faces have the shared points twice in a row, and the face between them (the flat top
+    // of an arch that's all arch) has nothing left
+    std::vector<GeoFace> faces;
+    for (GeoFace &face : shape.faces)
+    {
+        std::vector<int> corners;
+        for (int corner : face.corners) if (corners.empty() || corners.back() != corner) corners.push_back(corner);
+        while (corners.size() > 1 && corners.front() == corners.back()) corners.pop_back();
+        if (corners.size() < 3) continue;
+        face.corners = corners;
+        faces.push_back(face);
+    }
+    shape.faces = faces;
     RemoveUnusedVertices(shape);
     return true;
 }
