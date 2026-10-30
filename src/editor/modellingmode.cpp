@@ -1,10 +1,9 @@
-// Edit mode: the only place the level's geometry can be changed. Tools, after Scythe (Unreal) and Hammer:
+// Modelling mode: the only place the level's geometry can be changed. Tools, after Scythe (Unreal) and Hammer:
 //
 //   Select (default)   click a mesh to select it, drag to move it (Alt: up and down), Ctrl+drag to drag out an
-//                      instance of it, Shift+drag a face to resize the mesh that way, Shift+click a face to give
-//                      it the material picked in the Materials tab. Ctrl+F flips the selected mesh's normals (inside
-//                      out, for interiors). Shift+D deletes the face under the mouse, and the rest of its flat surface,
-//                      for cleaning up. Delete deletes the selected mesh
+//                      instance of it, Shift+drag a face to resize the mesh that way. Ctrl+F flips the selected
+//                      mesh's normals (inside out, for interiors). Shift+D deletes the face under the mouse, and the
+//                      rest of its flat surface, for cleaning up. Delete deletes the selected mesh
 //   Cube (B)           click, draw a rectangle on the surface, click, pull out its depth, click; Enter makes it
 //   Rotate (R)         turns the selected mesh around its origin in 15 degree steps: left and right arrows
 //                      around the vertical, up and down around the horizontal axis most across the view
@@ -17,8 +16,9 @@
 //   Bevel (B, with edges selected)  move the mouse right for the width, scroll for more steps; click or Enter applies
 //
 // Everything snaps to the grid. Drags redo their change from the geometry as it was when they started, every
-// frame, and are one undo step. Leaving Edit mode joins faces split by the tools back into polygroups, and
-// works out collision and the bounce lightmap; the level can only be saved then.
+// frame, and are one undo step. Leaving Modelling mode joins faces split by the tools back into polygroups;
+// going back to Object mode works out collision and the bounce lightmap, and the level can only be saved there.
+// Textures are put on in Texturing mode (texturingmode.cpp).
 
 #include "editor.h"
 #include "config.h"
@@ -437,19 +437,6 @@ static void EndDrag(EditorState &editor)
 // ---------------------------------------------------------------------------------------------
 // One-off changes
 
-static void ApplyMaterial(EditorState &editor, const GeoPick &pick)
-{
-    std::string material = CurrentMaterial();
-    GeoShape &shape = MeshShape(editor, pick.mesh);
-    GeoFace &face = shape.faces[pick.face];
-    RecordUndo(editor, "Apply material");
-    // World aligned, so it lines up with the faces around it that are too, like TrenchBroom
-    face.material = material;
-    GeoResetTexture(face, pick.normal);
-    ShowGeometry(editor);
-    SetStatus(editor, "Applied %s%s", material.c_str(), GetPickedMaterial().empty() ? " (pick one in the Materials tab to use another)" : "");
-}
-
 static void DeleteSelectedMesh(EditorState &editor)
 {
     EditState &e = editor.edit;
@@ -635,6 +622,7 @@ static void FinishBevel(EditorState &editor, bool apply)
 void ResetEditTools(EditorState &editor)
 {
     editor.edit = EditState();
+    editor.texturing = TextureState();
 }
 
 static void CancelToolWork(EditorState &editor)
@@ -653,36 +641,67 @@ static void SetTool(EditorState &editor, EditTool tool)
     if (tool != TOOL_EXTRUDE && !editor.edit.pivotLocked) editor.edit.pivotPlaced = false;
 }
 
+const char *EditorModeName(EditorMode mode)
+{
+    switch (mode)
+    {
+        case MODE_MODELLING: return "Modelling";
+        case MODE_TEXTURING: return "Texturing";
+        default: return "Object";
+    }
+}
+
 void SetEditorMode(EditorState &editor, EditorMode mode)
 {
     if (mode == editor.mode) return;
-    if (mode == MODE_EDIT)
+    EditorMode from = editor.mode;
+    if (from == MODE_OBJECT)
     {
         CancelPointAt(editor);
         editor.selected = -1;
         editor.dragging = false;
-        editor.mode = MODE_EDIT;
+    }
+    if (from == MODE_MODELLING)
+    {
+        CancelToolWork(editor);
+        editor.edit.edges.clear();
+        // Rounded the way the level file stores it, so what's built and baked is exactly what's saved. Then faces
+        // the tools split up are joined back where they're on one plane with one texture (polygroups), so
+        // Texturing mode picks whole faces
+        GeoQuantize(editor.level.geometry);
+        for (GeoShape &shape : editor.level.geometry.shapes) GeoMergeFaces(shape);
+        GeometryChanged(editor);
+    }
+    if (from == MODE_TEXTURING) editor.texturing = TextureState();
+
+    editor.mode = mode;
+    const char *next = EditorModeName((EditorMode)((mode + 1)%MODE_COUNT));
+    if (mode == MODE_MODELLING)
+    {
         editor.edit.tool = TOOL_SELECT;
-        SyncWorldWithLevel(editor);  // Quick builds from now on: no collision or lightmap until leaving
-        SetStatus(editor, "Edit mode: the level's geometry. Tab goes back to Object mode");
+        SyncWorldWithLevel(editor);  // Quick builds from now on: no collision, lightmap or bounce bake until Object mode
+        SetStatus(editor, "Modelling mode: the level's geometry. Tab: %s mode", next);
+        return;
+    }
+    if (mode == MODE_TEXTURING)
+    {
+        SyncWorldWithLevel(editor);  // Quick builds here too
+        SetStatus(editor, "Texturing mode: pick a texture in the Materials tab, right click faces to put it on. Tab: %s mode", next);
         return;
     }
 
-    CancelToolWork(editor);
-    // Rounded the way the level file stores it, so what's built and baked now is exactly what's saved. Then faces
-    // the tools split up are joined back where they're on one plane with one texture (polygroups)
-    GeoQuantize(editor.level.geometry);
-    for (GeoShape &shape : editor.level.geometry.shapes) GeoMergeFaces(shape);
-    GeometryChanged(editor);
-    editor.mode = MODE_OBJECT;
-    editor.edit.edges.clear();
     double start = GetTime();
     SyncWorldWithLevel(editor);  // Collision and the lightmap layout: the bounce bake starts from this
     SetStatus(editor, "Object mode. Built the geometry's collision and lightmap layout in %.0f ms; the bounce bake runs in the background",
               (GetTime() - start)*1000.0);
 }
 
-void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
+void CycleEditorMode(EditorState &editor)
+{
+    SetEditorMode(editor, (EditorMode)((editor.mode + 1)%MODE_COUNT));
+}
+
+void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree)
 {
     EditState &e = editor.edit;
     Ray ray = GetViewportMouseRay(editor);
@@ -759,13 +778,6 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
     {
         if (!EdLeftDown() || editor.looking)
         {
-            // Shift+click without moving: apply material
-            if (e.drag == EditState::DRAG_RESIZE && !e.dragMoved)
-            {
-                e.drag = EditState::DRAG_NONE;
-                ApplyMaterial(editor, e.dragPick);
-                return;
-            }
             // Ctrl+click on a selected edge without moving: deselect it
             if (e.drag == EditState::DRAG_EDGES && e.duplicated && !e.dragMoved)
             {
@@ -805,7 +817,7 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
             }
             if (e.tool == TOOL_SELECT && ShiftDown() && !CtrlDown() && !AltDown())
             {
-                BeginDrag(editor, EditState::DRAG_RESIZE, hover, ray);  // Or a click: apply material
+                BeginDrag(editor, EditState::DRAG_RESIZE, hover, ray);
                 e.selectedMesh = hover.mesh;
                 break;
             }
@@ -979,7 +991,7 @@ void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree)
     }
 }
 
-bool EditModeEscape(EditorState &editor)
+bool ModellingModeEscape(EditorState &editor)
 {
     EditState &e = editor.edit;
     if (e.drag != EditState::DRAG_NONE) { CancelDrag(editor); return true; }
@@ -1010,9 +1022,9 @@ static void DrawPolygonFill(const std::vector<Vector3> &points, Color color)
     }
 }
 
-void DrawEditModeOverlay(const EditorState &editor)
+void DrawModellingOverlay(const EditorState &editor)
 {
-    if (editor.mode != MODE_EDIT) return;
+    if (editor.mode != MODE_MODELLING) return;
     const EditState &e = editor.edit;
     const Geometry &geometry = editor.level.geometry;
 
@@ -1166,7 +1178,7 @@ static const char *ToolHint(const EditorState &editor)
     const EditState &e = editor.edit;
     switch (e.tool)
     {
-        case TOOL_SELECT: return "Click: select mesh | Drag: move (Alt: up/down) | Ctrl+drag: duplicate | Shift+drag face: resize | Shift+click face: apply material | Ctrl+F: flip normals | Shift+D: delete face | Del: delete";
+        case TOOL_SELECT: return "Click: select mesh | Drag: move (Alt: up/down) | Ctrl+drag: duplicate | Shift+drag face: resize | Ctrl+F: flip normals | Shift+D: delete face | Del: delete";
         case TOOL_CUBE:
             if (e.cubeStage == 0) return "Cube: click on a surface or the grid to start";
             if (e.cubeStage == 1) return "Cube: move to draw the rectangle, click to lock it";
@@ -1205,16 +1217,25 @@ void DrawViewportUI(EditorState &editor)
     bool locked = editor.dialog != DIALOG_NONE || editor.openMenu != MENU_NONE;
     if (locked) GuiLock();
 
-    // Modes, then (in Edit mode) the tools
+    // Modes (Tab goes through them), then the tools of the mode
     float x = view.x + 8, y = view.y + 8, height = 26;
-    int mode = (editor.mode == MODE_EDIT) ? 1 : 0;
+    const float modeWidth = 96;
+    int mode = (int)editor.mode;
     int chosen = mode;
-    GuiToggleGroup({ x, y, 96, height }, "Object;Edit (Tab)", &chosen);
-    if (chosen != mode) SetEditorMode(editor, chosen == 1 ? MODE_EDIT : MODE_OBJECT);
-    float right = x + 2*96 + 4;
+    GuiToggleGroup({ x, y, modeWidth, height }, "Object;Modelling;Texturing", &chosen);
+    if (chosen != mode) SetEditorMode(editor, (EditorMode)chosen);
+    float right = x + MODE_COUNT*(modeWidth + 2);
     toolbarRect = { view.x + 4, view.y + 4, right - view.x, height + 8 };
 
-    if (editor.mode == MODE_EDIT)
+    if (editor.mode == MODE_TEXTURING)
+    {
+        const char *hint = TexturingHint();
+        float hintWidth = MeasureUIText(hint, 15);
+        DrawRectangle((int)view.x + 8, (int)(y + height + 6), (int)hintWidth + 16, 22, Fade(BLACK, 0.6f));
+        DrawUIText(hint, view.x + 16, y + height + 9, 15, RAYWHITE);
+    }
+
+    if (editor.mode == MODE_MODELLING)
     {
         x = right + 12;
         for (const ToolButton &button : TOOL_BUTTONS)

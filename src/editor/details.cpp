@@ -277,7 +277,7 @@ static void DrawLevelDetails(EditorState &editor, Rectangle panel, float y)
     y += ROW_HEIGHT;
 
     GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, "Mode");
-    GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, (editor.mode == MODE_EDIT) ? "Edit (Tab: Object)" : "Object (Tab: Edit)");
+    GuiLabel({ valueX, y, valueWidth, ROW_HEIGHT }, TextFormat("%s (Tab: %s)", EditorModeName(editor.mode), EditorModeName((EditorMode)((editor.mode + 1)%MODE_COUNT))));
     y += ROW_HEIGHT + 6;
 
     // Create Entity sits at the bottom of the panel, so work out its height first: the placed entities
@@ -364,11 +364,15 @@ void DrawDetailsPanel(EditorState &editor)
     Rectangle panel = PanelRect();
     GuiPanel(panel, nullptr);
 
-    // Two tabs: Details (the level, or the selected entity) and Materials. Selecting an entity shows its details
+    // Two tabs: Details (the level, or the selected entity) and Materials. Selecting an entity shows its details,
+    // and going into Texturing mode shows the textures to pick from
     static int tab = 0;
     static int lastSelected = -1;
+    static EditorMode lastMode = MODE_OBJECT;
     if (editor.selected >= 0 && editor.selected != lastSelected) tab = 0;
+    if (editor.mode == MODE_TEXTURING && lastMode != MODE_TEXTURING) tab = 1;
     lastSelected = editor.selected;
+    lastMode = editor.mode;
     float tabWidth = (panel.width - 2*PADDING - 4)/2.0f;
     GuiToggleGroup({ panel.x + PADDING, panel.y + 6, tabWidth, HEADER_HEIGHT }, "Details;Materials", &tab);
 

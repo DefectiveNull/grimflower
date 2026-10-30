@@ -18,15 +18,18 @@ static const int MENU_BAR_HEIGHT = 26;
 static const int STATUS_BAR_HEIGHT = 24;
 static const int DETAILS_PANEL_WIDTH = 340;
 
-// Object mode edits entities; Edit mode edits the level's geometry, and only Edit mode can
+// Object mode edits entities; Modelling mode edits the level's geometry, and only it can; Texturing mode puts
+// textures on its faces and lines them up. Tab goes through them in this order
 enum EditorMode
 {
     MODE_OBJECT,
-    MODE_EDIT
+    MODE_MODELLING,
+    MODE_TEXTURING,
+    MODE_COUNT
 };
 
-// Edit mode's tools (editmode.cpp). Select also moves, duplicates, resizes faces and applies materials, with
-// the mouse and modifier keys
+// Modelling mode's tools (modellingmode.cpp). Select also moves, duplicates and resizes faces, with the mouse
+// and modifier keys
 enum EditTool
 {
     TOOL_SELECT,
@@ -64,7 +67,7 @@ struct GeoEdge
     int a, b;
 };
 
-// What Edit mode is doing. Drags keep a copy of the geometry from when they started, and redo their change
+// What Modelling mode is doing. Drags keep a copy of the geometry from when they started, and redo their change
 // to it every frame, so moving the mouse back undoes what it did
 struct EditState
 {
@@ -106,6 +109,13 @@ struct EditState
     float bevelWidth = 0.0f;
     int bevelSegments = 1;
     Vector2 bevelStartMouse = { 0.0f, 0.0f };
+};
+
+// What Texturing mode is doing (texturingmode.cpp): the faces selected, and the one under the mouse
+struct TextureState
+{
+    std::vector<GeoPick> faces;
+    GeoPick hover;
 };
 
 // A copy of the level from before a change, so the change can be undone
@@ -172,6 +182,7 @@ struct EditorState
 
     EditorMode mode;
     EditState edit;
+    TextureState texturing;
     ViewMode viewMode;
     Sun defaultSun;           // Sun the world gets when the level has no "sun" entity
     Skybox skybox;            // The level's info.skybox
@@ -182,6 +193,13 @@ struct EditorState
     float yaw;
     float pitch;
     bool looking;
+
+    // The right mouse button looks around once it's held a moment or the mouse moves. A quick press and
+    // release without moving is a right click instead: rightClicked is true for the frame it's let go
+    bool rightHeld;           // Pressed over the 3D view, and not let go or looking yet
+    Vector2 rightPressMouse;
+    double rightPressTime;
+    bool rightClicked;
 
     int selected;             // Index into level.entities, -1 for none
 
@@ -278,12 +296,20 @@ void DrawDetailsPanel(EditorState &editor);
 void DrawMaterialsPanel(EditorState &editor, Rectangle area);
 std::string GetPickedMaterial();  // The texture picked in the Materials tab, empty for none
 
-// editmode.cpp: Edit mode, its tools, and the toolbar and view menu over the 3D view
-void SetEditorMode(EditorState &editor, EditorMode mode);  // Leaving Edit mode builds collision and the lightmap layout
+// modellingmode.cpp: Modelling mode, its tools, the modes, and the toolbar and view menu over the 3D view
+void SetEditorMode(EditorState &editor, EditorMode mode);  // Going back to Object mode builds collision and the lightmap layout
+void CycleEditorMode(EditorState &editor);                 // Tab: Object, Modelling, Texturing, then Object again
+const char *EditorModeName(EditorMode mode);               // Like "Modelling"
 void ResetEditTools(EditorState &editor);
-void UpdateEditMode(EditorState &editor, bool keysFree, bool mouseFree);  // In Edit mode, instead of entity selection
-bool EditModeEscape(EditorState &editor);  // Cancels what the tool is doing, then the tool. False if there was nothing to
+void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree);  // In Modelling mode, instead of entity selection
+bool ModellingModeEscape(EditorState &editor);  // Cancels what the tool is doing, then the tool. False if there was nothing to
 GeoPick PickGeometry(const EditorState &editor, Ray ray);  // The face a ray hits first
-void DrawEditModeOverlay(const EditorState &editor);  // Inside BeginMode3D, after the world
+void DrawModellingOverlay(const EditorState &editor);  // Inside BeginMode3D, after the world
 void DrawViewportUI(EditorState &editor);             // Over the 3D view: the mode and tool buttons, and the view menu
 bool IsMouseOverViewportUI();                         // So clicks on them don't reach the level
+
+// texturingmode.cpp: Texturing mode
+void UpdateTexturingMode(EditorState &editor, bool keysFree, bool mouseFree);
+bool TexturingModeEscape(EditorState &editor);   // Deselects the faces. False if none were
+void DrawTexturingOverlay(const EditorState &editor);  // Inside BeginMode3D, after the world
+const char *TexturingHint();                      // The controls, for the bar over the 3D view

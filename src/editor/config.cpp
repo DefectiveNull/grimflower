@@ -233,7 +233,7 @@ static void Cmd_EditorInfo(const Args &) { OpenDialog(*current, DIALOG_EDITOR_IN
 static void Cmd_ToggleDarkMode(const Args &) { ToggleDarkMode(); }
 static void Cmd_RotateLeft(const Args &) { RotateSelectedEntity(*current, 45.0f); }
 static void Cmd_RotateRight(const Args &) { RotateSelectedEntity(*current, -45.0f); }
-static void Cmd_ToggleEditMode(const Args &) { SetEditorMode(*current, (current->mode == MODE_EDIT) ? MODE_OBJECT : MODE_EDIT); }
+static void Cmd_CycleMode(const Args &) { CycleEditorMode(*current); }
 static void Cmd_GridSmaller(const Args &) { ChangeGridSize(*current, -1); }
 static void Cmd_GridBigger(const Args &) { ChangeGridSize(*current, 1); }
 static void Cmd_Undo(const Args &) { Undo(*current); }
@@ -280,7 +280,8 @@ static const Command commands[] =
     { "grid_smaller", Cmd_GridSmaller, "Smaller grid" },
     { "grid_bigger", Cmd_GridBigger, "Bigger grid" },
     { "import_obj", Cmd_ImportObj, "Import OBJ as meshes" },
-    { "toggle_edit_mode", Cmd_ToggleEditMode, "Object/Edit mode" },
+    { "cycle_mode", Cmd_CycleMode, "Next mode: Object, Modelling, Texturing" },
+    { "toggle_edit_mode", Cmd_CycleMode, nullptr },  // Its old name, so editor.cfgs that bound it still work
     { "world_settings", Cmd_WorldSettings, "World settings" },
     { "toggle_darkmode", Cmd_ToggleDarkMode, "Toggle dark mode" },
     { "editor_info", Cmd_EditorInfo, "Editor info" },

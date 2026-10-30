@@ -8,7 +8,7 @@ Known gaps and loose ends, collected while building the game and the editor. Sec
 - [X] Add a marker for where in the world cut tool is aimed at: the cut tool's dot follows the mouse over meshes, on the grid point a click would cut through.
 - [ ] Add proper shaded unlit view
 - [ ] Add proper "copy unique" functionality.
-- [ ] Add texture manpulation and autostitch tools
+- [X] Add texture manpulation and autostitch tools: Texturing mode (Tab past Modelling mode) puts textures on faces with right click, autostitches them across a surface with Shift+right click, and justifies (Shift+arrows) and fits (Shift+E) them.
 - [ ] Add hotspot textures and the editor.
 - [ ] Fix the shortcuts problem
 - [X] Add the current grid size to the toolbar

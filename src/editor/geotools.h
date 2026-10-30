@@ -1,6 +1,6 @@
 #pragma once
 
-// The editing operations behind Edit mode's tools, on the level's geometry (src/engine/geometry.h). They
+// The editing operations behind Modelling mode's tools, on the level's geometry (src/engine/geometry.h). They
 // work in a shape's own space unless they say otherwise, and leave shapes closed and their faces flat:
 // faces a change bends out of flat are split into triangles.
 

@@ -106,7 +106,8 @@ void GeometryChanged(EditorState &editor)
 
 void SyncWorldWithLevel(EditorState &editor)
 {
-    // Outside Edit mode the build is full: collision and the lightmap layout too, which starts a bake
+    // In Object mode the build is full: collision and the lightmap layout too, which starts a bake. Modelling and
+    // Texturing mode build quickly, without them
     bool full = (editor.mode == MODE_OBJECT);
     if (editor.builtGeometryVersion == editor.geometryVersion && editor.builtFull == full) return;
     SetWorldGeometry(editor.world, editor.level.geometry, full);
@@ -126,7 +127,7 @@ static void NewLevel(EditorState &editor)
     StartWorld(editor);
 
     FrameCameraOnWorld(editor);
-    SetStatus(editor, "New level. Press Tab for Edit mode to build its geometry");
+    SetStatus(editor, "New level. Press Tab for Modelling mode to build its geometry");
 }
 
 static void OpenLevel(EditorState &editor)
@@ -161,6 +162,10 @@ void InitEditor(EditorState &editor, const std::string &dataRoot)
     editor.camera.fovy = 70.0f;
     editor.camera.projection = CAMERA_PERSPECTIVE;
     editor.looking = false;
+    editor.rightHeld = false;
+    editor.rightPressMouse = { 0.0f, 0.0f };
+    editor.rightPressTime = 0.0;
+    editor.rightClicked = false;
     editor.dragging = false;
     editor.dragMoved = false;
     editor.dragVertical = false;
@@ -214,12 +219,9 @@ void RequestAction(EditorState &editor, PendingAction action)
 
 bool SaveCurrentLevel(EditorState &editor, bool askForPath)
 {
-    // Geometry being edited isn't final: leaving Edit mode works out its collision and lightmap first
-    if (editor.mode == MODE_EDIT)
-    {
-        SetStatus(editor, "Can't save in Edit mode. Press Tab to go back to Object mode, then save");
-        return false;
-    }
+    // Geometry being modelled or textured isn't built for good: going back to Object mode works out its collision
+    // and lightmap, which the save needs
+    if (editor.mode != MODE_OBJECT) SetEditorMode(editor, MODE_OBJECT);
 
     std::string path = editor.levelPath;
     if (askForPath || path.empty())
@@ -300,7 +302,7 @@ void ImportObjFromDialog(EditorState &editor)
 {
     std::string path;
     if (!ShowOpenFileDialog(GetWindowHandle(), "Import OBJ as Meshes", "OBJ models (*.obj)\0*.obj\0All files (*.*)\0*.*\0", editor.dataRoot + "/model", path)) return;
-    SetEditorMode(editor, MODE_EDIT);  // Geometry only changes in Edit mode
+    SetEditorMode(editor, MODE_MODELLING);  // Geometry only changes in Modelling mode
     ImportObjMeshes(editor, ToDataPath(editor, path), DEFAULT_WORLD_SCALE);
 }
 
@@ -337,7 +339,7 @@ void StartPointAt(EditorState &editor, int entityIndex, const std::string &param
     if (entityIndex < 0 || entityIndex >= (int)editor.level.entities.size()) return;
     if (!editor.worldLoaded)
     {
-        SetStatus(editor, "Point At needs geometry to click on: make some in Edit mode (Tab)");
+        SetStatus(editor, "Point At needs geometry to click on: make some in Modelling mode (Tab)");
         return;
     }
 

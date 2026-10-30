@@ -33,13 +33,14 @@ static void DrawStatusBar(const EditorState &editor)
 
     // Recent messages, then a reminder of the controls
     bool recent = !editor.status.empty() && GetTime() - editor.statusTime < 6.0;
-    const char *controls = (editor.mode == MODE_EDIT)
-        ? "Edit mode | Hold right mouse: look around, with WASD/Q/E | Tab: Object mode | [ ]: grid size | Esc: cancel"
-        : "Hold right mouse: look around, with WASD/Q/E to move (Shift: faster) | Left click: select | Tab: Edit mode | [ ]: grid size";
+    const char *controls;
+    if (editor.mode == MODE_MODELLING) controls = "Modelling mode | Hold right mouse: look around, with WASD/Q/E | Tab: Texturing mode | [ ]: grid size | Esc: cancel";
+    else if (editor.mode == MODE_TEXTURING) controls = "Texturing mode | Hold right mouse: look around, with WASD/Q/E | Tab: Object mode | Esc: deselect";
+    else controls = "Hold right mouse: look around, with WASD/Q/E to move (Shift: faster) | Left click: select | Tab: Modelling mode | [ ]: grid size";
     const char *text = recent ? editor.status.c_str() : controls;
     DrawUIText(text, 8, (float)(y + (STATUS_BAR_HEIGHT - 16)/2), 16, recent ? UITextColor() : UIMutedTextColor());
 
-    const char *count = TextFormat("%s  |  Grid %g%s  |  %d meshes  |  %d entities", (editor.mode == MODE_EDIT) ? "EDIT" : "OBJECT", editorSettings.gridSize,
+    const char *count = TextFormat("%s  |  Grid %g%s  |  %d meshes  |  %d entities", TextToUpper(EditorModeName(editor.mode)), editorSettings.gridSize,
                                    editorSettings.snapToGrid ? "" : " (no snap)", (int)editor.level.geometry.meshes.size(), (int)editor.level.entities.size());
     DrawUIText(count, GetScreenWidth() - MeasureUIText(count, 16) - 8, (float)(y + (STATUS_BAR_HEIGHT - 16)/2), 16, UIMutedTextColor());
 }
@@ -54,7 +55,8 @@ static void HandleKeys(EditorState &editor)
     {
         if (editor.openMenu != MENU_NONE) editor.openMenu = MENU_NONE;
         else if (editor.pointing) CancelPointAt(editor);
-        else if (editor.mode == MODE_EDIT) EditModeEscape(editor);  // What the tool's doing, then the tool, then the selection
+        else if (editor.mode == MODE_MODELLING) ModellingModeEscape(editor);  // What the tool's doing, then the tool, then the selection
+        else if (editor.mode == MODE_TEXTURING) TexturingModeEscape(editor);
         else editor.selected = -1;
     }
 }

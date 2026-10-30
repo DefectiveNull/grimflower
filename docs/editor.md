@@ -5,9 +5,10 @@ The editor (`build/editor.exe`) builds Grimflower's levels. It edits one level a
 - [Starting the editor](#starting-the-editor)
 - [The window](#the-window)
 - [Moving the camera](#moving-the-camera)
-- [Object mode and Edit mode](#object-mode-and-edit-mode)
+- [Modes](#modes)
 - [Object mode: entities](#object-mode-entities)
-- [Edit mode: geometry](#edit-mode-geometry)
+- [Modelling mode: geometry](#modelling-mode-geometry)
+- [Texturing mode: textures on faces](#texturing-mode-textures-on-faces)
 - [Materials](#materials)
 - [Lighting and the bounce lightmap](#lighting-and-the-bounce-lightmap)
 - [Levels: new, open, save](#levels-new-open-save)
@@ -30,7 +31,7 @@ The editor opens on a new, empty level called "Untitled".
 +-----------------------------------------------------------------------+
 | File  Edit  View  About           Level name *                       |  Menu bar
 +--------------------------------------------------+--------------------+
-| [Object|Edit (Tab)] [tools...]     Grid 8  [:]   | [Details|Materials]|
+| [Object|Modelling|Texturing] [tools] Grid 8 [:] | [Details|Materials]|
 | tool hint                                        |                    |
 |                                                  |   Details panel    |
 |                  3D view                         |                    |
@@ -41,7 +42,7 @@ The editor opens on a new, empty level called "Untitled".
 ```
 
 - **Menu bar:** File, Edit, View and About menus, and the level's name in the middle. A `*` after the name means there are unsaved changes.
-- **3D view:** the level. Its top left has the Object/Edit mode switch, and in Edit mode, the tool buttons with a hint for the current tool under them. Its top right shows the grid size and the view menu (the three dots).
+- **3D view:** the level. Its top left has the mode buttons. In Modelling mode the tool buttons are next to them, with a hint for the current tool underneath. In Texturing mode the hint lists its controls. Its top right shows the grid size and the view menu (the three dots).
 - **Details panel:** two tabs. **Details** shows the level (its name, file, geometry, the list of entities and the Create Entity buttons), or the selected entity's parameters. **Materials** lists every texture and its material.
 - **Status bar:** the latest message for a few seconds, then a reminder of the controls. On the right: the mode, grid size, and how many meshes and entities the level has.
 
@@ -68,14 +69,17 @@ The **mouse wheel** moves forward and back, 64 units a notch, without holding an
 
 The camera speed (256 units a second by default), field of view and look sensitivity are in Edit > Preferences. These keys are binds, so they can be changed in Preferences > Input too.
 
-## Object mode and Edit mode
+## Modes
 
-The editor has two modes, switched with **Tab** or the Object/Edit buttons at the top left of the view:
+The editor has three modes. Click one of the buttons at the top left of the view, or press **Tab** to go to the next one: Object, then Modelling, then Texturing, then back to Object.
 
 - **Object mode** is for entities: placing, moving and setting up the player start, lights, doors and the rest. The geometry can't be changed here, but it's complete: the game's collision is worked out and the bounce lightmap bakes.
-- **Edit mode** is for geometry. It's the only place meshes can be made or changed. While you're in it, collision and the lightmap wait: they're worked out when you go back to Object mode.
+- **Modelling mode** is for geometry. It's the only place meshes can be made or changed.
+- **Texturing mode** is for putting textures on faces and lining them up.
 
-**A level can only be saved in Object mode.** Saving in Edit mode tells you to press Tab first. Going back to Object mode tidies the geometry up (see [Leaving Edit mode](#leaving-edit-mode)), so saving afterwards keeps exactly what's built.
+In Modelling and Texturing mode the view is rebuilt quickly after every change, without collision, the lightmap layout or a bounce bake. Those wait until you go back to Object mode, so nothing bakes in the background while you work.
+
+**Levels are saved from Object mode.** Saving in Modelling or Texturing mode switches to Object mode first, then saves. Leaving Modelling mode tidies the geometry up (see [Leaving Modelling mode](#leaving-modelling-mode)), so what's saved is exactly what's built.
 
 ## Object mode: entities
 
@@ -132,21 +136,23 @@ Parameters the level doesn't set yet are shown greyed out, with the default the 
 - `light` and `sun` entities light the view as you change them.
 - `env_cubemap` entities capture the level a moment after anything changes, so reflections in the editor match the game's.
 
-## Edit mode: geometry
+## Modelling mode: geometry
 
 The level's geometry is made of **meshes**. Each mesh is a solid made of flat faces, with a texture on each face. Meshes can be **instances** of each other: they share one shape, so changing one changes all of them.
 
-In Edit mode, the toolbar shows the tools, and the line under it explains what the current tool does and which keys it takes. **Everything snaps to the grid**, and each change is one undo step.
+In Modelling mode, the toolbar shows the tools, and the line under it explains what the current tool does and which keys it takes. **Everything snaps to the grid**, and each change is one undo step.
 
 ### The grid
 
 **[** and **]** step the grid size through 1, 2, 4, 8, 16, 32, 64, 128 and 256 units. The size is shown at the top right of the view and in the status bar. Snapping applies to creating, moving and resizing, in both modes. It can be turned off in Edit > Preferences > View.
 
+New cubes get the texture picked in the [Materials](#materials) tab, or `textures/dev/wall128.tga` with none picked. Textures are changed in [Texturing mode](#texturing-mode-textures-on-faces).
+
 ### Tools
 
 | Tool | Key | What it does |
 | --- | --- | --- |
-| Select | Esc (from another tool) | Selects, moves, duplicates and resizes meshes, and applies materials |
+| Select | Esc (from another tool) | Selects, moves, duplicates and resizes meshes |
 | Cube | B (with no edges selected) | Draws a new box |
 | Rotate | R | Turns the selected mesh in 15 degree steps |
 | Cut | C | Cuts a face in two |
@@ -163,7 +169,6 @@ Pressing Ctrl and Shift together (in either order) picks Extrude, and Alt and Sh
 - **Drag** a mesh to move it along the floor. Hold **Alt** to move it up and down.
 - **Ctrl+drag** a mesh to drag out an instance of it, sharing its shape.
 - **Shift+drag** a face to resize the mesh along that face's direction: the face moves in or out.
-- **Shift+click** a face to give it the material picked in the [Materials](#materials) tab. With none picked, it gets `textures/dev/wall128.tga`. The texture is world aligned, so it lines up with the faces around it.
 - **Ctrl+F** flips the selected mesh's normals: it turns inside out. A box becomes a room you can stand inside, with walls 16 units thick. Pressing it again turns it back.
 - **Shift+D** deletes the face under the mouse, and every face joined to it on the same flat surface. This is for cleaning up broken meshes. It leaves a hole, so the mesh isn't closed any more. A mesh with no faces left is deleted.
 - **Delete** deletes the selected mesh.
@@ -236,18 +241,35 @@ If an edge can't be bevelled, the status bar says why and nothing changes.
 
 ### Importing OBJ models as geometry
 
-**Edit > Import OBJ as Meshes...** adds an `.obj` file's objects to the level as meshes, with the textures its `.mtl` gives them. It switches to Edit mode first. Models are expected in Quake units, the same as the level. This is also how levels made before the editor had geometry tools were converted.
+**Edit > Import OBJ as Meshes...** adds an `.obj` file's objects to the level as meshes, with the textures its `.mtl` gives them. It switches to Modelling mode first. Models are expected in Quake units, the same as the level. This is also how levels made before the editor had geometry tools were converted.
 
-### Leaving Edit mode
+### Leaving Modelling mode
 
-Going back to Object mode:
+Leaving Modelling mode, for either of the other modes:
 
 1. Rounds every vertex to the precision the level file stores, so what's built is exactly what's saved.
-2. Joins faces the tools split up back together, where they're on one plane with one texture.
-3. Works out **collision**. Each mesh is split into convex pieces the player collides with, like Quake's map compiler does. View > Collision Brushes shows them.
-4. Lays out the **lightmap** and starts the bounce bake in the background (see below).
+2. Joins faces the tools split up back together, where they're on one plane with one texture. Texturing mode then picks whole faces.
+
+Then, back in Object mode:
+
+1. The editor works out **collision**. Each mesh is split into convex pieces the player collides with, like Quake's map compiler does. View > Collision Brushes shows them.
+2. It lays out the **lightmap** and starts the bounce bake in the background (see below).
 
 The status bar says how long it took.
+
+## Texturing mode: textures on faces
+
+Texturing mode puts textures on faces and lines them up, like Hammer's face edit mode. It doesn't change the geometry's shape, so faces stay whole: a face here is the whole flat polygon, not the triangles it's drawn with. Going into Texturing mode opens the **Materials** tab, where you pick the texture to put on.
+
+- **Click** a face to select it (orange). **Ctrl+click** adds faces or takes them away. Clicking nothing deselects, and so does **Esc**.
+- **Right click** a face to put the picked texture on it. If the face is one of the selected ones, all the selected faces get it. Faces keep their alignment.
+- **Shift+right click** a face to put the picked texture on it and **autostitch** it across every face joined to it that had the same texture before. Each face carries on the alignment of the face next to it over the edge they share, wrapping round corners and curves. The whole surface then tiles on from the face you clicked, and that face's own alignment doesn't change. Faces with other textures are left as they are.
+- **Shift+Up / Down / Left / Right** justifies the texture on the selected faces, or the one under the mouse if none are selected. The texture's top, bottom, left or right edge lines up with the face's.
+- **Shift+E** fits the texture to the face, once across each way.
+
+A quick right click is a click. Holding the right button or moving the mouse with it held looks around, as usual.
+
+Autostitch goes over the gentlest bends first. An arch's steps wrap on from one to the next, so the texture runs unbroken from one side of a doorway, round the arch and down the other side. A closed shape like a box always has a seam somewhere, where the wrap comes back round on itself. Faces only count as joined where they share a whole edge, corner to corner.
 
 ## Materials
 
@@ -255,7 +277,7 @@ The **Materials** tab in the details panel lists every texture in `textures/`, g
 
 Click a texture to **pick** it. That does two things:
 
-- It's the material **Shift+click** applies and new cubes get, in Edit mode.
+- It's the texture right click puts on in Texturing mode, and new cubes get in Modelling mode.
 - Its material settings open under it.
 
 Materials work the way they did before PBR, in games like Half-Life 2 and Doom 3. Each texture can have:
@@ -281,7 +303,7 @@ The view is lit the same way the game is:
 - **Point lights** (`light` entities): up to 32 light the level at once, and all of them cast shadows.
 - **Bounce light:** sunlight that bounces off surfaces onto others, tinted by their textures. It's baked into a **lightmap**.
 
-The bake runs in the background whenever something it depends on changes: the geometry (when leaving Edit mode), the sun, or a static prop. It starts once things have been still for a moment, and the lightmap updates when it's done. The status bar says how long it took.
+In Object mode the bake runs in the background whenever something it depends on changes: the geometry or its textures (when you come back from Modelling or Texturing mode), the sun, or a static prop. It starts once things have been still for a moment, and the lightmap updates when it's done. The status bar says how long it took.
 
 **Saving the level saves the lightmap** next to it, as `maps/<level>_lightmap.png`, so the game doesn't have to bake it. If a bake is still running when you save, saving waits for it.
 
@@ -322,7 +344,7 @@ The editor remembers 200 steps by default. That can be changed in Edit > Prefere
 - Undo, Redo, Undo History.
 - Create Entity (points you to the Create Entity buttons in the Details tab).
 - Import OBJ as Meshes.
-- Object/Edit Mode.
+- Next Mode.
 - Global World Settings.
 - Dark Mode.
 - Preferences.
@@ -377,7 +399,7 @@ Every command a key can be bound to:
 | `rotate_left` / `rotate_right` | Alt+Q / Alt+R | Turns the selected entity 45 degrees |
 | `grid_smaller` / `grid_bigger` | [ / ] | Steps the grid size |
 | `import_obj` | | Import OBJ as meshes |
-| `toggle_edit_mode` | | Object/Edit mode (Tab also always works) |
+| `cycle_mode` | | Next mode: Object, Modelling, Texturing (Tab also always works). Its old name, `toggle_edit_mode`, still works |
 | `world_settings` | | Opens Global World Settings |
 | `toggle_darkmode` | | Dark mode on/off |
 | `editor_info` | | Opens Editor Info |
@@ -407,7 +429,7 @@ Every command a key can be bound to:
 | --- | --- |
 | Right mouse (hold) + WASD, Q/E, Shift | Fly the camera |
 | Mouse wheel | Move the camera forward and back |
-| Tab | Object / Edit mode |
+| Tab | Next mode: Object, Modelling, Texturing |
 | [ / ] | Grid size |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / open / save / save as |
@@ -423,7 +445,7 @@ Every command a key can be bound to:
 | Alt+Q / Alt+R | Turn it 45 degrees |
 | Delete | Delete it |
 
-### Edit mode
+### Modelling mode
 
 | Input | Does |
 | --- | --- |
@@ -434,7 +456,6 @@ Every command a key can be bound to:
 | Drag / Alt+drag | Move a mesh along the floor / up and down |
 | Ctrl+drag | Drag out an instance |
 | Shift+drag a face | Resize the mesh |
-| Shift+click a face | Apply the picked material |
 | Ctrl+F | Flip the selected mesh's normals |
 | Shift+D | Delete the face under the mouse and its flat surface |
 | Delete | Delete the selected mesh |
@@ -443,3 +464,14 @@ Every command a key can be bound to:
 | Ctrl+click (Edge tool) | Add or remove an edge |
 | Ctrl+drag a selected edge | Extrude the selected edges |
 | Enter | Finish a cube, cut or bevel |
+
+### Texturing mode
+
+| Input | Does |
+| --- | --- |
+| Click / Ctrl+click | Select a face / add or take away faces |
+| Right click | Put the picked texture on the face, or on the selection if the face is in it |
+| Shift+right click | Put the picked texture on the face and autostitch it across the faces joined to it that had the same texture |
+| Shift+Up / Down / Left / Right | Justify the texture up / down / left / right |
+| Shift+E | Fit the texture to the face |
+| Esc | Deselect |

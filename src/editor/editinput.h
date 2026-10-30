@@ -1,6 +1,6 @@
 #pragma once
 
-// The mouse and keyboard, as Edit mode and the 3D view read them. Normally raylib's input; a test program can
+// The mouse and keyboard, as Modelling and Texturing mode and the 3D view read them. Normally raylib's input; a test program can
 // script it instead (EditInputScript), frame by frame, to drive the tools without anyone at the keyboard
 
 #include "raylib.h"

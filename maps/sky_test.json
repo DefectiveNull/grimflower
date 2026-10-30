@@ -1,0 +1,102 @@
+{
+    "format": "rlib-level",
+    "version": 2,
+    "info": {
+        "name": "Sky Testing",
+        "created": "2026-10-29T23:35:09Z",
+        "saved": "2026-10-29T23:43:24Z",
+        "skybox": "textures/grimflower/Sky/DAWN01.png",
+        "lightmapKey": "6cf90624d60a706f",
+        "luxelSize": 16.0,
+        "lightmapFilter": "bilinear",
+        "entityCount": 2
+    },
+    "entities": [
+        {
+            "classname": "info_player_start",
+            "origin": [106.0, 27.0, 506.0],
+            "angle": 0
+        },
+        {
+            "classname": "sun",
+            "origin": [104.0, 122.0, 530.0],
+            "direction": [0.465, -0.591, 0.659],
+            "color": [255, 244, 214],
+            "intensity": 1.0,
+            "ambient": 0.13
+        }
+    ],
+    "geometry": {
+        "shapes": [
+            {
+                "vertices": [
+                    [-76.0, -1.0, -73.0],
+                    [72.0, -1.0, -73.0],
+                    [72.0, -1.0, 91.0],
+                    [-76.0, -1.0, 91.0],
+                    [-76.0, 1.0, 91.0],
+                    [72.0, 1.0, 91.0],
+                    [72.0, 1.0, -73.0],
+                    [-76.0, 1.0, -73.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 6, 1, 0],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 5, 4],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 3, 4, 7],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 5, 2, 1],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            }
+        ],
+        "meshes": [
+            {
+                "shape": 0,
+                "position": [102.0, 1.0, 503.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            }
+        ]
+    }
+}

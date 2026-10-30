@@ -4,9 +4,9 @@
     "info": {
         "name": "Geometry testing",
         "created": "2026-10-16T22:05:45Z",
-        "saved": "2026-10-21T16:09:22Z",
+        "saved": "2026-10-23T13:53:12Z",
         "skybox": "",
-        "lightmapKey": "b6bfae8c146037a5",
+        "lightmapKey": "2a907113e4d97d81",
         "luxelSize": 16.0,
         "lightmapFilter": "bilinear",
         "entityCount": 2
@@ -572,31 +572,31 @@
                 "faces": [
                     {
                         "corners": [0, 1, 2, 3],
-                        "material": "textures/kenney_fantasy/wall_rock.png",
+                        "material": "textures/kenney_fantasy/wall_brick_sand_center.png",
                         "uAxis": [1.0, 0.0, 0.0],
                         "vAxis": [0.0, 0.0, -1.0],
-                        "offset": [0.0, 0.0],
+                        "offset": [0.0, 56.0],
                         "scale": [1.0, 1.0]
                     },
                     {
                         "corners": [4, 5, 6, 7],
-                        "material": "textures/kenney_fantasy/wall_rock.png",
-                        "uAxis": [1.0, 0.0, 0.0],
-                        "vAxis": [0.0, 0.0, -1.0],
-                        "offset": [0.0, 0.0],
+                        "material": "textures/kenney_fantasy/wall_brick_sand_center.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [-1.0, 0.0, 0.0],
+                        "offset": [24.0, 96.0],
                         "scale": [1.0, 1.0]
                     },
                     {
                         "corners": [8, 9, 10, 11],
-                        "material": "textures/kenney_fantasy/wall_rock.png",
+                        "material": "textures/kenney_fantasy/wall_brick_sand_center.png",
                         "uAxis": [1.0, 0.0, 0.0],
                         "vAxis": [0.0, 0.0, 1.0],
-                        "offset": [0.0, 0.0],
+                        "offset": [0.0, 24.0],
                         "scale": [1.0, 1.0]
                     },
                     {
                         "corners": [1, 11, 10, 12, 2],
-                        "material": "textures/kenney_fantasy/wall_rock.png",
+                        "material": "textures/kenney_fantasy/wall_brick_sand_center.png",
                         "uAxis": [1.0, 0.0, 0.0],
                         "vAxis": [0.0, -1.0, 0.0],
                         "offset": [0.0, 0.0],
@@ -604,18 +604,18 @@
                     },
                     {
                         "corners": [6, 13, 9, 8, 7],
-                        "material": "textures/kenney_fantasy/wall_rock.png",
+                        "material": "textures/kenney_fantasy/wall_brick_sand_center.png",
                         "uAxis": [-1.0, 0.0, 0.0],
                         "vAxis": [0.0, -1.0, 0.0],
-                        "offset": [0.0, 0.0],
+                        "offset": [48.0, 0.0],
                         "scale": [1.0, 1.0]
                     },
                     {
                         "corners": [0, 14, 15, 16, 17, 18, 19, 20, 21, 4, 7, 8, 11, 1],
-                        "material": "textures/kenney_fantasy/wall_rock.png",
+                        "material": "textures/kenney_fantasy/wall_brick_sand_center.png",
                         "uAxis": [0.0, 0.0, -1.0],
                         "vAxis": [0.0, -1.0, 0.0],
-                        "offset": [0.0, 0.0],
+                        "offset": [24.0, 0.0],
                         "scale": [1.0, 1.0]
                     },
                     {

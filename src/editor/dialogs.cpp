@@ -379,10 +379,11 @@ static void DrawEditorInfoDialog(EditorState &editor)
     GuiLabel({ textX, layout.y + 74, textWidth, 20 }, "Created by Defective Null");
 
     const char *about[] = {
-        "A level editor for Grimflower. Levels are JSON files",
-        "in maps/ with the level's geometry (edited in Edit mode), where entities like",
-        "the player start, the sun and lights go, and map-wide settings",
-        "like the name and skybox. Levels are drawn with the game's lighting.",
+        "A level editor for Grimflower. Levels are JSON files in maps/",
+        "with the level's geometry (built in Modelling mode, textured in",
+        "Texturing mode), where entities like the player start, the sun",
+        "and lights go, and map-wide settings like the name and skybox.",
+        "Levels are drawn with the game's lighting.",
     };
     float y = layout.y + logoSize + 16;
     for (const char *line : about)

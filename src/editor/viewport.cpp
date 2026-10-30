@@ -11,6 +11,8 @@
 
 static const float FAST_MULTIPLIER = 3.0f;     // While +speed is held
 static const float MAX_PITCH = 89.0f*DEG2RAD;
+static const float RIGHT_CLICK_PIXELS = 3.0f;     // Moving further with the right button down looks around...
+static const double RIGHT_CLICK_SECONDS = 0.25;   // ...and so does holding it longer: shorter is a right click
 
 Rectangle GetViewportRect()
 {
@@ -37,11 +39,29 @@ static float PickRadius(const LevelEntity &entity)
 
 static void UpdateCamera(EditorState &editor)
 {
-    // Hold the right mouse button in the viewport to look around and fly
-    if (!editor.looking && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && IsMouseOverViewport(editor))
+    // Hold the right mouse button in the viewport to look around and fly. Looking starts once the mouse moves or
+    // the button's been held a moment, so a quick press and release is a right click (Texturing mode's), and
+    // the cursor stays where it was for it
+    editor.rightClicked = false;
+    if (!editor.looking && !editor.rightHeld && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && IsMouseOverViewport(editor))
     {
-        editor.looking = true;
-        DisableCursor();
+        editor.rightHeld = true;
+        editor.rightPressMouse = GetMousePosition();
+        editor.rightPressTime = GetTime();
+    }
+    if (editor.rightHeld)
+    {
+        if (!IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+        {
+            editor.rightHeld = false;
+            editor.rightClicked = true;
+        }
+        else if (Vector2Distance(GetMousePosition(), editor.rightPressMouse) > RIGHT_CLICK_PIXELS || GetTime() - editor.rightPressTime > RIGHT_CLICK_SECONDS)
+        {
+            editor.rightHeld = false;
+            editor.looking = true;
+            DisableCursor();
+        }
     }
     if (editor.looking && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
     {
@@ -418,11 +438,18 @@ void UpdateViewport(EditorState &editor)
 {
     UpdateCamera(editor);
 
-    // Tab switches between Object and Edit mode. In Edit mode the tools take the mouse and keys instead
-    if (editor.keysFree && !editor.looking && EdKeyPressed(KEY_TAB)) SetEditorMode(editor, (editor.mode == MODE_EDIT) ? MODE_OBJECT : MODE_EDIT);
-    if (editor.mode == MODE_EDIT)
+    // Tab goes on to the next mode. In Modelling and Texturing mode their tools take the mouse and keys instead
+    if (editor.keysFree && !editor.looking && EdKeyPressed(KEY_TAB)) CycleEditorMode(editor);
+    bool keysFree = editor.keysFree && !editor.looking;
+    bool mouseFree = IsMouseOverViewport(editor) && !editor.looking;
+    if (editor.mode == MODE_MODELLING)
     {
-        UpdateEditMode(editor, editor.keysFree && !editor.looking, IsMouseOverViewport(editor) && !editor.looking);
+        UpdateModellingMode(editor, keysFree, mouseFree);
+        return;
+    }
+    if (editor.mode == MODE_TEXTURING)
+    {
+        UpdateTexturingMode(editor, keysFree, mouseFree);
         return;
     }
     if (editor.pointing)
@@ -584,9 +611,10 @@ static void DrawEditorGrid(const EditorState &editor)
 }
 
 // Keeps the sun's bounce lightmap up to date. Whenever its key changes, because the sun moved, turned or
-// changed color or intensity, or the geometry was rebuilt leaving Edit mode, a new bake starts in the background, once
-// things have been still for a moment so dragging doesn't start one every frame. A level's saved lightmap
-// is used instead when it still matches. The lightmap updates when a bake finishes
+// changed color or intensity, or the geometry was rebuilt going back to Object mode, a new bake starts in the
+// background, once things have been still for a moment so dragging doesn't start one every frame. A level's
+// saved lightmap is used instead when it still matches. The lightmap updates when a bake finishes. Only in
+// Object mode: Modelling and Texturing mode rebuild the world with every change, so nothing bakes there
 static void UpdateEditorBounce(EditorState &editor)
 {
     static unsigned long long lastKey = 0;
@@ -594,6 +622,11 @@ static void UpdateEditorBounce(EditorState &editor)
     static double changedAt = 0.0;
 
     World &world = editor.world;
+    if (editor.mode != MODE_OBJECT)
+    {
+        CancelLightmapBake(world);
+        return;
+    }
     BounceStats stats;
     if (UpdateLightmapBake(world, &stats))
     {
@@ -674,8 +707,13 @@ static void SyncProps(EditorState &editor)
         placedWorld = editor.world.model.meshes;
 
         // A freshly loaded world is laid out with its props straight away, so its saved lightmap can match.
-        // Otherwise it waits until the props stop moving, rather than every frame of a drag
-        if (newWorld && hasStatic) BuildLightmapLayout(editor.world);
+        // Otherwise it waits until the props stop moving, rather than every frame of a drag. Only Object mode's
+        // full builds have a lightmap to lay out
+        if (newWorld && hasStatic && editor.mode == MODE_OBJECT)
+        {
+            BuildLightmapLayout(editor.world);
+            layoutWaiting = false;
+        }
         else if (hadStatic || hasStatic)
         {
             layoutWaiting = true;
@@ -683,7 +721,7 @@ static void SyncProps(EditorState &editor)
         }
     }
 
-    if (layoutWaiting && GetTime() - changedAt > 0.3)
+    if (layoutWaiting && editor.mode == MODE_OBJECT && GetTime() - changedAt > 0.3)
     {
         layoutWaiting = false;
         BuildLightmapLayout(editor.world);
@@ -790,7 +828,8 @@ void DrawViewport(EditorState &editor)
             }
             DrawPointAtPreview(editor);
             if (editor.mode == MODE_OBJECT) DrawResizeHandles(editor);
-            DrawEditModeOverlay(editor);
+            DrawModellingOverlay(editor);
+            DrawTexturingOverlay(editor);
         EndMode3D();
     EndTextureMode();
 
@@ -811,7 +850,7 @@ void DrawViewport(EditorState &editor)
 
     if (editor.level.geometry.meshes.empty() && editor.mode == MODE_OBJECT)
     {
-        const char *hint = "No geometry yet. Press Tab for Edit mode and B to draw a cube, or File > Import OBJ";
+        const char *hint = "No geometry yet. Press Tab for Modelling mode and B to draw a cube, or File > Import OBJ";
         DrawUIText(hint, view.x + (view.width - MeasureUIText(hint, 20))/2, view.y + 80, 20, UIMutedTextColor());
     }
 }

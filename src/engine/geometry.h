@@ -1,6 +1,6 @@
 #pragma once
 
-// Level geometry: the world, as the level file stores it and the editor's Edit mode changes it.
+// Level geometry: the world, as the level file stores it and the editor's Modelling and Texturing modes change it.
 //
 // A shape is a closed solid made of flat polygon faces (polygroups: a face is kept as one polygon, however
 // many triangles it takes to draw). Its vertices are relative to its own origin. A mesh places a shape in

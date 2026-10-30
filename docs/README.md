@@ -13,7 +13,7 @@ For building from source, see the [main README](../README.md).
 
 | Page | What's in it |
 | --- | --- |
-| [The editor](editor.md) | Every part of the editor: the camera, Object mode and entities, Edit mode and its geometry tools, materials, lighting, saving, and settings |
+| [The editor](editor.md) | Every part of the editor: the camera, Object mode and entities, Modelling mode and its geometry tools, Texturing mode, materials, lighting, saving, and settings |
 | [The game](game.md) | Playing: menus, controls, movement, the console, commands and cvars, config files, and how the game draws a level |
 | [Entities](entities.md) | Every entity type, what its parameters do, and how to add a new one |
 | [File formats](file-formats.md) | Level files, `.materials`, lightmaps, `entitylist.txt`, `.cfg` files and `gamedata.zip` |
