@@ -4,40 +4,49 @@
     "info": {
         "name": "Sky Testing",
         "created": "2026-10-29T23:35:09Z",
-        "saved": "2026-10-29T23:43:24Z",
+        "saved": "2026-10-30T04:53:46Z",
         "skybox": "textures/grimflower/Sky/DAWN01.png",
-        "lightmapKey": "6cf90624d60a706f",
+        "lightmapKey": "1152e9c1faf52fd2",
         "luxelSize": 16.0,
         "lightmapFilter": "bilinear",
-        "entityCount": 2
+        "texelsPerUnit": 2,
+        "entityCount": 3
     },
     "entities": [
         {
             "classname": "info_player_start",
-            "origin": [106.0, 27.0, 506.0],
+            "origin": [106.0, 96.0, 506.0],
             "angle": 0
         },
         {
             "classname": "sun",
-            "origin": [104.0, 122.0, 530.0],
+            "origin": [104.0, 288.0, 530.0],
             "direction": [0.465, -0.591, 0.659],
-            "color": [255, 244, 214],
-            "intensity": 1.0,
-            "ambient": 0.13
+            "color": [255, 237, 188],
+            "intensity": 1.4,
+            "ambient": 0.24,
+            "ambientFromSky": true
+        },
+        {
+            "classname": "light",
+            "origin": [-208.0, 165.9399, 688.0],
+            "color": [255, 223, 157],
+            "intensity": 3.31,
+            "radius": 160.0
         }
     ],
     "geometry": {
         "shapes": [
             {
                 "vertices": [
-                    [-76.0, -1.0, -73.0],
-                    [72.0, -1.0, -73.0],
-                    [72.0, -1.0, 91.0],
-                    [-76.0, -1.0, 91.0],
-                    [-76.0, 1.0, 91.0],
-                    [72.0, 1.0, 91.0],
-                    [72.0, 1.0, -73.0],
-                    [-76.0, 1.0, -73.0]
+                    [384.0, -32.0, 640.0],
+                    [-384.0, -32.0, 640.0],
+                    [-384.0, -32.0, -352.0],
+                    [384.0, -32.0, -352.0],
+                    [-384.0, 32.0, -352.0],
+                    [384.0, 32.0, -352.0],
+                    [384.0, 32.0, 640.0],
+                    [-384.0, 32.0, 640.0]
                 ],
                 "faces": [
                     {
@@ -45,12 +54,537 @@
                         "material": "textures/grimflower/Grass/GRASSA01.png",
                         "uAxis": [1.0, 0.0, 0.0],
                         "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 4, 5],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [0.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [6, 7, 1, 0],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 6, 0, 3],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [0.0, -1.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [2, 1, 7, 4],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [0.0, 1.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [-0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 4, 7, 6],
+                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-128.0, -80.0, -128.0],
+                    [224.0, -80.0, -128.0],
+                    [224.0, -80.0, 128.0],
+                    [-128.0, -80.0, 128.0],
+                    [-128.0, 272.0, 0.0],
+                    [208.0, 272.0, 0.0],
+                    [208.0, 272.0, -128.0],
+                    [-128.0, 272.0, -128.0],
+                    [224.0, 112.0, 32.0],
+                    [-128.0, 112.0, 32.0],
+                    [224.0, 256.3107, 3.1379],
+                    [224.0, 256.0, -128.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
                         "offset": [0.0, 0.0],
                         "scale": [1.0, 1.0]
                     },
                     {
                         "corners": [4, 5, 6, 7],
-                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "material": "textures/grimflower/Grass/GRASSA02.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 8, 9],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [9, 8, 10, 5, 4],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [1, 11, 10, 8, 2],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 7, 6, 11, 1],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 3, 9, 4, 7],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [10, 11, 6, 5],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [176.0, -96.0, 96.0],
+                    [-176.0, -96.0, 96.0],
+                    [-176.0, -96.0, -96.0],
+                    [176.0, -96.0, -96.0],
+                    [80.0, 96.0, -192.0],
+                    [-176.0, 96.0, -192.0],
+                    [-176.0, 96.0, 64.0],
+                    [80.0, 96.0, 64.0],
+                    [121.1429, 68.5714, -178.2857],
+                    [121.9951, 66.0146, 68.9976]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7],
+                        "material": "textures/grimflower/Grass/GRASSA02.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 5, 4, 8],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [9, 7, 6, 1, 0],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [8, 9, 0, 3],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [2, 1, 6, 5],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 7, 9, 8],
+                        "material": "textures/grimflower/Rock/ROCKB01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-16.0, -80.0, -80.0],
+                    [-16.0, -80.0, -96.0],
+                    [16.0, -80.0, -96.0],
+                    [16.0, -80.0, -80.0],
+                    [16.0, -80.0, 16.0],
+                    [-16.0, -80.0, 16.0],
+                    [-16.0, -80.0, -16.0],
+                    [16.0, -80.0, -16.0],
+                    [16.0, 64.0, -96.0],
+                    [16.0, 64.0, 16.0],
+                    [16.0, -16.0, -16.0],
+                    [16.0, 6.6274, -25.3726],
+                    [16.0, 16.0, -48.0],
+                    [16.0, 6.6274, -70.6274],
+                    [16.0, -16.0, -80.0],
+                    [-16.0, -16.0, -80.0],
+                    [-16.0, -16.0, -16.0],
+                    [-16.0, 6.6274, -70.6274],
+                    [-16.0, 16.0, -48.0],
+                    [-16.0, 6.6274, -25.3726],
+                    [-16.0, 80.0, -96.0],
+                    [16.0, 80.0, -96.0],
+                    [-16.0, 80.0, 16.0],
+                    [24.0, 64.0, 16.0],
+                    [24.0, 64.0, -96.0],
+                    [32.0, 72.0, -96.0],
+                    [32.0, 72.0, 16.0],
+                    [24.0, 80.0, -109.8564],
+                    [24.0, 72.0, -109.8564],
+                    [20.0, 64.0, -102.9282],
+                    [32.0, 80.0, 16.0],
+                    [32.0, 80.0, -96.0],
+                    [31.4548, 72.0, -100.1411],
+                    [31.4548, 80.0, -100.1411],
+                    [23.7274, 64.0, -98.0705],
+                    [29.8564, 72.0, -104.0],
+                    [29.8564, 80.0, -104.0],
+                    [22.9282, 64.0, -100.0],
+                    [27.3137, 72.0, -107.3137],
+                    [27.3137, 80.0, -107.3137],
+                    [21.6569, 64.0, -101.6569]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [1.0, 0.0, 0.0],
+                        "offset": [64.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [1.0, 0.0, 0.0],
+                        "offset": [64.0, 128.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [2, 8, 9, 4, 7, 10, 11, 12, 13, 14, 3],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [64.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 3, 14, 15],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [96.0, 131.9335],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [16, 10, 7, 6],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [96.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [13, 17, 15, 14],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -0.9239, -0.3827],
+                        "offset": [96.0, 195.6249],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [12, 18, 17, 13],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -0.3827, -0.9239],
+                        "offset": [96.0, 88.6882],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [11, 19, 18, 12],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.3827, -0.9239],
+                        "offset": [96.0, 50.7864],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [10, 16, 19, 11],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.9239, -0.3827],
+                        "offset": [96.0, 225.3925],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [1, 20, 21, 8, 2],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [64.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 15, 17, 18, 19, 16, 6, 5, 22, 20, 1],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [0.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [23, 24, 25, 26],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.7071, 0.7071, 0.0],
+                        "offset": [64.0, 43.7847],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [8, 21, 27, 28, 29],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.5, 0.0, -0.866],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [50.2152, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 9, 23, 26, 30, 22, 5],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [64.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [25, 31, 30, 26],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.0, -0.4459, 0.8951],
+                        "vAxis": [0.0, 0.8951, 0.4459],
+                        "offset": [60.8718, 226.2047],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [31, 25, 32, 33],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.1168, -0.4459, 0.8874],
+                        "vAxis": [0.0582, 0.8951, 0.442],
+                        "offset": [83.8481, 237.6515],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [25, 24, 34, 32],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0655, -0.0655, 0.9957],
+                        "vAxis": [0.7071, 0.7071, 0.0],
+                        "offset": [109.4155, 43.7847],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [33, 32, 35, 36],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.3425, -0.4459, 0.827],
+                        "vAxis": [0.1706, 0.8951, 0.4119],
+                        "offset": [70.1488, 38.5894],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [32, 34, 37, 35],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.19, -0.1944, 0.9623],
+                        "vAxis": [0.7304, 0.683, -0.0062],
+                        "offset": [108.3591, 67.5224],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [36, 35, 38, 39],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.5449, -0.4459, 0.7101],
+                        "vAxis": [0.2714, 0.8951, 0.3537],
+                        "offset": [12.0262, 137.1576],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [35, 37, 40, 38],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.2959, -0.3166, 0.9012],
+                        "vAxis": [0.7714, 0.6356, -0.0299],
+                        "offset": [16.4801, 131.1243],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [21, 20, 22, 30, 31, 33, 36, 39, 27],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.5, 0.0, -0.866],
+                        "vAxis": [0.866, 0.0, 0.5],
+                        "offset": [50.2147, 174.8502],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [39, 38, 28, 27],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.7101, -0.4459, 0.5449],
+                        "vAxis": [0.3537, 0.8951, 0.2714],
+                        "offset": [23.4922, 14.3881],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [38, 40, 29, 28],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.3747, -0.4281, 0.8224],
+                        "vAxis": [0.8202, 0.5666, -0.0787],
+                        "offset": [71.3338, 244.3861],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [8, 29, 40, 37, 34, 24, 23, 9],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [1.0, 0.0, 0.0],
+                        "offset": [64.0, 160.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [144.0, -16.0, 176.0],
+                    [-128.0, -16.0, 176.0],
+                    [-128.0, -16.0, -176.0],
+                    [144.0, -16.0, -176.0],
+                    [144.0, 16.0, -176.0],
+                    [-128.0, 16.0, -176.0],
+                    [-128.0, 16.0, 176.0],
+                    [144.0, 16.0, 176.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 5, 4],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [7, 6, 1, 0],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 7, 0, 3],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [2, 1, 6, 5],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [-8.0, -8.0, -176.0],
+                    [24.0, -8.0, -176.0],
+                    [24.0, -8.0, 176.0],
+                    [-8.0, -8.0, 176.0],
+                    [-8.0, 8.0, 176.0],
+                    [24.0, 8.0, 176.0],
+                    [24.0, 8.0, -176.0],
+                    [-8.0, 8.0, -176.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7],
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
                         "uAxis": [1.0, 0.0, 0.0],
                         "vAxis": [0.0, 0.0, 1.0],
                         "offset": [0.0, 0.0],
@@ -58,7 +592,7 @@
                     },
                     {
                         "corners": [7, 6, 1, 0],
-                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
                         "uAxis": [-1.0, 0.0, 0.0],
                         "vAxis": [0.0, -1.0, 0.0],
                         "offset": [0.0, 0.0],
@@ -66,7 +600,7 @@
                     },
                     {
                         "corners": [3, 2, 5, 4],
-                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
                         "uAxis": [1.0, 0.0, 0.0],
                         "vAxis": [0.0, -1.0, 0.0],
                         "offset": [0.0, 0.0],
@@ -74,7 +608,7 @@
                     },
                     {
                         "corners": [0, 3, 4, 7],
-                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
                         "uAxis": [0.0, 0.0, 1.0],
                         "vAxis": [0.0, -1.0, 0.0],
                         "offset": [0.0, 0.0],
@@ -82,8 +616,504 @@
                     },
                     {
                         "corners": [6, 5, 2, 1],
-                        "material": "textures/grimflower/Grass/GRASSA01.png",
+                        "material": "textures/grimflower/Floor/FLOORA01.png",
                         "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [112.0, -56.0, 8.0],
+                    [-80.0, -56.0, 8.0],
+                    [-80.0, -56.0, -8.0],
+                    [112.0, -56.0, -8.0],
+                    [-80.0, 88.0, -8.0],
+                    [112.0, 88.0, -8.0],
+                    [-80.0, 88.0, 8.0],
+                    [-112.0, 104.0, 8.0],
+                    [-112.0, 104.0, -8.0],
+                    [112.0, 104.0, 8.0],
+                    [112.0, 104.0, -8.0],
+                    [-112.0, 88.0, -16.0],
+                    [-112.0, 104.0, -24.0],
+                    [-112.0, 96.0, -24.0],
+                    [144.0, 104.0, -8.0],
+                    [144.0, 88.0, -8.0],
+                    [149.6569, 88.0, -13.6569],
+                    [155.3137, 96.0, -19.3137],
+                    [155.3137, 104.0, -19.3137],
+                    [144.0, 96.0, -24.0],
+                    [144.0, 88.0, -16.0],
+                    [144.0, 104.0, -24.0],
+                    [148.1411, 96.0, -23.4548],
+                    [146.0706, 88.0, -15.7274],
+                    [148.1411, 104.0, -23.4548],
+                    [152.0, 96.0, -21.8564],
+                    [148.0, 88.0, -14.9282],
+                    [152.0, 104.0, -21.8564]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [64.0, 192.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 4, 5],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [64.0, 192.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [2, 1, 6, 4],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 1.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [64.0, 192.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 6, 7, 8],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.8944, 0.4472, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [70.1475, 192.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 9, 7, 6, 1],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 1.0, 0.0],
+                        "offset": [64.0, 64.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 3, 5, 10, 9],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, -1.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [64.0, 192.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [11, 4, 8],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.8944, 0.4472, 0.0],
+                        "vAxis": [0.3904, 0.7807, 0.4879],
+                        "offset": [70.1475, 201.9114],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [8, 12, 13, 11],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.7676, -0.6409],
+                        "vAxis": [0.0, 0.6409, 0.7676],
+                        "offset": [39.3403, 168.7189],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [14, 15, 16, 17, 18],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.4271, -0.7969, -0.4271],
+                        "vAxis": [-0.5635, -0.6041, 0.5635],
+                        "offset": [48.2986, 91.2356],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [10, 5, 15, 14],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.6041, -0.7969, 0.0],
+                        "vAxis": [-0.7969, -0.6041, -0.0],
+                        "offset": [22.5438, 32.7046],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [11, 13, 19, 20],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.9624, -0.1922, 0.1922],
+                        "vAxis": [0.2718, -0.6805, 0.6805],
+                        "offset": [84.5261, 65.8492],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [12, 21, 19, 13],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.6041, -0.7969, 0.0],
+                        "vAxis": [0.7969, -0.6041, 0.0],
+                        "offset": [30.3723, 191.2068],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [20, 19, 22, 23],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.9582, -0.2552, 0.1291],
+                        "vAxis": [0.2706, -0.6627, 0.6983],
+                        "offset": [69.0917, 34.0626],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [19, 21, 24, 22],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.5989, -0.7969, -0.0789],
+                        "vAxis": [0.7901, -0.6041, 0.104],
+                        "offset": [3.9673, 57.1768],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [23, 22, 25, 26],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.9278, -0.3727, 0.0156],
+                        "vAxis": [0.2555, -0.6045, 0.7545],
+                        "offset": [20.3082, 187.3799],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [22, 24, 27, 25],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.5581, -0.7969, -0.2312],
+                        "vAxis": [0.7363, -0.6041, 0.305],
+                        "offset": [75.9761, 49.3063],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [5, 4, 11, 20, 23, 26, 16, 15],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.9624, 0.0, 0.2718],
+                        "vAxis": [0.2718, 0.0, 0.9624],
+                        "offset": [17.1332, 141.9069],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [26, 25, 17, 16],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.8754, -0.4774, -0.0751],
+                        "vAxis": [0.2161, -0.5257, 0.8228],
+                        "offset": [66.6505, 56.2343],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [25, 27, 18, 17],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [-0.4792, -0.7969, -0.3677],
+                        "vAxis": [0.6322, -0.6041, 0.4852],
+                        "offset": [4.1946, 62.2688],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [10, 14, 18, 27, 24, 21, 12, 8, 7, 9],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0059, 0.0, -1.0],
+                        "vAxis": [1.0, -0.0, 0.0059],
+                        "offset": [78.4943, 153.6754],
+                        "scale": [1.0, 1.0]
+                    }
+                ]
+            },
+            {
+                "vertices": [
+                    [8.0, -8.0, 8.0],
+                    [-8.0, -8.0, 8.0],
+                    [-8.0, -8.0, -8.0],
+                    [8.0, -8.0, -8.0],
+                    [200.0, -8.0, -8.0],
+                    [216.0, -8.0, -8.0],
+                    [216.0, -8.0, 8.0],
+                    [200.0, -8.0, 8.0],
+                    [8.0, 8.0, -8.0],
+                    [8.0, 8.0, 8.0],
+                    [-8.0, 8.0, 8.0],
+                    [-8.0, 8.0, -8.0],
+                    [-0.0426, 36.4426, 8.0],
+                    [-0.0426, 36.4426, -8.0],
+                    [15.4122, 32.3014, -8.0],
+                    [15.4122, 32.3014, 8.0],
+                    [15.0052, 61.8564, 8.0],
+                    [15.0052, 61.8564, -8.0],
+                    [28.8616, 53.8564, -8.0],
+                    [28.8616, 53.8564, 8.0],
+                    [36.1177, 82.5097, 8.0],
+                    [36.1177, 82.5097, -8.0],
+                    [47.4315, 71.196, -8.0],
+                    [47.4315, 71.196, 8.0],
+                    [61.8564, 96.9948, 8.0],
+                    [61.8564, 96.9948, -8.0],
+                    [69.8564, 83.1384, -8.0],
+                    [69.8564, 83.1384, 8.0],
+                    [90.4671, 104.3248, 8.0],
+                    [90.4671, 104.3248, -8.0],
+                    [94.6082, 88.87, -8.0],
+                    [94.6082, 88.87, 8.0],
+                    [120.0, 104.0, 8.0],
+                    [120.0, 104.0, -8.0],
+                    [120.0, 88.0, -8.0],
+                    [120.0, 88.0, 8.0],
+                    [148.4425, 96.0426, 8.0],
+                    [148.4425, 96.0426, -8.0],
+                    [144.3014, 80.5878, -8.0],
+                    [144.3014, 80.5878, 8.0],
+                    [173.8564, 80.9948, 8.0],
+                    [173.8564, 80.9948, -8.0],
+                    [165.8564, 67.1384, -8.0],
+                    [165.8564, 67.1384, 8.0],
+                    [194.5097, 59.8823, 8.0],
+                    [194.5097, 59.8823, -8.0],
+                    [183.1959, 48.5685, -8.0],
+                    [183.1959, 48.5685, 8.0],
+                    [208.9948, 34.1436, 8.0],
+                    [208.9948, 34.1436, -8.0],
+                    [195.1384, 26.1436, -8.0],
+                    [195.1384, 26.1436, 8.0],
+                    [216.3248, 5.5329, 8.0],
+                    [216.3248, 5.5329, -8.0],
+                    [200.87, 1.3918, -8.0],
+                    [200.87, 1.3918, 8.0]
+                ],
+                "faces": [
+                    {
+                        "corners": [0, 1, 2, 3],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [4, 5, 6, 7],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 3, 8, 9],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [10, 11, 2, 1],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [11, 10, 12, 13],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [9, 8, 14, 15],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [13, 12, 16, 17],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [15, 14, 18, 19],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [17, 16, 20, 21],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [19, 18, 22, 23],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [21, 20, 24, 25],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [23, 22, 26, 27],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [25, 24, 28, 29],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [27, 26, 30, 31],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [29, 28, 32, 33],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [31, 30, 34, 35],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [33, 32, 36, 37],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [35, 34, 38, 39],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [37, 36, 40, 41],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, 1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [39, 38, 42, 43],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, 0.0, -1.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [41, 40, 44, 45],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [43, 42, 46, 47],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [45, 44, 48, 49],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [47, 46, 50, 51],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [49, 48, 52, 53],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [51, 50, 54, 55],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [3, 2, 11, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 5, 4, 54, 50, 46, 42, 38, 34, 30, 26, 22, 18, 14, 8],
+                        "material": "textures/grimflower/Stone/STONEA07.png",
+                        "uAxis": [-1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [53, 52, 6, 5],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, -1.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [0, 9, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 7, 6, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 10, 1],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [1.0, 0.0, 0.0],
+                        "vAxis": [0.0, -1.0, 0.0],
+                        "offset": [0.0, 0.0],
+                        "scale": [1.0, 1.0]
+                    },
+                    {
+                        "corners": [55, 54, 4, 7],
+                        "material": "textures/grimflower/Brick/BRICKD01.png",
+                        "uAxis": [0.0, 0.0, 1.0],
                         "vAxis": [0.0, -1.0, 0.0],
                         "offset": [0.0, 0.0],
                         "scale": [1.0, 1.0]
@@ -94,7 +1124,92 @@
         "meshes": [
             {
                 "shape": 0,
-                "position": [102.0, 1.0, 503.0],
+                "position": [-64.0, 32.0, 352.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 1,
+                "position": [-320.0, 144.0, 128.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 2,
+                "position": [-272.0, 160.0, 352.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 3,
+                "position": [-80.0, 176.0, 976.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 3,
+                "position": [-80.0, 176.0, 864.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 3,
+                "position": [-80.0, 176.0, 752.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 4,
+                "position": [-192.0, 80.0, 816.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 5,
+                "position": [-40.0, 72.0, 816.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 6,
+                "position": [-208.0, 152.0, 664.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 3,
+                "position": [-304.0, 176.0, 896.0],
+                "rotation": [0.0, 1.0, 0.0, 0.0]
+            },
+            {
+                "shape": 3,
+                "position": [-304.0, 176.0, 784.0],
+                "rotation": [0.0, 1.0, 0.0, 0.0]
+            },
+            {
+                "shape": 3,
+                "position": [-304.0, 176.0, 672.0],
+                "rotation": [0.0, 1.0, 0.0, 0.0]
+            },
+            {
+                "shape": 7,
+                "position": [-296.0, 264.0, 984.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [-296.0, 264.0, 920.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [-296.0, 264.0, 856.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [-296.0, 264.0, 792.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [-296.0, 264.0, 728.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0]
+            },
+            {
+                "shape": 7,
+                "position": [-296.0, 264.0, 664.0],
                 "rotation": [0.0, 0.0, 0.0, 1.0]
             }
         ]

@@ -1,0 +1,11 @@
+{
+    "format": "grimflower-materials",
+    "version": 1,
+    "materials": {
+        "textures/grimflower/Brick/BRICKA01.png": {
+            "specular": 0.0,
+            "gloss": 0.5,
+            "reflection": 0.2
+        }
+    }
+}
