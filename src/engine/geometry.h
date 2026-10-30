@@ -8,8 +8,10 @@
 //
 // Textures are world aligned, like Quake and Hammer: each face has two directions in world space that
 // its texture's x and y run along, a scale (world units per texel) and an offset (in texels), the way the
-// Valve 220 map format has them. Moving or resizing a mesh slides it under its texture rather than
-// dragging the texture along, and faces next to each other with the same axes line up seamlessly.
+// Valve 220 map format has them. The level's texture density (LevelInfo::texelsPerUnit) multiplies the
+// scale: at 2 texels per unit, a face at scale 1 has 2 texels in each world unit. Moving or resizing a mesh
+// slides it under its texture rather than dragging the texture along, and faces next to each other with the
+// same axes line up seamlessly.
 
 #include "raylib.h"
 
@@ -23,7 +25,7 @@ struct GeoFace
     Vector3 uAxis = { 1.0f, 0.0f, 0.0f };   // World space direction the texture's x runs along
     Vector3 vAxis = { 0.0f, 0.0f, 1.0f };   // ...and its y, down the image
     Vector2 offset = { 0.0f, 0.0f };     // In texels
-    Vector2 scale = { 1.0f, 1.0f };      // World units per texel
+    Vector2 scale = { 1.0f, 1.0f };      // World units per texel, at 1 texel per unit
 };
 
 struct GeoShape
@@ -57,8 +59,8 @@ Vector3 GeoPolygonNormal(const std::vector<Vector3> &points);  // Newell's metho
 void GeoParaxialAxes(Vector3 normal, Vector3 &uAxis, Vector3 &vAxis);
 void GeoResetTexture(GeoFace &face, Vector3 worldNormal);  // Paraxial axes, scale 1, no offset
 
-// Where a world space point is on a face's texture, from 0 to 1 per repeat
-Vector2 GeoTextureCoord(const GeoFace &face, Vector3 point, int textureWidth, int textureHeight);
+// Where a world space point is on a face's texture, from 0 to 1 per repeat, at the level's texture density
+Vector2 GeoTextureCoord(const GeoFace &face, Vector3 point, int textureWidth, int textureHeight, float texelsPerUnit);
 
 // Splits a flat polygon into triangles, as index triples into points. Works for concave polygons (ear
 // clipping); normal is the side it's seen from
@@ -75,8 +77,9 @@ void GeoMergeFaces(GeoShape &shape);
 
 // Imports an OBJ as geometry: each of its objects ("o" or "g") becomes a shape and a mesh, positioned at the
 // middle of its bounds. scale converts the OBJ's units to world units. The faces keep their textures, with
-// texture axes fitted to the OBJ's texture coordinates. Returns false if the file couldn't be read
-bool ImportObjGeometry(const char *objPath, float scale, Geometry &geometry);
+// texture axes fitted to the OBJ's texture coordinates at the level's texture density. Returns false if the
+// file couldn't be read
+bool ImportObjGeometry(const char *objPath, float scale, float texelsPerUnit, Geometry &geometry);
 
 // Rounds every number to 4 decimals, the way level files store them, so geometry in memory is exactly what
 // saving and loading it gives: the bounce lightmap's fingerprint of it then matches in the game

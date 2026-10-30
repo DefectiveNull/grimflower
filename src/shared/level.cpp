@@ -276,6 +276,7 @@ bool LoadLevel(Level &level, const char *path)
     float luxelSize = info.contains("luxelsPerUnit") ? 32.0f/fmaxf(GetNumber(info, "luxelsPerUnit", 2.0f), 0.01f) : 16.0f;
     level.info.luxelSize = Clamp(GetNumber(info, "luxelSize", luxelSize), 1.0f, 128.0f);
     level.info.lightmapFiltered = GetString(info, "lightmapFilter", "bilinear") != "nearest";
+    level.info.texelsPerUnit = (GetNumber(info, "texelsPerUnit", 1.0f) >= 1.5f) ? 2 : 1;
     level.info.entityCount = (int)GetNumber(info, "entityCount", 0.0f);
 
     // The geometry. Levels from before it, with a world model (an OBJ) instead, get it imported as meshes:
@@ -290,7 +291,7 @@ bool LoadLevel(Level &level, const char *path)
         float scale = GetNumber(world, "scale", 1.0f)*((version < 2) ? 32.0f : 1.0f);
         if (!model.empty())
         {
-            if (ImportObjGeometry(model.c_str(), scale, level.geometry))
+            if (ImportObjGeometry(model.c_str(), scale, (float)level.info.texelsPerUnit, level.geometry))
             {
                 GeoQuantize(level.geometry);  // As saving will store it
                 TraceLog(LOG_INFO, "LEVEL: [%s] Imported its world model %s as meshes", path, model.c_str());
@@ -368,6 +369,7 @@ bool SaveLevel(Level &level, const char *path)
     if (!level.info.lightmapKey.empty()) root["info"]["lightmapKey"] = level.info.lightmapKey;
     root["info"]["luxelSize"] = level.info.luxelSize;
     root["info"]["lightmapFilter"] = level.info.lightmapFiltered ? "bilinear" : "nearest";
+    root["info"]["texelsPerUnit"] = level.info.texelsPerUnit;
     root["info"]["entityCount"] = level.info.entityCount;
 
     root["entities"] = json::array();

@@ -26,6 +26,7 @@ A level is one JSON file in `maps/`, holding its settings, its entities and its 
         "lightmapKey": "d8240d2dea861d8c",
         "luxelSize": 16.0,
         "lightmapFilter": "bilinear",
+        "texelsPerUnit": 1,
         "entityCount": 5
     },
     "entities": [ ... ],
@@ -48,6 +49,7 @@ A level is one JSON file in `maps/`, holding its settings, its entities and its 
 | `lightmapKey` | A fingerprint of what the saved lightmap was baked from. Written by the editor. If the level no longer matches it, the lightmap isn't used and a new one is baked |
 | `luxelSize` | World units per lightmap texel. Default 16 |
 | `lightmapFilter` | `"bilinear"` (smooth) or `"nearest"` (blocky) |
+| `texelsPerUnit` | Texture density at face scale 1: `1` (1 texel per world unit, like Quake) or `2`. Default 1 |
 | `entityCount` | How many entities the file has. Written on save, for reference |
 
 ### entities
@@ -110,11 +112,11 @@ The level's geometry is a list of **shapes** and a list of **meshes**. A shape i
 **Texture alignment.** Textures are world aligned, like Quake's and Hammer's. A point on a face gets the texture coordinate (in texels):
 
 ```
-s = dot(point, uAxis) / scale.x + offset.x
-t = dot(point, vAxis) / scale.y + offset.y
+s = dot(point, uAxis) * texelsPerUnit / scale.x + offset.x
+t = dot(point, vAxis) * texelsPerUnit / scale.y + offset.y
 ```
 
-`uAxis` and `vAxis` are directions in world space, `scale` is world units per texel, and `offset` is in texels. Moving a mesh slides it under its texture, and neighbouring faces with the same axes line up seamlessly. The default, which new faces get, picks the axes from whichever world axis the face is closest to facing, with scale 1 and no offset.
+`uAxis` and `vAxis` are directions in world space, `scale` is world units per texel (at 1 texel per unit), `texelsPerUnit` is the level's `info.texelsPerUnit`, and `offset` is in texels. Moving a mesh slides it under its texture, and neighbouring faces with the same axes line up seamlessly. The default, which new faces get, picks the axes from whichever world axis the face is closest to facing, with scale 1 and no offset.
 
 **Collision** isn't stored: the game and the editor work it out from the geometry when a level loads, splitting each mesh into convex pieces.
 

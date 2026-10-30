@@ -1,7 +1,7 @@
 #include "levellights.h"
 #include "raymath.h"
 
-int ApplyLevelLights(const Level &level, Lighting &lighting, Sun defaultSun, const EntityParamReader &params)
+int ApplyLevelLights(const Level &level, Lighting &lighting, Sun defaultSun, const EntityParamReader &params, Vector3 skyColor)
 {
     lighting.sun = defaultSun;
     lighting.lights.clear();
@@ -24,6 +24,9 @@ int ApplyLevelLights(const Level &level, Lighting &lighting, Sun defaultSun, con
             sun.color = params.color(entity, "color");
             sun.intensity = params.number(entity, "intensity");
             sun.ambient = params.number(entity, "ambient");
+            Color ambientColor = params.color(entity, "ambientColor");
+            sun.ambientColor = params.boolean(entity, "ambientFromSky") ? skyColor
+                             : Vector3{ ambientColor.r/255.0f, ambientColor.g/255.0f, ambientColor.b/255.0f };
             hasSun = true;
         }
         else if (entity.classname == "light")

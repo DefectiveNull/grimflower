@@ -1,6 +1,8 @@
 #include "skybox.h"
 #include "rlgl.h"
 
+#include <cmath>
+
 // The prebuilt raylib can't load .hdr files, so decode them with stb_image. Static, so this copy
 // doesn't clash with the one in world.cpp (which only does TGA) or raylib's own
 #define STB_IMAGE_IMPLEMENTATION
@@ -51,6 +53,31 @@ void main()
 }
 )";
 
+// The sky's average color, over its upper half (the top half of the image, down to the horizon), so the ground
+// in the image doesn't tint it: each row weighted by how much of the sphere it covers (sin of its angle from
+// straight up). Each pixel counts no brighter than white, keeping its hue, so a
+// bright HDR sun doesn't drown out the sky around it. Then brightened until its brightest channel is 1, and put
+// in the screen's gamma like the sky's own pixels, so it's the color you'd pick for the sky by eye
+static Vector3 AverageSkyColor(const float *pixels, int width, int height)
+{
+    double sum[3] = { 0.0, 0.0, 0.0 };
+    for (int y = 0; y < (height + 1)/2; y++)
+    {
+        double weight = sin(PI*(y + 0.5f)/height);
+        for (int x = 0; x < width; x++)
+        {
+            const float *p = pixels + ((size_t)y*width + x)*3;
+            float brightest = fmaxf(p[0], fmaxf(p[1], p[2]));
+            float scale = (brightest > 1.0f) ? 1.0f/brightest : 1.0f;
+            for (int c = 0; c < 3; c++) sum[c] += weight*fmaxf(p[c], 0.0f)*scale;
+        }
+    }
+
+    double brightest = fmax(sum[0], fmax(sum[1], sum[2]));
+    if (brightest <= 0.0) return { 1.0f, 1.0f, 1.0f };  // A black sky has no color to give
+    return { powf((float)(sum[0]/brightest), 1.0f/2.2f), powf((float)(sum[1]/brightest), 1.0f/2.2f), powf((float)(sum[2]/brightest), 1.0f/2.2f) };
+}
+
 bool LoadSkybox(Skybox &skybox, const char *path)
 {
     UnloadSkybox(skybox);
@@ -71,6 +98,7 @@ bool LoadSkybox(Skybox &skybox, const char *path)
 
     Image image = { pixels, width, height, 1, PIXELFORMAT_UNCOMPRESSED_R32G32B32 };
     skybox.texture = LoadTextureFromImage(image);
+    skybox.averageColor = AverageSkyColor(pixels, width, height);
     stbi_image_free(pixels);
     SetTextureFilter(skybox.texture, TEXTURE_FILTER_BILINEAR);
 
@@ -84,7 +112,8 @@ bool LoadSkybox(Skybox &skybox, const char *path)
 
     skybox.path = path;
     skybox.loaded = true;
-    TraceLog(LOG_INFO, "SKYBOX: [%s] Loaded (%dx%d)", path, width, height);
+    TraceLog(LOG_INFO, "SKYBOX: [%s] Loaded (%dx%d), average color %.2f %.2f %.2f", path, width, height,
+             skybox.averageColor.x, skybox.averageColor.y, skybox.averageColor.z);
     return true;
 }
 

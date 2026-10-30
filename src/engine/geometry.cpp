@@ -69,10 +69,10 @@ void GeoResetTexture(GeoFace &face, Vector3 worldNormal)
     face.scale = { 1.0f, 1.0f };
 }
 
-Vector2 GeoTextureCoord(const GeoFace &face, Vector3 point, int textureWidth, int textureHeight)
+Vector2 GeoTextureCoord(const GeoFace &face, Vector3 point, int textureWidth, int textureHeight, float texelsPerUnit)
 {
-    float s = Vector3DotProduct(point, face.uAxis)/face.scale.x + face.offset.x;
-    float t = Vector3DotProduct(point, face.vAxis)/face.scale.y + face.offset.y;
+    float s = Vector3DotProduct(point, face.uAxis)*texelsPerUnit/face.scale.x + face.offset.x;
+    float t = Vector3DotProduct(point, face.vAxis)*texelsPerUnit/face.scale.y + face.offset.y;
     return { s/(float)std::max(textureWidth, 1), t/(float)std::max(textureHeight, 1) };
 }
 
@@ -534,7 +534,7 @@ void GeoMergeFaces(GeoShape &shape)
 
 // Texture axes, scale and offset that put the face's texture where the OBJ's texture coordinates have it.
 // Texture coordinates are a flat (affine) mapping on each face, which this finds exactly from three corners
-static void FitTexture(GeoFace &face, const std::vector<Vector3> &points, const std::vector<Vector2> &uvs, Vector3 normal)
+static void FitTexture(GeoFace &face, const std::vector<Vector3> &points, const std::vector<Vector2> &uvs, Vector3 normal, float texelsPerUnit)
 {
     GeoResetTexture(face, normal);
     int width = 64, height = 64;
@@ -574,7 +574,7 @@ static void FitTexture(GeoFace &face, const std::vector<Vector3> &points, const 
 
     face.uAxis = Vector3Scale(gu, 1.0f/lu);
     face.vAxis = Vector3Scale(gv, 1.0f/lv);
-    face.scale = { 1.0f/lu, 1.0f/lv };
+    face.scale = { texelsPerUnit/lu, texelsPerUnit/lv };  // The level's texture density multiplies it back to 1/lu
     face.offset = { s0 - Vector3DotProduct(points[0], gu), t0 - Vector3DotProduct(points[0], gv) };
 }
 
@@ -587,7 +587,7 @@ static std::string TrimLine(std::istringstream &tokens)
     return (start == std::string::npos) ? "" : rest.substr(start, end - start + 1);
 }
 
-bool ImportObjGeometry(const char *objPath, float scale, Geometry &geometry)
+bool ImportObjGeometry(const char *objPath, float scale, float texelsPerUnit, Geometry &geometry)
 {
     char *text = LoadFileText(objPath);
     if (text == nullptr) return false;
@@ -708,7 +708,7 @@ bool ImportObjGeometry(const char *objPath, float scale, Geometry &geometry)
                 uvs.push_back((t >= 0 && t < (int)texcoords.size()) ? texcoords[t] : Vector2{ 0.0f, 0.0f });
             }
             if (!valid) continue;
-            FitTexture(face, points, uvs, GeoPolygonNormal(points));
+            FitTexture(face, points, uvs, GeoPolygonNormal(points), texelsPerUnit);
             shape.faces.push_back(face);
         }
         if (shape.faces.empty()) continue;

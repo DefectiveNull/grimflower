@@ -15,6 +15,7 @@ struct Sun
     Color color;
     float intensity;    // Brightness of a surface facing the sun head on
     float ambient;      // Light every surface gets, so shadows and faces turned away from the sun aren't black
+    Vector3 ambientColor;  // ...and its color, 0 to 1 per channel. ambient scales it
 };
 
 // A light that shines in all directions from a point and fades out at its radius.

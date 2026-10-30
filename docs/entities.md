@@ -32,6 +32,8 @@ Light from one direction with shadows, like sunlight. It also drives the bounce 
 | `color` | color | 255 244 214 | | Light color |
 | `intensity` | number | 1 | 0–4 | Brightness of a surface facing the sun head on |
 | `ambient` | number | 0.35 | 0–1 | Light every surface gets, so shadows aren't black |
+| `ambientColor` | color | 255 255 255 | | Color of the ambient light, unless `ambientFromSky` is on |
+| `ambientFromSky` | bool | false | | Colors the ambient light with the skybox's average color instead of `ambientColor`. The average is over the upper half of the sky, down to the horizon (so the ground doesn't tint it), with each pixel counting no brighter than white so an HDR sun doesn't swamp it, then brightened to full strength: `ambient` still sets how bright it is. Without a skybox it's white |
 
 ### light
 

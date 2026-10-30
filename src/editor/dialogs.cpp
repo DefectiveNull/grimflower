@@ -22,6 +22,7 @@ static char skyboxInput[256];
 static const float LUXEL_OPTIONS[] = { 32.0f, 16.0f, 8.0f, 4.0f };  // World units per luxel
 static int luxelChoice, luxelChoiceOpened;
 static int filterChoice;
+static int texelChoice;  // Texture scale: 0 for 1 texel per world unit, 1 for 2
 
 // Which text field has the keyboard: one at a time, -1 for none
 static int activeField = -1;
@@ -55,6 +56,7 @@ void OpenDialog(EditorState &editor, DialogId dialog)
     }
     luxelChoiceOpened = luxelChoice;
     filterChoice = level.info.lightmapFiltered ? 0 : 1;
+    texelChoice = (level.info.texelsPerUnit == 2) ? 1 : 0;
 }
 
 static void CloseDialog(EditorState &editor)
@@ -104,7 +106,7 @@ static void DrawWorldSettingsDialog(EditorState &editor)
     const Level &level = editor.level;
 
     bool closed;
-    Rectangle bounds = DialogWindow("Global World Settings", 560, 446, closed);
+    Rectangle bounds = DialogWindow("Global World Settings", 560, 516, closed);
     Layout layout = StartLayout(bounds);
 
     GuiLabel(layout.Label(), "Map name");
@@ -124,6 +126,15 @@ static void DrawWorldSettingsDialog(EditorState &editor)
         }
     }
     layout.Next();
+
+    // How much texture detail a face at scale 1 gets, for every face in the level
+    GuiLabel(layout.Label(), "Texture scale");
+    GuiToggleGroup({ layout.Field().x, layout.y, 60, ROW_HEIGHT - 4 }, "1:1;2:1", &texelChoice);
+    layout.Next();
+    DrawUITextWrapped(texelChoice == 0 ? "1 texel per world unit: a 64x64 texture covers 64 units, like Quake"
+                                       : "2 texels per world unit: a 128x128 texture covers 64 units, for twice the detail",
+                      layout.Field().x, layout.y, layout.Field().width, 14, UIMutedTextColor());
+    layout.Next(40);
 
     // The sun's bounce lightmap, which the game uses the same way
     GuiLabel(layout.Label(), "Luxel size");
@@ -162,13 +173,22 @@ static void DrawWorldSettingsDialog(EditorState &editor)
     {
         bool luxelsChanged = (luxelChoice != luxelChoiceOpened);
         bool filterChanged = ((filterChoice == 0) != editor.level.info.lightmapFiltered);
-        if (editor.level.info.name != nameInput || editor.level.info.skybox != skyboxInput || luxelsChanged || filterChanged)
+        int texelsPerUnit = (texelChoice == 1) ? 2 : 1;
+        bool texelsChanged = (texelsPerUnit != editor.level.info.texelsPerUnit);
+        if (editor.level.info.name != nameInput || editor.level.info.skybox != skyboxInput || luxelsChanged || filterChanged || texelsChanged)
         {
             RecordUndo(editor, "Change world settings");
             editor.level.info.name = nameInput;
             editor.level.info.skybox = skyboxInput;
             if (luxelsChanged) editor.level.info.luxelSize = LUXEL_OPTIONS[luxelChoice];
             editor.level.info.lightmapFiltered = (filterChoice == 0);
+            editor.level.info.texelsPerUnit = texelsPerUnit;
+            if (texelsChanged)
+            {
+                // Every face's texture coordinates change, so the world is built again
+                GeometryChanged(editor);
+                SyncWorldWithLevel(editor);
+            }
             SetStatus(editor, luxelsChanged ? "World settings changed, re-baking the bounce lightmap" : "World settings changed");
         }
         CloseDialog(editor);

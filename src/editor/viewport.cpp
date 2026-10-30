@@ -792,7 +792,7 @@ void DrawViewport(EditorState &editor)
     if (editor.worldLoaded)
     {
         // Lights come from the level's entities every frame, so edits in the details panel show up right away
-        ApplyLevelLights(editor.level, editor.world.lighting, editor.defaultSun, GetEntityListParamReader());
+        ApplyLevelLights(editor.level, editor.world.lighting, editor.defaultSun, GetEntityListParamReader(), editor.skybox.averageColor);
         SetLightmapSettings(editor.world, editor.level.info.luxelSize, editor.level.info.lightmapFiltered);  // From World Settings, or an undo
         SyncProps(editor);
         UpdateEditorBounce(editor);

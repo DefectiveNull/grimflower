@@ -431,6 +431,7 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.sun.color = { 255, 244, 214, 255 };  // Slightly warm white
     lighting.sun.intensity = 1.0f;
     lighting.sun.ambient = 0.35f;
+    lighting.sun.ambientColor = { 1.0f, 1.0f, 1.0f };
 
     Shader &shader = lighting.shader;
     std::string fragmentSource = TextFormat("#version 330\n#define MAX_LIGHTS %d\n#define MAX_SHADOW_LIGHTS %d\n", MAX_POINT_LIGHTS, MAX_SHADOW_LIGHTS);
@@ -623,7 +624,7 @@ void BeginLighting(const Lighting &lighting)
 
     Vector3 sunDirection = Vector3Normalize(sun.direction);
     Vector3 sunColor = ColorToVector(sun.color, sun.intensity);
-    Vector3 ambient = { sun.ambient, sun.ambient, sun.ambient };
+    Vector3 ambient = Vector3Scale(sun.ambientColor, sun.ambient);
     SetShaderValue(shader, lighting.sunDirectionLoc, &sunDirection, SHADER_UNIFORM_VEC3);
     SetShaderValue(shader, lighting.sunColorLoc, &sunColor, SHADER_UNIFORM_VEC3);
     SetShaderValue(shader, lighting.ambientLoc, &ambient, SHADER_UNIFORM_VEC3);

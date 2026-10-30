@@ -139,8 +139,9 @@ static void ApplyTexture(EditorState &editor, const GeoPick &clicked)
 
 // Gives to the alignment that carries from's texture on over the edge from p to q, which they share: from's
 // axes turned round the edge onto to's plane (the same, if they're on one plane), and the offset that makes
-// both give the edge the same texture coordinates
-static void Stitch(const GeoFace &from, Vector3 fromNormal, GeoFace &to, Vector3 toNormal, Vector3 p, Vector3 q, float width, float height)
+// both give the edge the same texture coordinates. texelsPerUnit is the level's texture density
+static void Stitch(const GeoFace &from, Vector3 fromNormal, GeoFace &to, Vector3 toNormal, Vector3 p, Vector3 q, float width, float height,
+                   float texelsPerUnit)
 {
     Vector3 axis = Vector3Normalize(Vector3Subtract(q, p));
     float angle = atan2f(Vector3DotProduct(Vector3CrossProduct(fromNormal, toNormal), axis), Vector3DotProduct(fromNormal, toNormal));
@@ -158,8 +159,8 @@ static void Stitch(const GeoFace &from, Vector3 fromNormal, GeoFace &to, Vector3
     to.scale = from.scale;
     // Along the edge, both faces' coordinates differ by the same amount (the turn keeps the edge's direction),
     // so matching them at p matches the whole edge
-    to.offset.x = Wrap(from.offset.x + (Vector3DotProduct(p, from.uAxis) - Vector3DotProduct(p, to.uAxis))/from.scale.x, width);
-    to.offset.y = Wrap(from.offset.y + (Vector3DotProduct(p, from.vAxis) - Vector3DotProduct(p, to.vAxis))/from.scale.y, height);
+    to.offset.x = Wrap(from.offset.x + (Vector3DotProduct(p, from.uAxis) - Vector3DotProduct(p, to.uAxis))*texelsPerUnit/from.scale.x, width);
+    to.offset.y = Wrap(from.offset.y + (Vector3DotProduct(p, from.vAxis) - Vector3DotProduct(p, to.vAxis))*texelsPerUnit/from.scale.y, height);
 }
 
 // A world space edge's key, the same whichever way round it's given, so faces of any mesh that share it find each other
@@ -243,7 +244,8 @@ static void ApplyTextureStitched(EditorState &editor, const GeoPick &start)
         if (isDone(step.to)) continue;
         GeoFace &to = FaceOf(editor, step.to);
         Stitch(FaceOf(editor, step.from), GeoPolygonNormal(WorldPoints(editor, step.from.mesh, step.from.face)), to,
-               GeoPolygonNormal(WorldPoints(editor, step.to.mesh, step.to.face)), step.p, step.q, width, height);
+               GeoPolygonNormal(WorldPoints(editor, step.to.mesh, step.to.face)), step.p, step.q, width, height,
+               (float)editor.level.info.texelsPerUnit);
         to.material = material;
         finish(step.to);
     }
@@ -272,11 +274,13 @@ static void AlignFaces(EditorState &editor, Alignment how)
         float width, height;
         TextureSize(editor, face.material, width, height);
 
-        // Where the face's corners are along the texture's axes, in world units
+        // Where the face's corners are along the texture's axes, in texels at scale 1 (world units times the level's
+        // texture density)
+        float density = (float)editor.level.info.texelsPerUnit;
         float uMin = FLT_MAX, uMax = -FLT_MAX, vMin = FLT_MAX, vMax = -FLT_MAX;
         for (Vector3 p : WorldPoints(editor, pick.mesh, pick.face))
         {
-            float u = Vector3DotProduct(p, face.uAxis), v = Vector3DotProduct(p, face.vAxis);
+            float u = Vector3DotProduct(p, face.uAxis)*density, v = Vector3DotProduct(p, face.vAxis)*density;
             uMin = fminf(uMin, u);
             uMax = fmaxf(uMax, u);
             vMin = fminf(vMin, v);

@@ -325,7 +325,7 @@ The game uses both settings too.
 
 Opening, starting a new level or exiting with unsaved changes asks whether to save them first. Saving only works in Object mode.
 
-**Edit > Global World Settings** also has the level's **name** (shown in the game's console when it loads) and its **skybox**: an environment image, like the `.hdr` in `textures/sky/`, or empty for a plain background. It also shows when the level was created and last saved, and how many entities and meshes it has. Changes apply when you click **Apply**.
+**Edit > Global World Settings** also has the level's **name** (shown in the game's console when it loads) and its **skybox**: an environment image, like the `.hdr` in `textures/sky/`, or empty for a plain background. Its **texture scale** sets how much texture detail every face gets at scale 1: **1:1** is 1 texel per world unit, like Quake (a 64×64 texture covers 64 units), and **2:1** is 2 texels per unit, for textures drawn at twice the detail (a 128×128 texture covers 64 units). Faces keep their own scale on top of it, so switching it resizes every texture in the level. It also shows when the level was created and last saved, and how many entities and meshes it has. Changes apply when you click **Apply**.
 
 ## Undo
 

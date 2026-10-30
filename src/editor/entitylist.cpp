@@ -252,10 +252,11 @@ Color EntityColorOrDefault(const LevelEntity &entity, const char *name, Color fa
 static float ListParamNumber(const LevelEntity &entity, const char *name) { return EntityNumberOrDefault(entity, name, 0.0f); }
 static Vector3 ListParamVector(const LevelEntity &entity, const char *name) { return EntityVectorOrDefault(entity, name, { 0.0f, -1.0f, 0.0f }); }
 static Color ListParamColor(const LevelEntity &entity, const char *name) { return EntityColorOrDefault(entity, name, WHITE); }
+static bool ListParamBool(const LevelEntity &entity, const char *name) { return EntityBoolOrDefault(entity, name, false); }
 
 const EntityParamReader &GetEntityListParamReader()
 {
-    static const EntityParamReader reader = { ListParamNumber, ListParamVector, ListParamColor };
+    static const EntityParamReader reader = { ListParamNumber, ListParamVector, ListParamColor, ListParamBool };
     return reader;
 }
 

@@ -14,8 +14,10 @@ struct EntityParamReader
     float (*number)(const LevelEntity &entity, const char *name);
     Vector3 (*vector)(const LevelEntity &entity, const char *name);
     Color (*color)(const LevelEntity &entity, const char *name);
+    bool (*boolean)(const LevelEntity &entity, const char *name);
 };
 
 // Rebuilds the sun and point lights from the level's light entities. The first "sun" replaces
-// defaultSun, and any after it are ignored. Returns how many suns were ignored
-int ApplyLevelLights(const Level &level, Lighting &lighting, Sun defaultSun, const EntityParamReader &params);
+// defaultSun, and any after it are ignored. skyColor is the skybox's average color (Skybox::averageColor), for a
+// sun that takes its ambient light from the sky. Returns how many suns were ignored
+int ApplyLevelLights(const Level &level, Lighting &lighting, Sun defaultSun, const EntityParamReader &params, Vector3 skyColor);

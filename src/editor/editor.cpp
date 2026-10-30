@@ -110,7 +110,7 @@ void SyncWorldWithLevel(EditorState &editor)
     // Texturing mode build quickly, without them
     bool full = (editor.mode == MODE_OBJECT);
     if (editor.builtGeometryVersion == editor.geometryVersion && editor.builtFull == full) return;
-    SetWorldGeometry(editor.world, editor.level.geometry, full);
+    SetWorldGeometry(editor.world, editor.level.geometry, (float)editor.level.info.texelsPerUnit, full);
     editor.builtGeometryVersion = editor.geometryVersion;
     editor.builtFull = full;
 }
@@ -275,7 +275,7 @@ bool SaveCurrentLevel(EditorState &editor, bool askForPath)
 bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale)
 {
     Geometry imported;
-    if (!ImportObjGeometry(path.c_str(), scale, imported) || imported.meshes.empty())
+    if (!ImportObjGeometry(path.c_str(), scale, (float)editor.level.info.texelsPerUnit, imported) || imported.meshes.empty())
     {
         SetStatus(editor, "Couldn't import %s, see the log for why", path.c_str());
         return false;

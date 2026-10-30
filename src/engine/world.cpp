@@ -332,7 +332,7 @@ static Texture CachedTexture(World &world, const std::string &path)
     return texture;
 }
 
-void SetWorldGeometry(World &world, const Geometry &geometry, bool full)
+void SetWorldGeometry(World &world, const Geometry &geometry, float texelsPerUnit, bool full)
 {
     CancelLightmapBake(world);
     if (world.model.meshCount > 0 || world.model.materialCount > 0) UnloadModel(world.model);  // Its textures stay, in the cache
@@ -367,7 +367,7 @@ void SetWorldGeometry(World &world, const Geometry &geometry, bool full)
             for (int index : GeoTriangulate(points, normal))
             {
                 Vector3 p = points[index];
-                Vector2 uv = GeoTextureCoord(face, p, texture.width, texture.height);
+                Vector2 uv = GeoTextureCoord(face, p, texture.width, texture.height, texelsPerUnit);
                 data.vertices.insert(data.vertices.end(), { p.x, p.y, p.z });
                 data.texcoords.insert(data.texcoords.end(), { uv.x, uv.y });
                 data.normals.insert(data.normals.end(), { normal.x, normal.y, normal.z });

@@ -20,6 +20,7 @@ struct LevelInfo
     std::string lightmapKey;  // Fingerprint of what maps/<level>_lightmap.png was baked from, see LightmapKey. Written by the editor
     float luxelSize = 16.0f;      // Bounce lightmap resolution: world units per texel (luxel). 16, like Quake
     bool lightmapFiltered = true; // Smooth (bilinear) lightmap, or blocky (nearest) luxels like software Quake
+    int texelsPerUnit = 1;        // Texture density at face scale 1: 1 texel per world unit, or 2 for textures with twice the detail
     int entityCount;       // How many entities the file has. Updated on every save
 };
 

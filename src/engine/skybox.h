@@ -15,6 +15,7 @@ struct Skybox
     Model cube;
     int exposureLoc;
     float exposure;     // Brightness multiplier before tonemapping
+    Vector3 averageColor = { 1.0f, 1.0f, 1.0f };  // The whole sky's color, brightest channel at 1, for ambient light. White without a sky
 };
 
 // Loads an .hdr (or .png/.jpg/.tga) sky through the game data. Returns false if it couldn't

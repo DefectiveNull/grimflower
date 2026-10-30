@@ -122,6 +122,12 @@ static Color TableParamColor(const LevelEntity &entity, const char *name)
     return entityClass ? EntityParamColor(entity, *entityClass, name) : EntityColor(entity, name, WHITE);
 }
 
+static bool TableParamBool(const LevelEntity &entity, const char *name)
+{
+    const EntityClass *entityClass = FindEntityClass(entity.classname);
+    return entityClass ? EntityParamBool(entity, *entityClass, name) : EntityBool(entity, name, false);
+}
+
 // ---------------------------------------------------------------------------------------------
 // The table
 
@@ -143,6 +149,8 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
             { "color", "color", "255 244 214", "Light color", 0.0f, 0.0f },
             { "intensity", "number", "1", "Brightness of a surface facing the sun head on", 0.0f, 4.0f },
             { "ambient", "number", "0.35", "Light every surface gets, so shadows aren't black", 0.0f, 1.0f },
+            { "ambientColor", "color", "255 255 255", "Color of the ambient light, unless ambientFromSky is on", 0.0f, 0.0f },
+            { "ambientFromSky", "bool", "0", "Colors the ambient light with the skybox's average color instead of ambientColor. Without a skybox it's white", 0.0f, 0.0f },
         },
         { "sphere", { 0 }, { 0 }, 16.0f, { 253, 249, 0, 255 }, nullptr, 32.0f },
         nullptr,  // ApplyLevelLights
@@ -254,7 +262,7 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
 {
     SetLightmapSettings(world, level.info.luxelSize, level.info.lightmapFiltered);  // Before building, so the lightmap is laid out once
     CreateWorld(world);
-    SetWorldGeometry(world, level.geometry, true);  // Drawn, collided with, and laid out for the bounce lightmap
+    SetWorldGeometry(world, level.geometry, (float)level.info.texelsPerUnit, true);  // Drawn, collided with, and laid out for the bounce lightmap
     if (level.geometry.meshes.empty()) TraceLog(LOG_WARNING, "LEVEL: Has no geometry, there's nothing to stand on");
 
     // Each entity type spawns itself, see the table above
@@ -279,9 +287,15 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
         if (entityClass->spawn != nullptr) entityClass->spawn(entity, *entityClass, context);
     }
 
+    // Before the lights, since the sun can take its ambient color from the sky
+    if (!level.info.skybox.empty() && !LoadSkybox(world.skybox, level.info.skybox.c_str()))
+    {
+        TraceLog(LOG_WARNING, "LEVEL: Couldn't load the skybox \"%s\", using the plain background", level.info.skybox.c_str());
+    }
+
     // CreateWorld put a default sun above a corner of the level; a sun entity replaces it
-    const EntityParamReader tableParams = { TableParamNumber, TableParamVector, TableParamColor };
-    if (ApplyLevelLights(level, world.lighting, world.lighting.sun, tableParams) > 0)
+    const EntityParamReader tableParams = { TableParamNumber, TableParamVector, TableParamColor, TableParamBool };
+    if (ApplyLevelLights(level, world.lighting, world.lighting.sun, tableParams, world.skybox.averageColor) > 0)
     {
         TraceLog(LOG_WARNING, "LEVEL: More than one sun, using the first");
     }
@@ -297,11 +311,6 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
         BoundingBox b = world.bounds;
         TraceLog(LOG_WARNING, "LEVEL: No info_player_start, spawning above the middle of the level");
         InitPlayer(player, { (b.min.x + b.max.x)*0.5f, b.max.y + 64.0f, (b.min.z + b.max.z)*0.5f }, 0.0f);
-    }
-
-    if (!level.info.skybox.empty() && !LoadSkybox(world.skybox, level.info.skybox.c_str()))
-    {
-        TraceLog(LOG_WARNING, "LEVEL: Couldn't load the skybox \"%s\", using the plain background", level.info.skybox.c_str());
     }
 
     return true;

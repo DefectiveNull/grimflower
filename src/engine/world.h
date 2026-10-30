@@ -133,8 +133,9 @@ void UnloadWorld(World &world);
 
 // Builds the world's model from the level's geometry. full also works out its collision (convex pieces)
 // and its bounce lightmap layout, which takes longer: the editor leaves those out while geometry is being
-// edited, and the world has no bounce light until a full build. Its bounds come from the geometry
-void SetWorldGeometry(World &world, const Geometry &geometry, bool full);
+// edited, and the world has no bounce light until a full build. Its bounds come from the geometry. texelsPerUnit is
+// the level's texture density, LevelInfo::texelsPerUnit
+void SetWorldGeometry(World &world, const Geometry &geometry, float texelsPerUnit, bool full);
 
 // A convex brush from its faces' outlines, with the bevel planes collision needs
 Brush MakeConvexBrush(const std::vector<std::vector<Vector3>> &faces);
