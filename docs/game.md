@@ -34,7 +34,7 @@ The game writes `config.cfg` (your binds and options) and `console.log` (see `wr
 - **Main menu:** Play, Options, Quit.
 - **Pause menu:** Esc during the game. Resume, Options, Quit.
 - **Options**, with four tabs:
-  - **Video:** resolution and fullscreen.
+  - **Video:** resolution, fullscreen, contrast, saturation, film grain and gamma.
   - **Audio:** master, world and music volume.
   - **Game:** mouse sensitivity and invert vertical aim.
   - **Input:** click an action, then press a key to bind it. **Reset to defaults** puts back the binds from `cfg/default.cfg`.
@@ -98,6 +98,7 @@ A level is its **geometry** (every mesh, drawn and collided with) and its **enti
 - **Soundscapes** (`trigger_soundscape`) loop a sound while you're inside, fading out towards their sides and panned towards their origin.
 - **Props** (`prop_model`) show a model. Static ones are solid (their bounding box) and part of the bounce bake.
 - **Cubemaps** (`env_cubemap`) capture the level for reflections.
+- **Color correction** (`info_colorcorrection`) sets the level's color palette with a gradient map.
 
 Entities the game doesn't know, and parameters it doesn't use, are skipped with a warning in the console. See [Entities](entities.md) for every type and its parameters.
 
@@ -110,6 +111,7 @@ Entities the game doesn't know, and parameters it doesn't use, are skipped with 
 - **Reflections** come from the nearest `env_cubemap`s (up to 4 at a time, the ones nearest the camera). They're captured when the level loads, and again when its bounce bake finishes. Lights that move afterwards don't change them.
 - **Ambient occlusion** (SSAO) darkens corners and creases (`r_ssao`).
 - **The sky** is the level's skybox image, if it has one.
+- **Post processing** grades the finished view: the level's color correction (`info_colorcorrection`), then contrast (`r_contrast`), saturation (`r_saturation`), gamma (`r_gamma`) and film grain (`r_filmgrain`). The HUD and menus aren't affected.
 
 ## The console
 
@@ -163,6 +165,10 @@ Cvars are settings, set by typing their name and a value, like `r_ssao 0`. Typin
 | `r_ssao_direct` | 0.5 | How much ambient occlusion also darkens the sun and lights, 0 to 1 |
 | `r_bounce` | 1 | Bounce light. Turning it off hides it straight away; turning it on needs the level reloaded |
 | `r_bounce_scale` | 1 | Strength of the bounce light |
+| `r_contrast` | 1 | Contrast: more spreads darks and lights apart, less flattens them |
+| `r_saturation` | 1 | Color saturation: 0 is grayscale, more is more vivid |
+| `r_filmgrain` | 0 | Film grain over the view, 0 for none to 1 for strong |
+| `r_gamma` | 1 | Brightness curve: more brightens the darks and midtones, less darkens them. Black and white stay put |
 
 ## Config files
 

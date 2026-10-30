@@ -76,6 +76,10 @@ Cvar r_ssao_radius = { "r_ssao_radius", "How far around each point ambient occlu
 Cvar r_ssao_direct = { "r_ssao_direct", "How much ambient occlusion also darkens light from the sun and lights, 0 to 1", 0.5f, 0.5f };
 Cvar r_bounce = { "r_bounce", "Sun bounce light (0/1). Baked when a level loads, so turning it on needs a map reload; turning it off hides it straight away", 1.0f, 1.0f };
 Cvar r_bounce_scale = { "r_bounce_scale", "Strength of the baked sun bounce", 1.0f, 1.0f };
+Cvar r_contrast = { "r_contrast", "Contrast: 1 unchanged, more spreads darks and lights apart, less flattens them", 1.0f, 1.0f };
+Cvar r_saturation = { "r_saturation", "Color saturation: 1 unchanged, 0 grayscale, more is more vivid", 1.0f, 1.0f };
+Cvar r_filmgrain = { "r_filmgrain", "Film grain over the view, 0 for none to 1 for strong", 0.0f, 0.0f };
+Cvar r_gamma = { "r_gamma", "Brightness curve: 1 unchanged, more brightens the darks and midtones, less darkens them", 1.0f, 1.0f };
 
 static Cvar *const cvars[] =
 {
@@ -87,6 +91,10 @@ static Cvar *const cvars[] =
     &r_ssao_direct,
     &r_bounce,
     &r_bounce_scale,
+    &r_contrast,
+    &r_saturation,
+    &r_filmgrain,
+    &r_gamma,
 };
 
 // Cvars added with AddCvars, after the engine's own

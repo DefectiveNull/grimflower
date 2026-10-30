@@ -5,6 +5,7 @@
 #include "lighting.h"
 #include "materials.h"
 #include "skybox.h"
+#include "postfx.h"
 #include "ssao.h"
 #include <map>
 #include <memory>
@@ -100,6 +101,7 @@ struct World
     BoundingBox bounds;   // Around all the level geometry
     Lighting lighting;    // Sun, point lights and shadows
     Skybox skybox;        // From the level's info.skybox, if it has one
+    ColorGrade colorGrade;  // From the level's info_colorcorrection, if it has one
     AmbientOcclusion ao;  // Screen space ambient occlusion of the world mesh, see RenderWorldAO
     std::vector<WorldMaterial> materials;  // One per model material, in the same order
 

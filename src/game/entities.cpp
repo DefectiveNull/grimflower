@@ -101,6 +101,24 @@ static void SpawnCubemap(const LevelEntity &entity, const EntityClass &entityCla
     AddCubemap(context.world, entity.origin, size);
 }
 
+// The level's color grade, which the game's post processing applies to the whole view (postfx.h). Where it's
+// placed doesn't matter
+static void SpawnColorCorrection(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
+{
+    if (context.world.colorGrade.gradient.id != 0)
+    {
+        TraceLog(LOG_WARNING, "LEVEL: More than one info_colorcorrection, using the first");
+        return;
+    }
+
+    std::string gradient = EntityParamText(entity, entityClass, "gradient");
+    if (!LoadColorGrade(context.world.colorGrade, gradient.c_str(), EntityParamColor(entity, entityClass, "shadowColor"),
+                        EntityParamColor(entity, entityClass, "highlightColor"), EntityParamNumber(entity, entityClass, "strength")))
+    {
+        TraceLog(LOG_WARNING, "LEVEL: Couldn't load the gradient map \"%s\", using shadowColor to highlightColor", gradient.c_str());
+    }
+}
+
 // sun and light have no spawn function: ApplyLevelLights (src/shared/levellights.cpp) sets them up, the
 // same way the editor previews them. These read their parameters with the defaults from the table below
 
@@ -172,6 +190,17 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         },
         { "sphere", { 0 }, { 0 }, 10.0f, { 200, 220, 235, 255 }, nullptr, 32.0f },
         SpawnCubemap,
+    },
+    {
+        "info_colorcorrection", "Sets the level's color palette with a gradient map: each pixel's brightness picks a color along the gradient. One per level, anywhere in it",
+        {
+            { "gradient", "text", "", "Gradient map image, as a game data path: its left end is the color for black, its right end for white, read along its middle row. The preferred way to set the palette", 0.0f, 0.0f },
+            { "strength", "number", "1", "How much the gradient map's color replaces the original: 0 none, 1 fully", 0.0f, 1.0f },
+            { "shadowColor", "color", "0 0 0", "Without a gradient image: the dark end of a two color gradient", 0.0f, 0.0f },
+            { "highlightColor", "color", "255 255 255", "Without a gradient image: the bright end of a two color gradient", 0.0f, 0.0f },
+        },
+        { "sphere", { 0 }, { 0 }, 10.0f, { 230, 120, 200, 255 }, nullptr, 32.0f },
+        SpawnColorCorrection,
     },
 
     // Volumes: a box from mins to maxs around the origin, doing what its type says over the whole box (volumes.cpp)

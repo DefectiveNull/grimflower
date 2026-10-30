@@ -30,6 +30,10 @@ extern Cvar r_ssao_radius;
 extern Cvar r_ssao_direct;
 extern Cvar r_bounce;
 extern Cvar r_bounce_scale;
+extern Cvar r_contrast;
+extern Cvar r_saturation;
+extern Cvar r_filmgrain;
+extern Cvar r_gamma;
 
 // Runs console commands, like Quake's command buffer: commands are separated by ; or new lines,
 // "quoted text" is one argument, and // starts a comment. Each command can be a command, an alias

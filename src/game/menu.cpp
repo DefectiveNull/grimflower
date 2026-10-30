@@ -145,6 +145,25 @@ static float DrawVideoOptions(float x, float y)
         settingsChanged = true;
     }
 
+    // Post processing, which applies every frame (postfx.h)
+    struct PostRow { const char *label; Cvar *cvar; float min, max; };
+    const PostRow postRows[] = { { "Contrast", &r_contrast, 0.5f, 1.5f }, { "Saturation", &r_saturation, 0.0f, 2.0f },
+                                 { "Film grain", &r_filmgrain, 0.0f, 1.0f }, { "Gamma", &r_gamma, 0.5f, 2.0f } };
+    for (const PostRow &row : postRows)
+    {
+        float value = row.cvar->value;
+        GuiLabel({ x, y, LABEL_WIDTH, ROW_HEIGHT }, row.label);
+        GuiSliderBar({ controlX, y + 8, controlWidth - SLIDER_VALUE_WIDTH, ROW_HEIGHT - 16 }, nullptr,
+                     TextFormat("%d%%", (int)(value*100.0f + 0.5f)), &value, row.min, row.max);
+        y += ROW_HEIGHT + ROW_GAP;
+
+        if (value != row.cvar->value)
+        {
+            row.cvar->value = value;
+            settingsChanged = true;
+        }
+    }
+
     return y;
 }
 

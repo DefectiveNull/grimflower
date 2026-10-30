@@ -130,6 +130,7 @@ int main(int argc, char **argv)
     Volumes volumes = {};  // The level's water, ladders, triggers and doors
     bool worldLoaded = false;
     Player player = {};
+    PostProcess postProcess = {};  // Grades the 3D view, see postfx.h
     bool paused = false;
     bool showOptions = false;  // Options screen, opened from either the main menu or the pause menu
     bool quit = false;
@@ -248,17 +249,21 @@ int main(int argc, char **argv)
             Camera camera = GetPlayerCamera(player);
             RenderWorldAO(world, camera, screenWidth, screenHeight, r_ssao.value != 0.0f, r_ssao_radius.value);  // Its own passes too
 
-            ClearBackground(RAYWHITE);
-            BeginMode3D(camera);
-                DrawSkybox(world.skybox, camera);  // First, so the world draws over it
-                DrawWorld(world, r_showcolliders.value != 0.0f);
-                DrawLightMarkers(world.lighting);
-                DrawVolumes(volumes, world, r_showcolliders.value != 0.0f);
-            EndMode3D();
-            DrawWorldEntityLabels(world, camera);
+            // The view goes through post processing: the level's color grade, then the player's settings. The HUD,
+            // entity labels and menus after it are left alone
+            BeginPostProcess(postProcess, screenWidth, screenHeight);
+                ClearBackground(RAYWHITE);
+                BeginMode3D(camera);
+                    DrawSkybox(world.skybox, camera);  // First, so the world draws over it
+                    DrawWorld(world, r_showcolliders.value != 0.0f);
+                    DrawLightMarkers(world.lighting);
+                    DrawVolumes(volumes, world, r_showcolliders.value != 0.0f);
+                EndMode3D();
 
-            // Underwater, everything gets a blue tint. Water's faces aren't seen from inside it
-            if (PointContents(volumes, camera.position) & CONTENTS_WATER) DrawRectangle(0, 0, screenWidth, screenHeight, Fade(Color{ 30, 80, 160, 255 }, 0.45f));
+                // Underwater, everything gets a blue tint. Water's faces aren't seen from inside it
+                if (PointContents(volumes, camera.position) & CONTENTS_WATER) DrawRectangle(0, 0, screenWidth, screenHeight, Fade(Color{ 30, 80, 160, 255 }, 0.45f));
+            EndPostProcess(postProcess, world.colorGrade, { r_contrast.value, r_saturation.value, r_filmgrain.value, r_gamma.value });
+            DrawWorldEntityLabels(world, camera);
 
             // Crosshair
             DrawLine(screenWidth/2 - 8, screenHeight/2, screenWidth/2 + 8, screenHeight/2, DARKGRAY);
@@ -299,6 +304,7 @@ int main(int argc, char **argv)
         UnloadVolumes(volumes);
         UnloadWorld(world);
     }
+    UnloadPostProcess(postProcess);
     UnmountGameData();
     CloseAudio();
     CloseWindow();

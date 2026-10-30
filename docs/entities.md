@@ -6,7 +6,7 @@ Every entity type is defined in one table in `src/game/entities.cpp`. `build.bat
 
 A parameter a level doesn't set uses the default below. Sliders in the editor cover the range shown, but you can type values outside it.
 
-- [Point entities](#point-entities): `info_player_start`, `sun`, `light`, `env_cubemap`, `prop_model`
+- [Point entities](#point-entities): `info_player_start`, `sun`, `light`, `env_cubemap`, `info_colorcorrection`, `prop_model`
 - [Volumes](#volumes): `func_water`, `func_ladder`, `func_door`, `trigger_changelevel`, `trigger_soundscape`
 - [Adding an entity type](#adding-an-entity-type)
 
@@ -52,6 +52,19 @@ Captures what the level looks like from this spot, in six directions, for materi
 | Parameter | Type | Default | Range | |
 | --- | --- | --- | --- | --- |
 | `size` | number | 128 | 16–512 | Pixels along each side of its six images: bigger is sharper |
+
+### info_colorcorrection
+
+Sets the level's color palette with a **gradient map**: each pixel's brightness picks a color along a gradient, from its left end (for black) to its right end (for white). The game applies it to the whole view, before the player's contrast, saturation, gamma and film grain settings. One per level, and where it's placed doesn't matter.
+
+A gradient image is the preferred way to set the palette: any image works, read along its middle row, so a 256×1 strip is plenty. Without one, `shadowColor` and `highlightColor` make a simple two color gradient.
+
+| Parameter | Type | Default | Range | |
+| --- | --- | --- | --- | --- |
+| `gradient` | text | | | Gradient map image, as a game data path, like `textures/grade/dusk.png` |
+| `strength` | number | 1 | 0–1 | How much the gradient map's color replaces the original: 0 none, 1 fully |
+| `shadowColor` | color | 0 0 0 | | Without a gradient image: the dark end of a two color gradient |
+| `highlightColor` | color | 255 255 255 | | Without a gradient image: the bright end of a two color gradient |
 
 ### prop_model
 

@@ -465,6 +465,7 @@ void UnloadWorld(World &world)
     UnloadLighting(world.lighting);
     UnloadAmbientOcclusion(world.ao);
     UnloadSkybox(world.skybox);
+    UnloadColorGrade(world.colorGrade);
     world.colliders.clear();
     world.movers.clear();
     CancelLightmapBake(world);
