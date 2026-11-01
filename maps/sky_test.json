@@ -4,13 +4,13 @@
     "info": {
         "name": "Sky Testing",
         "created": "2026-10-29T23:35:09Z",
-        "saved": "2026-10-30T04:53:46Z",
+        "saved": "2026-11-01T09:09:20Z",
         "skybox": "textures/grimflower/Sky/DAWN01.png",
         "lightmapKey": "1152e9c1faf52fd2",
         "luxelSize": 16.0,
         "lightmapFilter": "bilinear",
         "texelsPerUnit": 2,
-        "entityCount": 3
+        "entityCount": 4
     },
     "entities": [
         {
@@ -33,6 +33,14 @@
             "color": [255, 223, 157],
             "intensity": 3.31,
             "radius": 160.0
+        },
+        {
+            "classname": "prop_model",
+            "origin": [-80.0, 64.0, 448.0],
+            "model": "",
+            "angle": 0,
+            "scale": 1.0,
+            "static": true
         }
     ],
     "geometry": {
