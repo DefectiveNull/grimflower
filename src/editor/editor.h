@@ -39,6 +39,7 @@ enum EditTool
     TOOL_EXTRUDE,    // Ctrl+Shift
     TOOL_PUSHPULL,   // Alt+Shift
     TOOL_EDGE,       // E
+    TOOL_VERTEX,     // V
     TOOL_BEVEL,      // B, with edges selected
     TOOL_COUNT
 };
@@ -67,6 +68,13 @@ struct GeoEdge
     int a, b;
 };
 
+// A vertex of a mesh's shape
+struct GeoVertex
+{
+    int mesh;
+    int index;
+};
+
 // What Modelling mode is doing. Drags keep a copy of the geometry from when they started, and redo their change
 // to it every frame, so moving the mouse back undoes what it did
 struct EditState
@@ -75,7 +83,7 @@ struct EditState
     int selectedMesh = -1;
     GeoPick hover;
 
-    enum Drag { DRAG_NONE, DRAG_MOVE, DRAG_RESIZE, DRAG_EXTRUDE, DRAG_PUSHPULL, DRAG_EDGES, DRAG_PIVOT } drag = DRAG_NONE;
+    enum Drag { DRAG_NONE, DRAG_MOVE, DRAG_RESIZE, DRAG_EXTRUDE, DRAG_PUSHPULL, DRAG_EDGES, DRAG_VERTICES, DRAG_PIVOT } drag = DRAG_NONE;
     bool dragMoved = false;           // Past a few pixels: a drag, not a click
     Vector2 dragStartMouse = { 0.0f, 0.0f };
     Geometry before;                  // The geometry when the drag started
@@ -105,6 +113,8 @@ struct EditState
     std::vector<GeoEdge> edges;
     std::vector<GeoEdge> extrudedEdges;  // While Ctrl+dragging edges: their copies, selected once it's done
     GeoEdge pressedEdge = { -1, 0, 0 };  // The edge Ctrl+pressed on: a click without dragging deselects it
+    std::vector<GeoVertex> vertices;  // The Vertex tool's selection
+    bool textureLock = false;         // The Texture Lock button: textures stay on faces' corners and stretch with them, instead of following the world
     bool beveling = false;
     float bevelWidth = 0.0f;
     int bevelSegments = 1;
@@ -241,8 +251,8 @@ std::string ToDataPath(const EditorState &editor, const std::string &path);  // 
 void RequestAction(EditorState &editor, PendingAction action);              // Asks first if there are unsaved changes
 void RunAction(EditorState &editor, PendingAction action);
 bool SaveCurrentLevel(EditorState &editor, bool askForPath);               // askForPath: Save As
-bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale);  // Adds an OBJ's objects to the geometry as meshes
-void ImportObjFromDialog(EditorState &editor);   // Asks which OBJ, then imports it at scale 1 (Quake units)
+bool ImportModelMeshes(EditorState &editor, const std::string &path, float scale);  // Adds a model's objects to the geometry as meshes
+void ImportModelFromDialog(EditorState &editor);   // Asks which model, then imports it at scale 1 (Quake units)
 void CreateEntity(EditorState &editor, const char *classname);
 void ShowCreateEntityList(EditorState &editor);                 // Deselects, so the details panel shows the list of entity types
 void DeleteSelectedEntity(EditorState &editor);
@@ -301,6 +311,7 @@ void SetEditorMode(EditorState &editor, EditorMode mode);  // Going back to Obje
 void CycleEditorMode(EditorState &editor);                 // Tab: Object, Modelling, Texturing, then Object again
 const char *EditorModeName(EditorMode mode);               // Like "Modelling"
 void ResetEditTools(EditorState &editor);
+void ToggleTextureLock(EditorState &editor);
 void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree);  // In Modelling mode, instead of entity selection
 bool ModellingModeEscape(EditorState &editor);  // Cancels what the tool is doing, then the tool. False if there was nothing to
 GeoPick PickGeometry(const EditorState &editor, Ray ray);  // The face a ray hits first

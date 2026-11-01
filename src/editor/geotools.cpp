@@ -50,6 +50,7 @@ static GeoFace NewFace(const GeoFace &templateFace, const std::vector<int> &corn
 {
     GeoFace face = templateFace;
     face.corners = corners;
+    face.lockedUVs.clear();  // They went with the template's corners
     return face;
 }
 
@@ -87,25 +88,82 @@ static int FaceWithEdge(const GeoShape &shape, int a, int b, int skip = -1)
     return -1;
 }
 
-void GeoFixBentFaces(GeoShape &shape)
+void GeoFixBentFaces(GeoShape &shape, const std::vector<int> &moved)
 {
+    auto pointsOf = [&](const std::vector<int> &corners)
+    {
+        std::vector<Vector3> points;
+        for (int corner : corners) points.push_back(shape.vertices[corner]);
+        return points;
+    };
+    auto isBent = [&](const std::vector<int> &corners)
+    {
+        if (corners.size() <= 3) return false;
+        std::vector<Vector3> points = pointsOf(corners);
+        Vector3 normal = GeoPolygonNormal(points);
+        float dist = Vector3DotProduct(normal, Centroid(points));
+        for (Vector3 p : points) if (fabsf(Vector3DotProduct(normal, p) - dist) >= SAME_POINT) return true;
+        return false;
+    };
+
+    // A piece of a face, keeping a locked texture on the corners it has
+    auto pieceOf = [&](const GeoFace &face, const std::vector<int> &corners)
+    {
+        GeoFace piece = NewFace(face, corners);
+        if (face.lockedUVs.size() != face.corners.size()) return piece;
+        for (int corner : corners)
+        {
+            size_t k = std::find(face.corners.begin(), face.corners.end(), corner) - face.corners.begin();
+            piece.lockedUVs.push_back(face.lockedUVs[k]);
+        }
+        return piece;
+    };
+
     std::vector<GeoFace> faces;
     for (const GeoFace &face : shape.faces)
     {
-        std::vector<Vector3> points = FacePoints(shape, face);
-        Vector3 normal = GeoPolygonNormal(points);
-        float dist = Vector3DotProduct(normal, Centroid(points));
-        bool flat = true;
-        for (Vector3 p : points) flat = flat && fabsf(Vector3DotProduct(normal, p) - dist) < SAME_POINT;
-        if (flat || points.size() <= 3)
+        if (!isBent(face.corners))
         {
             faces.push_back(face);
             continue;
         }
-        std::vector<int> triangles = GeoTriangulate(points, normal);
+
+        // Fold a moved corner off as its own triangle where that leaves the rest flat, so the rest of the face
+        // stays as it was built
+        std::vector<int> corners = face.corners;
+        bool folding = true;
+        while (folding && isBent(corners))
+        {
+            folding = false;
+            for (size_t k = 0; k < corners.size() && !folding; k++)
+            {
+                if (std::find(moved.begin(), moved.end(), corners[k]) == moved.end()) continue;
+                std::vector<int> turned = corners;
+                std::rotate(turned.begin(), turned.begin() + k, turned.end());
+                std::vector<int> rest(turned.begin() + 1, turned.end());
+                if (isBent(rest)) continue;
+
+                // The triangulation clips the first corner first, if it's a real ear of the polygon
+                std::vector<Vector3> points = pointsOf(turned);
+                std::vector<int> triangles = GeoTriangulate(points, GeoPolygonNormal(points));
+                if (triangles.size() < 3 || triangles[1] != 0) continue;
+
+                faces.push_back(pieceOf(face, { turned.back(), turned[0], turned[1] }));
+                corners = rest;
+                folding = true;
+            }
+        }
+
+        if (!isBent(corners))
+        {
+            faces.push_back(pieceOf(face, corners));
+            continue;
+        }
+        std::vector<Vector3> points = pointsOf(corners);
+        std::vector<int> triangles = GeoTriangulate(points, GeoPolygonNormal(points));
         for (size_t t = 0; t + 2 < triangles.size(); t += 3)
         {
-            faces.push_back(NewFace(face, { face.corners[triangles[t]], face.corners[triangles[t + 1]], face.corners[triangles[t + 2]] }));
+            faces.push_back(pieceOf(face, { corners[triangles[t]], corners[triangles[t + 1]], corners[triangles[t + 2]] }));
         }
     }
     shape.faces = faces;
@@ -169,11 +227,10 @@ void GeoRotateMesh(Geometry &geometry, int mesh, Vector3 axis, float degrees)
 // ---------------------------------------------------------------------------------------------
 // Faces and vertices
 
-void GeoMoveFace(GeoShape &shape, int face, float distance)
+void GeoMoveFace(GeoShape &shape, int face, float distance, const GeoTextureMove &texture)
 {
     Vector3 normal = GeoPolygonNormal(FacePoints(shape, shape.faces[face]));
-    for (int corner : shape.faces[face].corners) shape.vertices[corner] = Vector3Add(shape.vertices[corner], Vector3Scale(normal, distance));
-    GeoFixBentFaces(shape);
+    GeoMoveVertices(shape, shape.faces[face].corners, Vector3Scale(normal, distance), texture);
 }
 
 int GeoDeleteFaces(GeoShape &shape, int face)
@@ -255,6 +312,7 @@ void GeoFlipShape(GeoShape &shape, Quaternion rotation)
     {
         Vector3 before = Vector3RotateByQuaternion(GeoPolygonNormal(FacePoints(shape, face)), rotation);
         std::reverse(face.corners.begin(), face.corners.end());
+        std::reverse(face.lockedUVs.begin(), face.lockedUVs.end());
 
         // Still on the default alignment for the way it faced: the default for the way it faces now, so its
         // texture reads the right way round from inside
@@ -270,11 +328,78 @@ void GeoFlipShape(GeoShape &shape, Quaternion rotation)
     }
 }
 
-void GeoMoveVertices(GeoShape &shape, const std::vector<int> &vertices, Vector3 offset)
+std::vector<int> GeoVerticesAt(const GeoShape &shape, const std::vector<int> &vertices)
 {
-    std::set<int> unique(vertices.begin(), vertices.end());
-    for (int v : unique) shape.vertices[v] = Vector3Add(shape.vertices[v], offset);
-    GeoFixBentFaces(shape);
+    std::vector<int> found;
+    for (size_t v = 0; v < shape.vertices.size(); v++)
+    {
+        for (int picked : vertices)
+        {
+            if (Vector3Distance(shape.vertices[v], shape.vertices[picked]) >= SAME_POINT) continue;
+            found.push_back((int)v);
+            break;
+        }
+    }
+    return found;
+}
+
+// A face's texture turned to lie on the plane it's on now, so its texels stay the same size instead of being
+// squashed by a projection from the old plane. It turns around the corners that stayed put, which keep their
+// texture coordinates, so the texture carries on unbroken from the rest of the surface. Works in world space, like
+// the texture's axes. before is the shape's vertices before they moved
+static void ResampleTexture(GeoFace &face, const GeoShape &shape, const std::vector<Vector3> &before, const std::set<int> &moved, const GeoTextureMove &texture)
+{
+    std::vector<Vector3> from, to;
+    Vector3 fromHinge = { 0.0f, 0.0f, 0.0f }, toHinge = { 0.0f, 0.0f, 0.0f };
+    bool hasHinge = false;
+    for (int corner : face.corners)
+    {
+        from.push_back(Vector3Transform(before[corner], texture.transform));
+        to.push_back(Vector3Transform(shape.vertices[corner], texture.transform));
+        if (hasHinge || moved.count(corner)) continue;
+        fromHinge = from.back();
+        toHinge = to.back();
+        hasHinge = true;
+    }
+    if (!hasHinge)
+    {
+        fromHinge = Centroid(from);
+        toHinge = Centroid(to);
+    }
+
+    Vector3 fromNormal = GeoPolygonNormal(from), toNormal = GeoPolygonNormal(to);
+    Vector3 axis = Vector3CrossProduct(fromNormal, toNormal);
+    if (Vector3LengthSqr(fromNormal) < 0.5f || Vector3LengthSqr(toNormal) < 0.5f || Vector3LengthSqr(axis) < 1e-8f) return;  // No plane, or the same one
+    axis = Vector3Normalize(axis);
+    float angle = atan2f(Vector3DotProduct(Vector3CrossProduct(fromNormal, toNormal), axis), Vector3DotProduct(fromNormal, toNormal));
+
+    Vector3 u = Vector3RotateByAxisAngle(face.uAxis, axis, angle), v = Vector3RotateByAxisAngle(face.vAxis, axis, angle);
+    face.offset.x += (Vector3DotProduct(fromHinge, face.uAxis) - Vector3DotProduct(toHinge, u))*texture.texelsPerUnit/face.scale.x;
+    face.offset.y += (Vector3DotProduct(fromHinge, face.vAxis) - Vector3DotProduct(toHinge, v))*texture.texelsPerUnit/face.scale.y;
+    face.uAxis = u;
+    face.vAxis = v;
+}
+
+void GeoMoveVertices(GeoShape &shape, const std::vector<int> &vertices, Vector3 offset, const GeoTextureMove &texture)
+{
+    // Tools can leave two vertices on one spot, which only join on leaving Modelling mode: they move together,
+    // or the shape would tear there
+    std::vector<int> moved = GeoVerticesAt(shape, vertices);
+    std::set<int> movedSet(moved.begin(), moved.end());
+    auto touched = [&](const GeoFace &face)
+    {
+        for (int corner : face.corners) if (movedSet.count(corner)) return true;
+        return false;
+    };
+
+    // Without the lock, a texture that was locked goes back to following its axes
+    if (!texture.locked) for (GeoFace &face : shape.faces) if (touched(face)) face.lockedUVs.clear();
+
+    std::vector<Vector3> before = shape.vertices;
+    for (int v : moved) shape.vertices[v] = Vector3Add(shape.vertices[v], offset);
+    GeoFixBentFaces(shape, moved);
+
+    if (!texture.locked) for (GeoFace &face : shape.faces) if (touched(face)) ResampleTexture(face, shape, before, movedSet, texture);
 }
 
 bool GeoCutFace(GeoShape &shape, int faceIndex, Vector3 point, Vector3 direction)
@@ -361,6 +486,7 @@ void GeoExtrudeFace(GeoShape &shape, int faceIndex, float distance)
         moved.push_back((int)shape.vertices.size() - 1);
     }
     shape.faces[faceIndex].corners = moved;
+    shape.faces[faceIndex].lockedUVs.clear();
     JoinRings(shape, face, face.corners, moved, distance < 0.0f);
 }
 
@@ -391,6 +517,7 @@ void GeoExtrudeFaceAround(GeoShape &shape, int faceIndex, Vector3 pivot, Vector3
         previous = ring;
     }
     shape.faces[faceIndex].corners = previous;
+    shape.faces[faceIndex].lockedUVs.clear();
     GeoFixBentFaces(shape);
 }
 
@@ -586,6 +713,7 @@ static void FixTJunctions(GeoShape &shape)
             std::sort(between.begin(), between.end());
             for (const auto &[along, v] : between) corners.push_back(v);
         }
+        if (corners.size() != face.corners.size()) face.lockedUVs.clear();
         face.corners = corners;
     }
 }
@@ -638,6 +766,7 @@ void GeoPushPull(Geometry &geometry, int mesh, int faceIndex, float distance)
     {
         GeoFace face = templates[polygon.source];
         face.corners.clear();
+        face.lockedUVs.clear();
         for (Vector3 p : polygon.points)
         {
             int v = FindOrAddVertex(cut, p);
@@ -646,10 +775,12 @@ void GeoPushPull(Geometry &geometry, int mesh, int faceIndex, float distance)
         while (face.corners.size() > 1 && face.corners.front() == face.corners.back()) face.corners.pop_back();
         if (face.corners.size() < 3) continue;
         if (polygon.source == cutSource) GeoResetTexture(face, Vector3RotateByQuaternion(polygon.normal, rotation));
+        face.group = polygon.source;  // So only the pieces of one face join back up, keeping the edges between faces
         cut.faces.push_back(face);
     }
     FixTJunctions(cut);
     GeoMergeFaces(cut);
+    for (GeoFace &face : cut.faces) face.group = -1;  // Polygroups are worked out on leaving Modelling mode
     shape = cut;
 }
 
@@ -870,6 +1001,7 @@ bool GeoBevelEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edge
         for (int corner : face.corners) if (corners.empty() || corners.back() != corner) corners.push_back(corner);
         while (corners.size() > 1 && corners.front() == corners.back()) corners.pop_back();
         if (corners.size() < 3) continue;
+        if (corners.size() != face.corners.size()) face.lockedUVs.clear();
         face.corners = corners;
         faces.push_back(face);
     }

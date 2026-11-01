@@ -1,5 +1,6 @@
 #include "geometry.h"
 #include "gamedata.h"
+#include "modelfile.h"
 #include "raymath.h"
 #include "world.h"
 
@@ -10,7 +11,7 @@
 #include <functional>
 #include <map>
 #include <set>
-#include <sstream>
+#include <tuple>
 
 static const float ON_PLANE_EPSILON = 0.01f;   // World units: points this close to a plane are on it
 static const float WALL_THICKNESS = 16.0f;     // How thick an inside out shape's walls are for collision, see GeoConvexPieces
@@ -74,6 +75,15 @@ Vector2 GeoTextureCoord(const GeoFace &face, Vector3 point, int textureWidth, in
     float s = Vector3DotProduct(point, face.uAxis)*texelsPerUnit/face.scale.x + face.offset.x;
     float t = Vector3DotProduct(point, face.vAxis)*texelsPerUnit/face.scale.y + face.offset.y;
     return { s/(float)std::max(textureWidth, 1), t/(float)std::max(textureHeight, 1) };
+}
+
+void GeoLockTexture(const GeoShape &shape, GeoFace &face, const Matrix &transform, float texelsPerUnit)
+{
+    if (face.lockedUVs.size() == face.corners.size()) return;
+    int width = 64, height = 64;
+    if (!face.material.empty()) GetGameTextureSize(face.material.c_str(), width, height);
+    face.lockedUVs.clear();
+    for (Vector3 p : GeoFacePoints(shape, face, transform)) face.lockedUVs.push_back(GeoTextureCoord(face, p, width, height, texelsPerUnit));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -233,6 +243,7 @@ std::vector<std::vector<std::vector<Vector3>>> GeoConvexPieces(const GeoShape &s
         for (int corner : face.corners) polygon.points.push_back(shape.vertices[corner]);
         if (polygon.points.size() < 3) continue;
         polygon.normal = GeoPolygonNormal(polygon.points);
+        if (Vector3LengthSqr(polygon.normal) < 0.5f) continue;  // No area, like a vertex dragged into line with two others: it has no plane
         polygon.dist = Vector3DotProduct(polygon.normal, polygon.points[0]);
         for (Vector3 p : polygon.points)
         {
@@ -323,10 +334,11 @@ std::vector<std::vector<std::vector<Vector3>>> GeoConvexPieces(const GeoShape &s
 }
 
 // ---------------------------------------------------------------------------------------------
-// Merging faces back into polygroups
+// Cleaning up shapes, polygroups, and joining what a cut split up
 
 static bool SameTexture(const GeoFace &a, const GeoFace &b)
 {
+    if (!a.lockedUVs.empty() || !b.lockedUVs.empty()) return false;  // Locked faces have textures of their own
     return a.material == b.material && Vector3Equals(a.uAxis, b.uAxis) && Vector3Equals(a.vAxis, b.vAxis) &&
            Vector2Equals(a.offset, b.offset) && Vector2Equals(a.scale, b.scale);
 }
@@ -357,6 +369,7 @@ static void CleanShape(GeoShape &shape)
         }
         while (corners.size() > 1 && corners.front() == corners.back()) corners.pop_back();
         if (corners.size() < 3) continue;
+        if (corners.size() != face.corners.size()) face.lockedUVs.clear();
         face.corners = corners;
         faces.push_back(face);
     }
@@ -384,11 +397,30 @@ static void CleanShape(GeoShape &shape)
     for (size_t i = 0; i < faces.size(); i++) if (!removed[i]) shape.faces.push_back(faces[i]);
 }
 
-void GeoMergeFaces(GeoShape &shape)
+// Vertices no face uses any more
+static void DropUnusedVertices(GeoShape &shape)
 {
-    CleanShape(shape);
+    std::vector<int> remap(shape.vertices.size(), -1);
+    std::vector<Vector3> vertices;
+    for (GeoFace &face : shape.faces)
+    {
+        for (int &corner : face.corners)
+        {
+            if (remap[corner] < 0)
+            {
+                remap[corner] = (int)vertices.size();
+                vertices.push_back(shape.vertices[corner]);
+            }
+            corner = remap[corner];
+        }
+    }
+    shape.vertices = vertices;
+}
 
-    // Faces grouped by plane and texture, then joined where they share an edge
+// Which faces are one flat surface: for each face, a number it shares with the faces on its plane, with its
+// texture, reached across shared edges. withinGroups only lets faces with the same group join
+static std::vector<int> FlatSurfaces(const GeoShape &shape, bool withinGroups)
+{
     std::vector<Vector3> normals(shape.faces.size());
     std::vector<float> dists(shape.faces.size());
     for (size_t i = 0; i < shape.faces.size(); i++)
@@ -419,12 +451,41 @@ void GeoMergeFaces(GeoShape &shape)
             int j = other->second;
             if (Vector3DotProduct(normals[i], normals[j]) < 0.9999f || fabsf(dists[i] - dists[j]) > ON_PLANE_EPSILON) continue;
             if (!SameTexture(shape.faces[i], shape.faces[j])) continue;
+            if (withinGroups && shape.faces[i].group != shape.faces[j].group) continue;
             parent[root((int)i)] = root(j);
         }
     }
 
+    std::vector<int> surfaces(shape.faces.size());
+    for (size_t i = 0; i < surfaces.size(); i++) surfaces[i] = root((int)i);
+    return surfaces;
+}
+
+void GeoBuildPolygroups(GeoShape &shape)
+{
+    std::vector<int> surfaces = FlatSurfaces(shape, false);
+    std::map<int, int> numbers;
+    for (size_t i = 0; i < shape.faces.size(); i++)
+    {
+        shape.faces[i].group = numbers.emplace(surfaces[i], (int)numbers.size()).first->second;
+    }
+}
+
+void GeoFinishShape(GeoShape &shape)
+{
+    CleanShape(shape);
+    DropUnusedVertices(shape);
+    GeoBuildPolygroups(shape);
+}
+
+void GeoMergeFaces(GeoShape &shape)
+{
+    CleanShape(shape);
+
+    // Faces grouped by plane, texture and group, then joined where they share an edge
+    std::vector<int> surfaces = FlatSurfaces(shape, true);
     std::map<int, std::vector<int>> groups;
-    for (size_t i = 0; i < shape.faces.size(); i++) groups[root((int)i)].push_back((int)i);
+    for (size_t i = 0; i < shape.faces.size(); i++) groups[surfaces[i]].push_back((int)i);
 
     std::vector<GeoFace> merged;
     for (auto &[groupRoot, members] : groups)
@@ -476,6 +537,7 @@ void GeoMergeFaces(GeoShape &shape)
         }
         GeoFace face = shape.faces[members[0]];
         face.corners = loops[0];
+        face.lockedUVs.clear();
         merged.push_back(face);
     }
     shape.faces = merged;
@@ -507,32 +569,21 @@ void GeoMergeFaces(GeoShape &shape)
         Vector3 offset = Vector3Subtract(m, p);
         float t = Vector3DotProduct(offset, along)/(length*length);
         if (t <= 0.0f || t >= 1.0f || Vector3Length(Vector3Subtract(offset, Vector3Scale(along, t))) > ON_PLANE_EPSILON) continue;
-        for (auto &[face, k] : at) face->corners.erase(face->corners.begin() + k);
+        for (auto &[face, k] : at)
+        {
+            face->corners.erase(face->corners.begin() + k);
+            face->lockedUVs.clear();
+        }
         uses[v] = 0;
     }
 
-    // Vertices no face uses any more
-    std::vector<int> remap(shape.vertices.size(), -1);
-    std::vector<Vector3> vertices;
-    for (GeoFace &face : shape.faces)
-    {
-        for (int &corner : face.corners)
-        {
-            if (remap[corner] < 0)
-            {
-                remap[corner] = (int)vertices.size();
-                vertices.push_back(shape.vertices[corner]);
-            }
-            corner = remap[corner];
-        }
-    }
-    shape.vertices = vertices;
+    DropUnusedVertices(shape);
 }
 
 // ---------------------------------------------------------------------------------------------
-// Importing OBJs
+// Importing models
 
-// Texture axes, scale and offset that put the face's texture where the OBJ's texture coordinates have it.
+// Texture axes, scale and offset that put the face's texture where the model's texture coordinates have it.
 // Texture coordinates are a flat (affine) mapping on each face, which this finds exactly from three corners
 static void FitTexture(GeoFace &face, const std::vector<Vector3> &points, const std::vector<Vector2> &uvs, Vector3 normal, float texelsPerUnit)
 {
@@ -578,136 +629,57 @@ static void FitTexture(GeoFace &face, const std::vector<Vector3> &points, const 
     face.offset = { s0 - Vector3DotProduct(points[0], gu), t0 - Vector3DotProduct(points[0], gv) };
 }
 
-static std::string TrimLine(std::istringstream &tokens)
+bool ImportModelGeometry(const char *modelPath, float scale, float texelsPerUnit, Geometry &geometry)
 {
-    std::string rest;
-    std::getline(tokens, rest);
-    size_t start = rest.find_first_not_of(" \t\r");
-    size_t end = rest.find_last_not_of(" \t\r");
-    return (start == std::string::npos) ? "" : rest.substr(start, end - start + 1);
-}
+    ModelFile file;
+    if (!LoadModelFile(modelPath, true, file)) return false;
+    std::string modelFolder = GetDirectoryPath(modelPath);
 
-bool ImportObjGeometry(const char *objPath, float scale, float texelsPerUnit, Geometry &geometry)
-{
-    char *text = LoadFileText(objPath);
-    if (text == nullptr) return false;
-    std::istringstream file(text);
-    UnloadFileText(text);
-    std::string objDir = GetDirectoryPath(objPath);
-
-    struct ObjFace { std::vector<int> positions; std::vector<int> texcoords; std::string material; };
-    std::vector<Vector3> positions;
-    std::vector<Vector2> texcoords;
-    std::map<std::string, std::string> mtlTextures;  // Material name -> its texture's game data path
-    std::vector<std::vector<ObjFace>> objects;
-    std::string material;
-
-    std::string line;
-    while (std::getline(file, line))
+    // Faces need a texture file, so a texture inside the model is left out
+    std::vector<std::string> materials;
+    for (const ModelMaterial &material : file.materials)
     {
-        std::istringstream tokens(line);
-        std::string tag;
-        tokens >> tag;
-        if (tag == "v")
-        {
-            Vector3 v;
-            tokens >> v.x >> v.y >> v.z;
-            positions.push_back(Vector3Scale(v, scale));
-        }
-        else if (tag == "vt")
-        {
-            Vector2 vt;
-            tokens >> vt.x >> vt.y;
-            texcoords.push_back({ vt.x, 1.0f - vt.y });  // OBJ's v goes up, textures go down
-        }
-        else if (tag == "o" || tag == "g") objects.emplace_back();
-        else if (tag == "mtllib")
-        {
-            char *mtl = LoadFileText((objDir + "/" + TrimLine(tokens)).c_str());
-            if (mtl == nullptr) continue;
-            std::istringstream mtlFile(mtl);
-            UnloadFileText(mtl);
-            std::string mtlLine, name;
-            while (std::getline(mtlFile, mtlLine))
-            {
-                std::istringstream mtlTokens(mtlLine);
-                std::string mtlTag;
-                mtlTokens >> mtlTag;
-                if (mtlTag == "newmtl") name = TrimLine(mtlTokens);
-                else if (mtlTag == "map_Kd" && !name.empty())
-                {
-                    // Game data paths, like Quake's; or relative to the OBJ, which is how most exporters write them
-                    std::string path = TrimLine(mtlTokens);
-                    if (!GameDataFileExists(path.c_str())) path = objDir + "/" + path;
-                    mtlTextures[name] = path;
-                }
-            }
-        }
-        else if (tag == "usemtl")
-        {
-            auto found = mtlTextures.find(TrimLine(tokens));
-            material = (found != mtlTextures.end()) ? found->second : "";
-        }
-        else if (tag == "f")
-        {
-            if (objects.empty()) objects.emplace_back();
-            ObjFace face;
-            face.material = material;
-            std::string entry;
-            while (tokens >> entry)
-            {
-                size_t slash = entry.find('/');
-                int p = atoi(entry.substr(0, slash).c_str());
-                face.positions.push_back((p < 0) ? (int)positions.size() + p : p - 1);
-                int t = 0;
-                if (slash != std::string::npos) t = atoi(entry.substr(slash + 1, entry.find('/', slash + 1) - slash - 1).c_str());
-                face.texcoords.push_back((t == 0) ? -1 : (t < 0) ? (int)texcoords.size() + t : t - 1);
-            }
-            if (face.positions.size() >= 3) objects.back().push_back(face);
-        }
+        std::string path;
+        if (!material.embeddedData.empty()) TraceLog(LOG_WARNING, "GEOMETRY: [%s] Material \"%s\" has its texture inside the model, which faces can't use", modelPath, material.name.c_str());
+        else if (!material.texturePath.empty()) path = FindModelTexture(material.texturePath, modelFolder);
+        materials.push_back(path);
     }
 
-    for (const std::vector<ObjFace> &object : objects)
+    int imported = 0;
+    for (const ModelObject &object : file.objects)
     {
-        if (object.empty()) continue;
-
         // The object's own vertices, around the middle of its bounds
-        std::map<int, int> local;
         BoundingBox box = { { FLT_MAX, FLT_MAX, FLT_MAX }, { -FLT_MAX, -FLT_MAX, -FLT_MAX } };
-        for (const ObjFace &face : object)
+        for (const ModelFace &face : object.faces)
         {
-            for (int p : face.positions)
+            for (const ModelCorner &corner : face.corners)
             {
-                if (p < 0 || p >= (int)positions.size()) continue;
-                box.min = Vector3Min(box.min, positions[p]);
-                box.max = Vector3Max(box.max, positions[p]);
+                Vector3 p = Vector3Scale(corner.position, scale);
+                box.min = Vector3Min(box.min, p);
+                box.max = Vector3Max(box.max, p);
             }
         }
         Vector3 center = Vector3Scale(Vector3Add(box.min, box.max), 0.5f);
 
+        // Files split a vertex wherever its texture coordinates or normals change, but a shape
+        // has one vertex for each place, so corners in the same place are joined
+        std::map<std::tuple<float, float, float>, int> local;
         GeoShape shape;
-        for (const ObjFace &objFace : object)
+        for (const ModelFace &modelFace : object.faces)
         {
             GeoFace face;
-            face.material = objFace.material;
+            face.material = materials[modelFace.material];
             std::vector<Vector3> points;
             std::vector<Vector2> uvs;
-            bool valid = true;
-            for (size_t k = 0; k < objFace.positions.size(); k++)
+            for (const ModelCorner &corner : modelFace.corners)
             {
-                int p = objFace.positions[k];
-                if (p < 0 || p >= (int)positions.size()) { valid = false; break; }
-                if (!local.count(p))
-                {
-                    local[p] = (int)shape.vertices.size();
-                    shape.vertices.push_back(Vector3Subtract(positions[p], center));
-                }
-                face.corners.push_back(local[p]);
-                points.push_back(positions[p]);
-                int t = objFace.texcoords[k];
-                uvs.push_back((t >= 0 && t < (int)texcoords.size()) ? texcoords[t] : Vector2{ 0.0f, 0.0f });
+                Vector3 p = Vector3Scale(corner.position, scale);
+                auto [found, isNew] = local.insert({ { p.x, p.y, p.z }, (int)shape.vertices.size() });
+                if (isNew) shape.vertices.push_back(Vector3Subtract(p, center));
+                face.corners.push_back(found->second);
+                points.push_back(p);
+                uvs.push_back(corner.texcoord);
             }
-            if (!valid) continue;
             FitTexture(face, points, uvs, GeoPolygonNormal(points), texelsPerUnit);
             shape.faces.push_back(face);
         }
@@ -715,9 +687,10 @@ bool ImportObjGeometry(const char *objPath, float scale, float texelsPerUnit, Ge
 
         geometry.meshes.push_back({ (int)geometry.shapes.size(), center, { 0.0f, 0.0f, 0.0f, 1.0f } });
         geometry.shapes.push_back(shape);
+        imported++;
     }
 
-    TraceLog(LOG_INFO, "GEOMETRY: [%s] Imported %d meshes", objPath, (int)objects.size());
+    TraceLog(LOG_INFO, "GEOMETRY: [%s] Imported %d meshes", modelPath, imported);
     return true;
 }
 
@@ -740,6 +713,7 @@ void GeoQuantize(Geometry &geometry)
             vec3(face.vAxis);
             face.offset = { Quantize(face.offset.x), Quantize(face.offset.y) };
             face.scale = { Quantize(face.scale.x), Quantize(face.scale.y) };
+            for (Vector2 &uv : face.lockedUVs) uv = { Quantize(uv.x), Quantize(uv.y) };
         }
     }
     for (GeoMesh &mesh : geometry.meshes)

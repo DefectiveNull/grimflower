@@ -61,18 +61,18 @@ A gradient image is the preferred way to set the palette: any image works, read 
 
 | Parameter | Type | Default | Range | |
 | --- | --- | --- | --- | --- |
-| `gradient` | text | | | Gradient map image, as a game data path, like `textures/grade/dusk.png` |
+| `gradient` | image | | | Gradient map image, as a game data path, like `textures/grade/dusk.png` |
 | `strength` | number | 1 | 0–1 | How much the gradient map's color replaces the original: 0 none, 1 fully |
 | `shadowColor` | color | 0 0 0 | | Without a gradient image: the dark end of a two color gradient |
 | `highlightColor` | color | 255 255 255 | | Without a gradient image: the bright end of a two color gradient |
 
 ### prop_model
 
-A model placed in the level, like a crate or a lamp. The model is an `.obj`, with the textures its `.mtl` gives it and their materials from `.materials`.
+A model placed in the level, like a crate or a lamp. The model file's textures apply, with their materials from `.materials`.
 
 | Parameter | Type | Default | Range | |
 | --- | --- | --- | --- | --- |
-| `model` | text | | | The `.obj` to show, as a game data path, like `models/crate.obj` |
+| `model` | model | | | The model to show, as a game data path, like `models/crate.obj`. `.obj`, `.fbx`, `.gltf`, `.glb`, `.dae`, `.3ds`, `.ply` or `.stl` |
 | `angle` | angle | 0 | 0–360 | Degrees around the vertical axis |
 | `scale` | number | 1 | 0–4 | Size, as a multiple of the model's own. 1 for models made in Quake units, like the world |
 | `static` | bool | true | | **On:** part of the level for good. The player collides with the box around it, and it's in the bounce bake. **Off:** decoration the player walks through |
@@ -115,7 +115,7 @@ A solid box that slides open when the player walks into it, waits, then closes a
 | `lip` | number | 4 | 0–32 | How much of it stays in the frame when open |
 | `speed` | number | 96 | 16–320 | World units per second |
 | `wait` | number | 3 | -1–10 | Seconds it stays open before closing. -1 stays open for good |
-| `texture` | text | textures/dev/wall64.tga | | Texture it's drawn with, as a game data path |
+| `texture` | image | textures/dev/wall64.tga | | Texture it's drawn with, as a game data path |
 
 ### trigger_changelevel
 
@@ -138,7 +138,7 @@ Loops a sound while the player is inside, like wind in a canyon or the hum of a 
 | --- | --- | --- | --- | --- |
 | `mins` | vector | -128 0 -128 | | Corner of the box, relative to the origin |
 | `maxs` | vector | 128 96 128 | | Opposite corner |
-| `sound` | text | | | Sound to loop, as a game data path, like `sound/ambient/wind.ogg`. `.ogg`, `.mp3`, `.wav`, `.flac` or `.qoa` |
+| `sound` | sound | | | Sound to loop, as a game data path, like `sound/ambient/wind.ogg`. `.ogg`, `.mp3`, `.wav`, `.flac` or `.qoa` |
 | `volume` | number | 1 | 0–1 | How loud it is well inside the box |
 | `fade` | number | 32 | 0–256 | World units in from the sides over which it fades in |
 
@@ -152,6 +152,7 @@ It plays on the world channel, so `world_volume` and `volume` affect it.
    - Its marker: how the editor draws it (a box, a sphere, or a volume), its color, and how far off a surface new ones are placed.
    - Its spawn function, which sets it up in the game when a level loads.
 2. Write the spawn function. Read parameters with `EntityParamNumber`, `EntityParamVector`, `EntityParamColor`, `EntityParamText` and `EntityParamBool`: they fall back to the table's default when the level doesn't set one.
+   Any parameter that's a path to a file should use a file type, so it gets a Browse button. A new kind of file is one row in `FILE_TYPES` in `src/editor/entitylist.cpp`.
 3. Run `build.bat`. It rebuilds the game, exports `entitylist.txt`, and rebuilds the editor. An editor that's already open picks up the new list on its own.
 
 Parameter types and how the editor edits them:
@@ -164,5 +165,6 @@ Parameter types and how the editor edits them:
 | `color` | `[r, g, b]`, 0 to 255 | A color picker |
 | `radius` | `160` | A slider. Drawn as a sphere |
 | `vector` | `[x, y, z]` | Typed as three numbers |
-| `text` | `"textures/dev/wall64.tga"` | Typed |
+| `text` | `"dev"` | Typed |
+| `model`, `image`, `sound` | `"textures/dev/wall64.tga"` | Typed, or picked with Browse. The dialog opens in the right folder and shows that kind of file |
 | `bool` | `true` / `false` | A checkbox |

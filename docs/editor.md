@@ -124,7 +124,8 @@ The Details tab shows the selected entity: its class, a description, its origin,
 | direction | Typed as `[x, y, z]`, or with **Point At**: click Point At, then click a spot on the level, and the direction points from the entity to that spot. Esc cancels |
 | vector | Typed as three numbers, like `-64 0 -64` |
 | bool | A checkbox |
-| text | Typed, like a path or a level name |
+| text | Typed, like a level name |
+| model, image, sound | A path, typed or picked with **Browse**. It's saved relative to the project folder |
 
 Parameters the level doesn't set yet are shown greyed out, with the default the game uses. Changing one adds it. Parameters the game doesn't use (most likely typos) are shown in red.
 
@@ -159,6 +160,7 @@ New cubes get the texture picked in the [Materials](#materials) tab, or `texture
 | Extrude | Ctrl+Shift | Pulls a face out into a new part of the mesh |
 | Push/Pull | Alt+Shift | Pulls a face out, or pushes it in to cut a hole |
 | Edge | E | Selects, moves and extrudes edges |
+| Vertex | V | Selects and moves vertices |
 | Bevel | B (with edges selected) | Rounds off the selected edges |
 
 Pressing Ctrl and Shift together (in either order) picks Extrude, and Alt and Shift together picks Push/Pull. **Esc** backs out one step at a time: first whatever the tool is in the middle of, then the tool (back to Select), then the selection.
@@ -218,6 +220,24 @@ Like SketchUp's. **Drag a face out** to extrude it. **Drag it in** to cut its ou
 - **Ctrl+drag** a selected edge to extrude the selected edges: copies of them come out where you drag, joined to them by new faces, with the material of the faces they came from. The new edges are selected afterwards, so you can Ctrl+drag again to keep going. This works best on open edges, like the holes Shift+D leaves, where it carries the surface on. On an edge with faces on both sides it makes a thin, one-sided fin.
 - **B** bevels the selected edges.
 
+#### Vertex
+
+- **Click** a vertex to select it. **Ctrl+click** more vertices to add them, or a selected one to deselect it. Clicking empty space deselects them all. Selected vertices are orange; the one under the mouse is white. Vertices behind something can't be picked.
+- **Drag** a selected vertex to move all the selected vertices along the floor, in grid steps. Hold **Alt** to move them up and down, like moving a mesh.
+
+A face has to stay flat, so a corner that bends one is folded off as its own triangle. The rest of the face stays as you built it. Other tools can leave two vertices on one spot; they move together.
+
+The mesh can end up concave: going back to Object mode splits its collision into convex pieces, like any other mesh. Dragging a vertex through the far side of its mesh turns faces inside out, which also breaks collision there, so keep meshes the right way out.
+
+#### Texture Lock
+
+The **Texture Lock** button in the toolbar decides what textures do when geometry moves. It's off by default, and stays on or off across tools. The `texture_lock` command toggles it, so it can be bound to a key.
+
+- **Off:** textures follow the world, and don't stretch. Moving a vertex, edge or face along a face's plane slides the face under its texture. Tilting a face turns its texture onto the new plane around the corners that stayed put, so texels stay the same size.
+- **On:** a texture stays on its face's corners. Moving a vertex, edge or face stretches it, and moving or rotating a mesh carries its textures with it, so they don't scroll.
+
+A face stays locked once it has been moved with the lock on, and the file keeps it, so the game shows it stretched too. It's freed by moving its corners with the lock off, or by applying or aligning a texture on it in Texturing mode. Either way it goes back to following its alignment. Locked faces aren't part of a polygroup, so Texturing mode works on them one at a time. Tools that rebuild a face (Cut, Extrude, Push/Pull, Bevel) free the faces they rebuild.
+
 #### Bevel
 
 With edges selected, press **B** (or click the Bevel button).
@@ -239,16 +259,17 @@ Bevelling has some limits:
 
 If an edge can't be bevelled, the status bar says why and nothing changes.
 
-### Importing OBJ models as geometry
+### Importing models as geometry
 
-**Edit > Import OBJ as Meshes...** adds an `.obj` file's objects to the level as meshes, with the textures its `.mtl` gives them. It switches to Modelling mode first. Models are expected in Quake units, the same as the level. This is also how levels made before the editor had geometry tools were converted.
+**Edit > Import Model as Meshes...** adds a model file's objects to the level as meshes, with the textures it gives them. It switches to Modelling mode first. Models are expected in Quake units, the same as the level. This is also how levels made before the editor had geometry tools were converted.
 
 ### Leaving Modelling mode
 
 Leaving Modelling mode, for either of the other modes:
 
 1. Rounds every vertex to the precision the level file stores, so what's built is exactly what's saved.
-2. Joins faces the tools split up back together, where they're on one plane with one texture. Texturing mode then picks whole faces.
+2. Keeps every face as you built it, including edges across a flat surface, so each face is triangulated on its own and the edges you made stay.
+3. Marks each flat surface as a **polygroup**: connected faces on one plane with one texture. Polygroups don't change any faces. Texturing mode uses them to pick, texture and align a surface whole.
 
 Then, back in Object mode:
 
@@ -343,7 +364,7 @@ The editor remembers 200 steps by default. That can be changed in Edit > Prefere
 
 - Undo, Redo, Undo History.
 - Create Entity (points you to the Create Entity buttons in the Details tab).
-- Import OBJ as Meshes.
+- Import Model as Meshes.
 - Next Mode.
 - Global World Settings.
 - Dark Mode.
@@ -398,7 +419,7 @@ Every command a key can be bound to:
 | `deselect` | | Deselects |
 | `rotate_left` / `rotate_right` | Alt+Q / Alt+R | Turns the selected entity 45 degrees |
 | `grid_smaller` / `grid_bigger` | [ / ] | Steps the grid size |
-| `import_obj` | | Import OBJ as meshes |
+| `import_model` | | Import model as meshes |
 | `cycle_mode` | | Next mode: Object, Modelling, Texturing (Tab also always works). Its old name, `toggle_edit_mode`, still works |
 | `world_settings` | | Opens Global World Settings |
 | `toggle_darkmode` | | Dark mode on/off |
@@ -450,7 +471,7 @@ Every command a key can be bound to:
 | Input | Does |
 | --- | --- |
 | B | Cube tool, or Bevel with edges selected |
-| R / C / E | Rotate / Cut / Edge tool |
+| R / C / E / V | Rotate / Cut / Edge / Vertex tool |
 | Ctrl+Shift / Alt+Shift | Extrude / Push/Pull tool |
 | Click | Select a mesh |
 | Drag / Alt+drag | Move a mesh along the floor / up and down |
@@ -462,6 +483,7 @@ Every command a key can be bound to:
 | Arrow keys (Rotate tool) | Turn the selected mesh 15 degrees |
 | P (Extrude tool) | Place or remove a pivot |
 | Ctrl+click (Edge tool) | Add or remove an edge |
+| Ctrl+click (Vertex tool) | Add or remove a vertex |
 | Ctrl+drag a selected edge | Extrude the selected edges |
 | Enter | Finish a cube, cut or bevel |
 

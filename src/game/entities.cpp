@@ -194,7 +194,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "info_colorcorrection", "Sets the level's color palette with a gradient map: each pixel's brightness picks a color along the gradient. One per level, anywhere in it",
         {
-            { "gradient", "text", "", "Gradient map image, as a game data path: its left end is the color for black, its right end for white, read along its middle row. The preferred way to set the palette", 0.0f, 0.0f },
+            { "gradient", "image", "", "Gradient map image, as a game data path: its left end is the color for black, its right end for white, read along its middle row. The preferred way to set the palette", 0.0f, 0.0f },
             { "strength", "number", "1", "How much the gradient map's color replaces the original: 0 none, 1 fully", 0.0f, 1.0f },
             { "shadowColor", "color", "0 0 0", "Without a gradient image: the dark end of a two color gradient", 0.0f, 0.0f },
             { "highlightColor", "color", "255 255 255", "Without a gradient image: the bright end of a two color gradient", 0.0f, 0.0f },
@@ -241,7 +241,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
             { "lip", "number", "4", "How much of it stays in the frame when open", 0.0f, 32.0f },
             { "speed", "number", "96", "World units per second", 16.0f, 320.0f },
             { "wait", "number", "3", "Seconds it stays open before closing. -1 stays open", -1.0f, 10.0f },
-            { "texture", "text", "textures/dev/wall64.tga", "Texture it's drawn with, as a game data path", 0.0f, 0.0f },
+            { "texture", "image", "textures/dev/wall64.tga", "Texture it's drawn with, as a game data path", 0.0f, 0.0f },
         },
         { "volume", { 0 }, { 0 }, 0.0f, { 140, 220, 90, 255 }, nullptr, 0.0f },
         SpawnDoor,
@@ -251,7 +251,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
         {
             { "mins", "vector", "-128 0 -128", "Corner of the box, relative to the origin", 0.0f, 0.0f },
             { "maxs", "vector", "128 96 128", "Opposite corner of the box, relative to the origin", 0.0f, 0.0f },
-            { "sound", "text", "", "Sound to loop, as a game data path, like sound/ambient/wind.ogg", 0.0f, 0.0f },
+            { "sound", "sound", "", "Sound to loop, as a game data path, like sound/ambient/wind.ogg", 0.0f, 0.0f },
             { "volume", "number", "1", "How loud it is well inside the box, 0 to 1", 0.0f, 1.0f },
             { "fade", "number", "32", "World units in from the sides over which it fades in, so walking out fades it away", 0.0f, 256.0f },
         },
@@ -263,7 +263,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "prop_model", "A model placed in the level, like a crate or a lamp. Static ones are solid; others are decoration the player walks through",
         {
-            { "model", "text", "", "The .obj to show, as a game data path, like models/crate.obj. Its .mtl textures and .materials apply", 0.0f, 0.0f },
+            { "model", "model", "", "The model to show, as a game data path, like models/crate.obj. Its textures and .materials apply", 0.0f, 0.0f },
             { "angle", "angle", "0", "Degrees around the vertical axis", 0.0f, 360.0f },
             { "scale", "number", "1", "Size, as a multiple of the model's own: 1 for models made in Quake units, like the world", 0.0f, 4.0f },
             { "static", "bool", "1", "Part of the level for good: the player collides with the box around it, and it's in the bounce bake. Off: decoration the player walks through", 0.0f, 0.0f },
@@ -421,7 +421,7 @@ bool ExportEntityList(const char *path)
         "//     marker box <min x y z> <max x y z>   or   marker sphere <radius>   or   marker volume (its own mins and maxs)\n"
         "//     color <r g b>   or   color param <color parameter>\n"
         "//     placement <how far off a surface new ones go>\n"
-        "//     param <name> <type> \"<default>\" \"<description>\" [<min> <max>]   (types: number angle direction color radius vector text bool)\n"
+        "//     param <name> <type> \"<default>\" \"<description>\" [<min> <max>]   (types: number angle direction color radius vector text bool model image sound)\n"
         "//         min and max are the range of the editor's slider, for single numbers\n"
         "// end\n";
 

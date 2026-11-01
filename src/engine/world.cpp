@@ -1,6 +1,7 @@
 #include "world.h"
 #include "bounce.h"
 #include "gamedata.h"
+#include "modelfile.h"
 #include "raymath.h"
 #include "rlgl.h"
 
@@ -8,7 +9,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -30,119 +30,51 @@ static const float DIST_EPSILON = 0.03125f;
 static const float NORMAL_EPSILON = 0.0001f;
 static const float PLANE_DIST_EPSILON = 0.03125f;
 
-// The rest of a line after its tag, without surrounding whitespace. Also drops the '\r' Windows line endings leave behind
-static std::string RestOfLine(std::istringstream &tokens)
+// Makes a texture from an image file in memory. A format of "" means it could be any image file
+static bool DecodeWorldTexture(const unsigned char *fileData, int fileSize, const char *format, const char *name, Texture &texture)
 {
-    std::string rest;
-    std::getline(tokens >> std::ws, rest);
-    while (!rest.empty() && isspace((unsigned char)rest.back())) rest.pop_back();
-    return rest;
-}
-
-// A material from the OBJ's .mtl file. Only the diffuse texture is used
-struct ObjMaterial
-{
-    std::string name;
-    std::string texturePath;  // map_Kd, empty if it has none
-};
-
-// Reads the materials from a .mtl file, through the game data so it can come from gamedata.zip
-static void ReadMtl(const std::string &path, std::vector<ObjMaterial> &materials)
-{
-    char *text = LoadFileText(path.c_str());
-    if (text == nullptr)
-    {
-        TraceLog(LOG_WARNING, "WORLD: [%s] Couldn't read the material file, its faces will be untextured", path.c_str());
-        return;
-    }
-    std::istringstream file(text);
-    UnloadFileText(text);
-
-    std::string line;
-    bool inMaterial = false;  // Lines before the first newmtl don't belong to anything
-    while (std::getline(file, line))
-    {
-        std::istringstream tokens(line);
-        std::string tag;
-        tokens >> tag;
-        if (tag == "newmtl")
-        {
-            materials.push_back({ RestOfLine(tokens), "" });
-            inMaterial = true;
-        }
-        else if (tag == "map_Kd" && inMaterial)
-        {
-            materials.back().texturePath = RestOfLine(tokens);
-        }
-    }
-}
-
-// Loads a material's texture through the game data. Returns false if it couldn't
-static bool LoadWorldTexture(const std::string &texturePath, const std::string &objDir, Texture &texture)
-{
-    // Map editors write texture paths relative to the game data root, like Quake. Fall back to
-    // relative to the OBJ, which is how most exporters write them
-    std::string path = texturePath;
-    if (!GameDataFileExists(path.c_str())) path = objDir + "/" + texturePath;
-
-    int fileSize = 0;
-    unsigned char *fileData = LoadFileData(path.c_str(), &fileSize);
-    if (fileData == nullptr) return false;
-
     Image image = { 0 };
     unsigned char *pixels = nullptr;
-    if (IsFileExtension(path.c_str(), ".tga"))
+    if (format[0] == '\0' || TextIsEqual(format, ".tga"))
     {
-        // The prebuilt raylib can't read TGAs, so stb_image does
+        // The prebuilt raylib can't read TGAs, so stb_image does. It works out the format itself
         int channels;
         pixels = stbi_load_from_memory(fileData, fileSize, &image.width, &image.height, &channels, 4);
-        if (pixels == nullptr) TraceLog(LOG_WARNING, "WORLD: [%s] Failed to load texture: %s", path.c_str(), stbi_failure_reason());
+        if (pixels == nullptr) TraceLog(LOG_WARNING, "WORLD: [%s] Failed to load texture: %s", name, stbi_failure_reason());
         image = { pixels, image.width, image.height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
     }
     else
     {
-        image = LoadImageFromMemory(GetFileExtension(path.c_str()), fileData, fileSize);
+        image = LoadImageFromMemory(format, fileData, fileSize);
     }
-    UnloadFileData(fileData);
     if (image.data == nullptr) return false;
 
     texture = LoadTextureFromImage(image);
     if (pixels != nullptr) stbi_image_free(pixels);
     else UnloadImage(image);
 
-    TraceLog(LOG_INFO, "WORLD: [%s] Loaded texture (%dx%d)", path.c_str(), texture.width, texture.height);
+    TraceLog(LOG_INFO, "WORLD: [%s] Loaded texture (%dx%d)", name, texture.width, texture.height);
     return true;
 }
 
-// One corner of an OBJ face: indices into the position, texture coordinate and normal lists, -1 if missing
-struct ObjCorner
+// Loads a material's texture, from inside the model or through the game data. Returns false if it couldn't
+static bool LoadWorldTexture(const ModelMaterial &material, const std::string &modelFolder, Texture &texture)
 {
-    int position;
-    int texcoord;
-    int normal;
-};
+    if (!material.embeddedData.empty())
+    {
+        return DecodeWorldTexture(material.embeddedData.data(), (int)material.embeddedData.size(), "", material.texturePath.c_str(), texture);
+    }
 
-// OBJ indices count from 1, or back from the end of the list if negative. 0 means there isn't one
-static int ResolveObjIndex(const std::string &text, size_t count)
-{
-    if (text.empty()) return -1;
-    int index = atoi(text.c_str());
-    if (index == 0) return -1;
-    index = (index < 0) ? (int)count + index : index - 1;
-    return (index >= 0 && index < (int)count) ? index : -1;
-}
+    std::string path = FindModelTexture(material.texturePath, modelFolder);
+    if (path.empty()) return false;
 
-// Corners look like "v", "v/vt", "v//vn" or "v/vt/vn"
-static ObjCorner ParseObjCorner(const std::string &entry, size_t positionCount, size_t texcoordCount, size_t normalCount)
-{
-    size_t slash1 = entry.find('/');
-    size_t slash2 = (slash1 == std::string::npos) ? std::string::npos : entry.find('/', slash1 + 1);
+    int fileSize = 0;
+    unsigned char *fileData = LoadFileData(path.c_str(), &fileSize);
+    if (fileData == nullptr) return false;
 
-    ObjCorner corner;
-    corner.position = ResolveObjIndex(entry.substr(0, slash1), positionCount);
-    corner.texcoord = (slash1 == std::string::npos) ? -1 : ResolveObjIndex(entry.substr(slash1 + 1, slash2 - slash1 - 1), texcoordCount);
-    corner.normal = (slash2 == std::string::npos) ? -1 : ResolveObjIndex(entry.substr(slash2 + 1), normalCount);
-    return corner;
+    bool loaded = DecodeWorldTexture(fileData, fileSize, GetFileExtension(path.c_str()), path.c_str(), texture);
+    UnloadFileData(fileData);
+    return loaded;
 }
 
 // The triangles of one material, with every corner written out in full (no index buffer)
@@ -171,103 +103,38 @@ static Mesh UploadMeshData(const MeshData &data)
     return mesh;
 }
 
-// Loads the world model with one mesh per material, from the OBJ's usemtl lines. raylib's own OBJ
-// loader reads the .mtl straight from disk, so it couldn't tell faces apart when running from gamedata.zip
-static Model LoadWorldModel(const char *objPath, std::vector<WorldMaterial> &worldMaterials)
+// Loads a model with one mesh per material, so each can have its own texture and material maps
+static Model LoadWorldModel(const char *modelPath, std::vector<WorldMaterial> &worldMaterials)
 {
     Model model = { 0 };
     model.transform = MatrixIdentity();
-    std::string objDir = GetDirectoryPath(objPath);
+    std::string modelFolder = GetDirectoryPath(modelPath);
 
-    char *text = LoadFileText(objPath);
-    if (text == nullptr) return model;
-    std::istringstream file(text);
-    UnloadFileText(text);
+    ModelFile file;
+    if (!LoadModelFile(modelPath, false, file)) return model;
 
-    std::vector<Vector3> positions;
-    std::vector<Vector2> texcoords;
-    std::vector<Vector3> normals;
-
-    // Slot 0 is for faces before any usemtl, or with a material the .mtl doesn't have
-    std::vector<ObjMaterial> materials = { { "", "" } };
-    std::vector<MeshData> meshData(1);
-    int currentMaterial = 0;
-
-    std::string line;
-    while (std::getline(file, line))
+    std::vector<MeshData> meshData(file.materials.size());
+    for (const ModelObject &object : file.objects)
     {
-        std::istringstream tokens(line);
-        std::string tag;
-        tokens >> tag;
+        for (const ModelFace &face : object.faces)
+        {
+            if (face.corners.size() != 3) continue;
+            Vector3 a = face.corners[0].position, b = face.corners[1].position, c = face.corners[2].position;
+            Vector3 flatNormal = Vector3Normalize(Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a)));  // For files without normals
 
-        if (tag == "v")
-        {
-            Vector3 v = { 0 };
-            tokens >> v.x >> v.y >> v.z;
-            positions.push_back(v);
-        }
-        else if (tag == "vt")
-        {
-            Vector2 vt = { 0 };
-            tokens >> vt.x >> vt.y;
-            texcoords.push_back({ vt.x, 1.0f - vt.y });  // OBJ's v goes up, textures go down
-        }
-        else if (tag == "vn")
-        {
-            Vector3 vn = { 0 };
-            tokens >> vn.x >> vn.y >> vn.z;
-            normals.push_back(vn);
-        }
-        else if (tag == "mtllib")
-        {
-            ReadMtl(objDir + "/" + RestOfLine(tokens), materials);
-            meshData.resize(materials.size());
-        }
-        else if (tag == "usemtl")
-        {
-            std::string name = RestOfLine(tokens);
-            currentMaterial = 0;
-            for (size_t i = 1; i < materials.size(); i++)
+            MeshData &data = meshData[face.material];
+            for (const ModelCorner &corner : face.corners)
             {
-                if (materials[i].name == name) currentMaterial = (int)i;
-            }
-            if (currentMaterial == 0) TraceLog(LOG_WARNING, "WORLD: [%s] Material \"%s\" isn't in the .mtl file, its faces will be untextured", objPath, name.c_str());
-        }
-        else if (tag == "f")
-        {
-            std::vector<ObjCorner> corners;
-            std::string entry;
-            while (tokens >> entry) corners.push_back(ParseObjCorner(entry, positions.size(), texcoords.size(), normals.size()));
-
-            bool valid = corners.size() >= 3;
-            for (const ObjCorner &corner : corners) valid = valid && corner.position >= 0;
-            if (!valid) continue;
-
-            // Split the polygon into a fan of triangles, like the exporter's faces are convex
-            MeshData &data = meshData[currentMaterial];
-            for (size_t i = 1; i + 1 < corners.size(); i++)
-            {
-                const ObjCorner triangle[3] = { corners[0], corners[i], corners[i + 1] };
-
-                // Without normals in the file, use the triangle's own
-                Vector3 a = positions[triangle[0].position], b = positions[triangle[1].position], c = positions[triangle[2].position];
-                Vector3 flatNormal = Vector3Normalize(Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a)));
-
-                for (const ObjCorner &corner : triangle)
-                {
-                    Vector3 p = positions[corner.position];
-                    Vector2 uv = (corner.texcoord >= 0) ? texcoords[corner.texcoord] : Vector2{ 0.0f, 0.0f };
-                    Vector3 n = (corner.normal >= 0) ? normals[corner.normal] : flatNormal;
-                    data.vertices.insert(data.vertices.end(), { p.x, p.y, p.z });
-                    data.texcoords.insert(data.texcoords.end(), { uv.x, uv.y });
-                    data.normals.insert(data.normals.end(), { n.x, n.y, n.z });
-                }
+                Vector3 n = corner.hasNormal ? corner.normal : flatNormal;
+                data.vertices.insert(data.vertices.end(), { corner.position.x, corner.position.y, corner.position.z });
+                data.texcoords.insert(data.texcoords.end(), { corner.texcoord.x, corner.texcoord.y });
+                data.normals.insert(data.normals.end(), { n.x, n.y, n.z });
             }
         }
     }
 
-    // Every material gets a slot, so mesh material indices match the .mtl. Only the used ones get a texture
-    model.materialCount = (int)materials.size();
+    // Every material gets a slot, so mesh material indices match the file. Only the used ones get a texture
+    model.materialCount = (int)file.materials.size();
     model.materials = (Material *)RL_CALLOC(model.materialCount, sizeof(Material));
     for (int i = 0; i < model.materialCount; i++) model.materials[i] = LoadMaterialDefault();
 
@@ -286,22 +153,17 @@ static Model LoadWorldModel(const char *objPath, std::vector<WorldMaterial> &wor
         model.meshMaterial[meshIndex] = (int)i;
         meshIndex++;
 
+        if (file.materials[i].texturePath.empty()) continue;
         Texture texture;
-        if (!materials[i].texturePath.empty() && LoadWorldTexture(materials[i].texturePath, objDir, texture))
-        {
-            model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
-        }
-        else if (i > 0)
-        {
-            TraceLog(LOG_WARNING, "WORLD: [%s] Material \"%s\" has no texture that could be loaded", objPath, materials[i].name.c_str());
-        }
+        if (LoadWorldTexture(file.materials[i], modelFolder, texture)) model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+        else TraceLog(LOG_WARNING, "WORLD: [%s] Couldn't load the texture of material \"%s\"", modelPath, file.materials[i].name.c_str());
     }
 
     // Each material's diffuse texture names its entry in .materials
     worldMaterials.assign(model.materialCount, WorldMaterial());
-    for (int i = 0; i < model.materialCount; i++) worldMaterials[i].diffusePath = materials[i].texturePath;
+    for (int i = 0; i < model.materialCount; i++) worldMaterials[i].diffusePath = file.materials[i].texturePath;
 
-    TraceLog(LOG_INFO, "WORLD: [%s] Loaded %d meshes, one per material used", objPath, meshCount);
+    TraceLog(LOG_INFO, "WORLD: [%s] Loaded %d meshes, one per material used", modelPath, meshCount);
     return model;
 }
 
@@ -367,7 +229,7 @@ void SetWorldGeometry(World &world, const Geometry &geometry, float texelsPerUni
             for (int index : GeoTriangulate(points, normal))
             {
                 Vector3 p = points[index];
-                Vector2 uv = GeoTextureCoord(face, p, texture.width, texture.height, texelsPerUnit);
+                Vector2 uv = (face.lockedUVs.size() == points.size()) ? face.lockedUVs[index] : GeoTextureCoord(face, p, texture.width, texture.height, texelsPerUnit);
                 data.vertices.insert(data.vertices.end(), { p.x, p.y, p.z });
                 data.texcoords.insert(data.texcoords.end(), { uv.x, uv.y });
                 data.normals.insert(data.normals.end(), { normal.x, normal.y, normal.z });
@@ -559,26 +421,26 @@ static void UnloadWorldModel(Model &model, std::vector<WorldMaterial> &materials
 // ---------------------------------------------------------------------------------------------
 // Props
 
-int LoadPropModel(World &world, const std::string &objPath)
+int LoadPropModel(World &world, const std::string &modelPath)
 {
     for (size_t i = 0; i < world.propModels.size(); i++)
     {
-        if (world.propModels[i].path == objPath) return (world.propModels[i].model.meshCount > 0) ? (int)i : -1;
+        if (world.propModels[i].path == modelPath) return (world.propModels[i].model.meshCount > 0) ? (int)i : -1;
     }
 
     // Remembered even if it fails, so a bad path isn't tried again for every prop that uses it
     PropModel propModel = {};
-    propModel.path = objPath;
-    if (GameDataFileExists(objPath.c_str()))
+    propModel.path = modelPath;
+    if (GameDataFileExists(modelPath.c_str()))
     {
-        propModel.model = LoadWorldModel(objPath.c_str(), propModel.materials);
+        propModel.model = LoadWorldModel(modelPath.c_str(), propModel.materials);
         for (int i = 0; i < propModel.model.materialCount; i++) propModel.model.materials[i].shader = world.lighting.shader;
         propModel.bounds = GetModelBoundingBox(propModel.model);
         ApplyMaterialList(propModel.materials, LoadMaterialLibrary());
     }
     else
     {
-        TraceLog(LOG_WARNING, "WORLD: [%s] Prop model not found", objPath.c_str());
+        TraceLog(LOG_WARNING, "WORLD: [%s] Prop model not found", modelPath.c_str());
     }
     world.propModels.push_back(propModel);
     return (propModel.model.meshCount > 0) ? (int)world.propModels.size() - 1 : -1;
@@ -1001,7 +863,9 @@ Brush MakeBoxBrush(BoundingBox box)
 
 bool LoadGameTexture(const char *path, Texture &texture)
 {
-    return LoadWorldTexture(path, GetDirectoryPath(path), texture);
+    ModelMaterial material;
+    material.texturePath = path;
+    return LoadWorldTexture(material, GetDirectoryPath(path), texture);
 }
 
 bool GetGameTextureSize(const char *path, int &width, int &height)

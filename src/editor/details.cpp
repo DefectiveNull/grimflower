@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "raygui.h"
 #include "entitylist.h"
+#include "filedialog.h"
 #include "style.h"
 
 #include <cstdio>
@@ -210,6 +211,35 @@ static void DrawEntityDetails(EditorState &editor, Rectangle panel, float y)
             nlohmann::ordered_json current = isSet ? entity.properties[name] : DefaultParamValue(*param);
             std::string text = current.is_string() ? current.get<std::string>() : current.dump();
             if (EditableField(fieldId, field, text)) setParameter(name, std::string(editBuffer), false);
+        }
+        else if (const EntityFileType *fileType = FindEntityFileType(type))
+        {
+            // A path, typed or picked with Browse, relative to the project folder like every other path
+            nlohmann::ordered_json current = isSet ? entity.properties[name] : DefaultParamValue(*param);
+            std::string text = current.is_string() ? current.get<std::string>() : current.dump();
+            const float buttonWidth = 64.0f;
+            if (EditableField(fieldId, { fieldX, y, fieldWidth - buttonWidth - 6, ROW_HEIGHT - 4 }, text))
+            {
+                std::string typed = editBuffer;
+                for (char &c : typed) if (c == '\\') c = '/';
+                if (!typed.empty() && !FileExists(typed.c_str())) SetStatus(editor, "There's no %s, check the path", typed.c_str());
+                setParameter(name, typed, false);
+            }
+
+            if (GuiButton({ fieldX + fieldWidth - buttonWidth, y, buttonWidth, ROW_HEIGHT - 4 }, "Browse"))
+            {
+                // A folder that doesn't exist yet, like sound/, opens the project folder instead
+                std::string folder = editor.dataRoot + "/" + fileType->folder;
+                if (!DirectoryExists(folder.c_str())) folder = editor.dataRoot;
+
+                std::string chosen;
+                if (ShowOpenFileDialog(GetWindowHandle(), fileType->dialogTitle, fileType->filter, folder, chosen))
+                {
+                    chosen = ToDataPath(editor, chosen);
+                    if (chosen.size() > 1 && chosen[1] == ':') SetStatus(editor, "%s is outside the project folder, so a shipped game won't find it", chosen.c_str());
+                    setParameter(name, chosen, false);
+                }
+            }
         }
         else if (EditableField(fieldId, field, shown))
         {

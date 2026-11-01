@@ -36,7 +36,7 @@ Files are referred to by their path from the project folder, with forward slashe
 | --- | --- |
 | `maps/` | Levels (`.json`) and their baked lightmaps (`<level>_lightmap.png`) |
 | `textures/` | Textures, in subfolders by category (`dev/`, `liquids/`, `sky/`). The editor's Materials tab lists them by subfolder |
-| `models/` | `.obj` models with their `.mtl` files and textures, in subfolders like `props/`, for importing as level geometry or placing as props |
+| `models/` | Models with their textures, in subfolders like `props/`, for importing as level geometry or placing as props |
 | `icon.svg` | The logo as the icon for `grimflower.exe` and `GrimEd.exe`. `icon.ico` is rendered from it by `tools/make_icon.ps1` |
 | `cfg/default.cfg` | The game's default key binds |
 | `.materials` | Bump, specular and gloss maps for each texture, written by the editor's Materials tab |

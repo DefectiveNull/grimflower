@@ -137,9 +137,21 @@ static void ReadGeometry(const json &section, Geometry &geometry, const char *pa
                     if (f.contains("scale")) face.scale = ReadVector2(f["scale"], face.scale);
                     if (face.scale.x == 0.0f) face.scale.x = 1.0f;
                     if (face.scale.y == 0.0f) face.scale.y = 1.0f;
+                    face.group = (int)GetNumber(f, "group", -1.0f);
+                    auto uvs = f.find("uvs");
+                    if (uvs != f.end() && uvs->is_array() && uvs->size() == face.corners.size())
+                    {
+                        for (const json &uv : *uvs) face.lockedUVs.push_back(ReadVector2(uv, { 0.0f, 0.0f }));
+                    }
                     shape.faces.push_back(face);
                 }
             }
+
+            // Levels from before polygroups were saved
+            bool hasGroups = true;
+            for (const GeoFace &face : shape.faces) hasGroups = hasGroups && face.group >= 0;
+            if (!hasGroups) GeoBuildPolygroups(shape);
+
             geometry.shapes.push_back(shape);
         }
     }
@@ -192,6 +204,12 @@ static json WriteGeometry(const Geometry &geometry)
             f["vAxis"] = vec3(face.vAxis);
             f["offset"] = { Tidy(face.offset.x), Tidy(face.offset.y) };
             f["scale"] = { Tidy(face.scale.x), Tidy(face.scale.y) };
+            if (face.group >= 0) f["group"] = face.group;
+            if (!face.lockedUVs.empty())
+            {
+                f["uvs"] = json::array();
+                for (Vector2 uv : face.lockedUVs) f["uvs"].push_back({ Tidy(uv.x), Tidy(uv.y) });
+            }
             item["faces"].push_back(f);
         }
         section["shapes"].push_back(item);
@@ -291,7 +309,7 @@ bool LoadLevel(Level &level, const char *path)
         float scale = GetNumber(world, "scale", 1.0f)*((version < 2) ? 32.0f : 1.0f);
         if (!model.empty())
         {
-            if (ImportObjGeometry(model.c_str(), scale, (float)level.info.texelsPerUnit, level.geometry))
+            if (ImportModelGeometry(model.c_str(), scale, (float)level.info.texelsPerUnit, level.geometry))
             {
                 GeoQuantize(level.geometry);  // As saving will store it
                 TraceLog(LOG_INFO, "LEVEL: [%s] Imported its world model %s as meshes", path, model.c_str());

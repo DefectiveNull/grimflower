@@ -13,11 +13,13 @@
 //   Push/Pull (Alt+Shift) drag a face out to extrude it, or in to cut its outline into the mesh, through it if far enough
 //   Edge (E)           click edges to select them (Ctrl+click for more), drag one to move them (Alt: up and down),
 //                      Ctrl+drag a selected one to extrude them into new faces
+//   Vertex (V)         click vertices to select them (Ctrl+click for more), drag one to move them (Alt: up and down).
+//                      A face this bends has the moved corner folded off as a triangle
 //   Bevel (B, with edges selected)  move the mouse right for the width, scroll for more steps; click or Enter applies
 //
 // Everything snaps to the grid. Drags redo their change from the geometry as it was when they started, every
-// frame, and are one undo step. Leaving Modelling mode joins faces split by the tools back into polygroups;
-// going back to Object mode works out collision and the bounce lightmap, and the level can only be saved there.
+// frame, and are one undo step. Leaving Modelling mode keeps every face as it was built and marks the flat
+// surfaces as polygroups; going back to Object mode works out collision and the bounce lightmap, and the level can only be saved there.
 // Textures are put on in Texturing mode (texturingmode.cpp).
 
 #include "editor.h"
@@ -176,6 +178,52 @@ static bool HoveredEdge(const EditorState &editor, GeoEdge &edge)
 
 static bool SameEdge(const GeoEdge &x, const GeoEdge &y) { return x.mesh == y.mesh && x.a == y.a && x.b == y.b; }
 
+static bool ValidVertex(const EditorState &editor, const GeoVertex &vertex)
+{
+    return ValidMesh(editor, vertex.mesh) && vertex.index >= 0 &&
+           vertex.index < (int)editor.level.geometry.shapes[editor.level.geometry.meshes[vertex.mesh].shape].vertices.size();
+}
+
+static Vector3 VertexPoint(const EditorState &editor, const GeoVertex &vertex)
+{
+    const Geometry &geometry = editor.level.geometry;
+    return Vector3Transform(geometry.shapes[geometry.meshes[vertex.mesh].shape].vertices[vertex.index], MeshTransform(editor, vertex.mesh));
+}
+
+// The vertex nearest the mouse on the screen that's close enough and not behind anything. Unlike edges it doesn't
+// need a face under the mouse, so corners can be picked from just outside a mesh's outline
+static bool HoveredVertex(const EditorState &editor, GeoVertex &vertex)
+{
+    std::vector<std::pair<float, GeoVertex>> close;
+    const Geometry &geometry = editor.level.geometry;
+    for (size_t m = 0; m < geometry.meshes.size(); m++)
+    {
+        const GeoShape &shape = geometry.shapes[geometry.meshes[m].shape];
+        Matrix transform = GeoMeshTransform(geometry.meshes[m]);
+        for (size_t v = 0; v < shape.vertices.size(); v++)
+        {
+            bool inFront;
+            Vector2 screen = ToScreen(editor, Vector3Transform(shape.vertices[v], transform), inFront);
+            float distance = Vector2Distance(EdMousePosition(), screen);
+            if (inFront && distance < PICK_PIXELS) close.push_back({ distance, { (int)m, (int)v } });
+        }
+    }
+    std::sort(close.begin(), close.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+
+    for (const auto &[distance, candidate] : close)
+    {
+        Vector3 point = VertexPoint(editor, candidate);
+        Ray ray = { editor.camera.position, Vector3Normalize(Vector3Subtract(point, editor.camera.position)) };
+        GeoPick blocker = PickGeometry(editor, ray);
+        if (blocker.mesh >= 0 && Vector3Distance(ray.position, blocker.point) < Vector3Distance(ray.position, point) - 1.0f) continue;
+        vertex = candidate;
+        return true;
+    }
+    return false;
+}
+
+static bool SameVertex(const GeoVertex &x, const GeoVertex &y) { return x.mesh == y.mesh && x.index == y.index; }
+
 // ---------------------------------------------------------------------------------------------
 // Changing the geometry
 
@@ -183,6 +231,60 @@ static void ShowGeometry(EditorState &editor)
 {
     GeometryChanged(editor);
     SyncWorldWithLevel(editor);
+}
+
+// How a change to a mesh treats textures, from the Texture Lock button
+static GeoTextureMove TextureMove(const EditorState &editor, int mesh)
+{
+    GeoTextureMove texture;
+    texture.transform = MeshTransform(editor, mesh);
+    texture.texelsPerUnit = (float)editor.level.info.texelsPerUnit;
+    texture.locked = editor.edit.textureLock;
+    return texture;
+}
+
+// With Texture Lock on, faces a change will move get their textures locked to their corners first. An
+// empty list of vertices is the whole shape
+static void LockTextures(const Geometry &geometry, GeoShape &shape, int mesh, const std::vector<int> &vertices, float texelsPerUnit)
+{
+    std::set<int> moved;
+    for (int v : GeoVerticesAt(shape, vertices)) moved.insert(v);
+    Matrix transform = GeoMeshTransform(geometry.meshes[mesh]);
+    for (GeoFace &face : shape.faces)
+    {
+        bool touched = vertices.empty();
+        for (int corner : face.corners) touched = touched || moved.count(corner) > 0;
+        if (touched) GeoLockTexture(shape, face, transform, texelsPerUnit);
+    }
+}
+
+// Done once, when a drag really starts, on the geometry it redoes itself from
+static void LockDraggedTextures(EditorState &editor)
+{
+    EditState &e = editor.edit;
+    if (!e.textureLock) return;
+    Geometry &geometry = e.before;
+    float density = (float)editor.level.info.texelsPerUnit;
+    auto shapeOf = [&](int mesh) -> GeoShape & { return geometry.shapes[geometry.meshes[mesh].shape]; };
+    switch (e.drag)
+    {
+        case EditState::DRAG_MOVE: LockTextures(geometry, shapeOf(e.dragPick.mesh), e.dragPick.mesh, {}, density); break;
+        case EditState::DRAG_RESIZE: LockTextures(geometry, shapeOf(e.dragPick.mesh), e.dragPick.mesh, shapeOf(e.dragPick.mesh).faces[e.dragPick.face].corners, density); break;
+        case EditState::DRAG_VERTICES:
+            for (const GeoVertex &vertex : e.vertices) LockTextures(geometry, shapeOf(vertex.mesh), vertex.mesh, { vertex.index }, density);
+            break;
+        case EditState::DRAG_EDGES:
+            if (e.duplicated) break;
+            for (const GeoEdge &edge : e.edges) LockTextures(geometry, shapeOf(edge.mesh), edge.mesh, { edge.a, edge.b }, density);
+            break;
+        default: break;
+    }
+}
+
+void ToggleTextureLock(EditorState &editor)
+{
+    editor.edit.textureLock = !editor.edit.textureLock;
+    SetStatus(editor, editor.edit.textureLock ? "Texture lock on: textures stay on their faces and stretch with them" : "Texture lock off: textures follow the world and don't stretch");
 }
 
 // Starts a drag that changes the geometry. Until it ends, editor.edit.before is the geometry as it was
@@ -325,7 +427,7 @@ static void UpdateDragChange(EditorState &editor, Ray ray)
         case EditState::DRAG_RESIZE:
         {
             float distance;
-            if (NormalDistance(editor, ray, distance)) GeoMoveFace(MeshShape(editor, mesh), e.dragPick.face, distance);
+            if (NormalDistance(editor, ray, distance)) GeoMoveFace(MeshShape(editor, mesh), e.dragPick.face, distance, TextureMove(editor, mesh));
             break;
         }
         case EditState::DRAG_EXTRUDE:
@@ -394,7 +496,22 @@ static void UpdateDragChange(EditorState &editor, Ray ray)
                 int shapeIndex = geometry.meshes[edgeMesh].shape;
                 if (shapesMoved.count(shapeIndex)) continue;  // An instance of the same shape: it moves with it
                 shapesMoved.insert(shapeIndex);
-                GeoMoveVertices(geometry.shapes[shapeIndex], vertices, ToMeshDirection(editor, edgeMesh, offset));
+                GeoMoveVertices(geometry.shapes[shapeIndex], vertices, ToMeshDirection(editor, edgeMesh, offset), TextureMove(editor, edgeMesh));
+            }
+            break;
+        }
+        case EditState::DRAG_VERTICES:
+        {
+            Vector3 offset;
+            if (!MoveOffset(editor, ray, offset)) break;
+            std::map<int, std::vector<int>> byMesh;
+            for (const GeoVertex &vertex : e.vertices) byMesh[vertex.mesh].push_back(vertex.index);
+            std::set<int> shapesMoved;
+            for (auto &[vertexMesh, vertices] : byMesh)
+            {
+                int shapeIndex = geometry.meshes[vertexMesh].shape;
+                if (!shapesMoved.insert(shapeIndex).second) continue;  // An instance of the same shape: it moves with it
+                GeoMoveVertices(geometry.shapes[shapeIndex], vertices, ToMeshDirection(editor, vertexMesh, offset), TextureMove(editor, vertexMesh));
             }
             break;
         }
@@ -427,11 +544,16 @@ static void EndDrag(EditorState &editor)
             }
             else CommitDrag(editor, "Move edges");
             break;
+        case EditState::DRAG_VERTICES: CommitDrag(editor, "Move vertices"); break;
         case EditState::DRAG_PIVOT: e.drag = EditState::DRAG_NONE; break;
         default: e.drag = EditState::DRAG_NONE; break;
     }
-    // Other changes can renumber a shape's vertices, which edges are picked by
-    if (kind != EditState::DRAG_EDGES && kind != EditState::DRAG_PIVOT && kind != EditState::DRAG_MOVE) e.edges.clear();
+    // Other changes can renumber a shape's vertices, which edges and vertices are picked by
+    if (kind != EditState::DRAG_EDGES && kind != EditState::DRAG_VERTICES && kind != EditState::DRAG_PIVOT && kind != EditState::DRAG_MOVE)
+    {
+        e.edges.clear();
+        e.vertices.clear();
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -445,6 +567,7 @@ static void DeleteSelectedMesh(EditorState &editor)
     GeoDeleteMesh(editor.level.geometry, e.selectedMesh);
     e.selectedMesh = -1;
     e.edges.clear();
+    e.vertices.clear();
     e.hover = GeoPick();  // Picked from the geometry as it was: the mesh may not be there any more
     e.cutStage = 0;
     ShowGeometry(editor);
@@ -472,6 +595,7 @@ static void DeleteHoveredFaces(EditorState &editor)
     }
     e.hover = GeoPick();  // The face isn't there any more
     e.edges.clear();
+    e.vertices.clear();
     e.cutStage = 0;
     ShowGeometry(editor);
     if (meshGone) SetStatus(editor, "Deleted %d faces, the mesh's last", removed);
@@ -494,6 +618,7 @@ static void FlipSelected(EditorState &editor)
     RecordUndo(editor, "Flip normals");
     GeoFlipShape(MeshShape(editor, e.selectedMesh), editor.level.geometry.meshes[e.selectedMesh].rotation);
     e.edges.clear();
+    e.vertices.clear();
     ShowGeometry(editor);
     if (instances > 1) SetStatus(editor, "Flipped the mesh's normals, and its %d other instances'", instances - 1);
     else SetStatus(editor, "Flipped the mesh's normals: its faces look the other way now");
@@ -508,6 +633,7 @@ static void RotateSelected(EditorState &editor, Vector3 axis, float degrees)
         return;
     }
     RecordUndo(editor, "Rotate mesh");
+    if (e.textureLock) LockTextures(editor.level.geometry, MeshShape(editor, e.selectedMesh), e.selectedMesh, {}, (float)editor.level.info.texelsPerUnit);
     GeoRotateMesh(editor.level.geometry, e.selectedMesh, axis, degrees);
     ShowGeometry(editor);
 }
@@ -665,14 +791,18 @@ void SetEditorMode(EditorState &editor, EditorMode mode)
     {
         CancelToolWork(editor);
         editor.edit.edges.clear();
-        // Rounded the way the level file stores it, so what's built and baked is exactly what's saved. Then faces
-        // the tools split up are joined back where they're on one plane with one texture (polygroups), so
-        // Texturing mode picks whole faces
+        editor.edit.vertices.clear();
+        // Rounded the way the level file stores it, so what's built and baked is exactly what's saved. The faces
+        // stay as they were built, edges on a flat surface included, and polygroups mark the flat surfaces so
+        // Texturing mode can work on them whole
         GeoQuantize(editor.level.geometry);
-        for (GeoShape &shape : editor.level.geometry.shapes) GeoMergeFaces(shape);
+        for (GeoShape &shape : editor.level.geometry.shapes) GeoFinishShape(shape);
         GeometryChanged(editor);
     }
     if (from == MODE_TEXTURING) editor.texturing = TextureState();
+
+    // An undo can bring back geometry from the middle of an edit, whose polygroups are out of date
+    if (mode == MODE_TEXTURING) for (GeoShape &shape : editor.level.geometry.shapes) GeoBuildPolygroups(shape);
 
     editor.mode = mode;
     const char *next = EditorModeName((EditorMode)((mode + 1)%MODE_COUNT));
@@ -707,6 +837,7 @@ void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree)
     Ray ray = GetViewportMouseRay(editor);
     e.hover = mouseFree ? PickGeometry(editor, ray) : GeoPick();
     if (!ValidMesh(editor, e.selectedMesh)) e.selectedMesh = -1;
+    e.vertices.erase(std::remove_if(e.vertices.begin(), e.vertices.end(), [&](const GeoVertex &x) { return !ValidVertex(editor, x); }), e.vertices.end());
 
     // Keys
     if (keysFree && e.drag == EditState::DRAG_NONE)
@@ -731,7 +862,8 @@ void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree)
         if (shift && !ctrl && !alt && EdKeyPressed(KEY_D)) DeleteHoveredFaces(editor);
         if (plain && EdKeyPressed(KEY_C)) SetTool(editor, TOOL_CUT);
         if (plain && EdKeyPressed(KEY_E)) SetTool(editor, TOOL_EDGE);
-        if (EdKeyPressed(KEY_DELETE) && e.tool != TOOL_EDGE) DeleteSelectedMesh(editor);
+        if (plain && EdKeyPressed(KEY_V)) SetTool(editor, TOOL_VERTEX);
+        if (EdKeyPressed(KEY_DELETE) && e.tool != TOOL_EDGE && e.tool != TOOL_VERTEX) DeleteSelectedMesh(editor);
 
         if (e.tool == TOOL_EXTRUDE && plain && EdKeyPressed(KEY_P))
         {
@@ -793,7 +925,8 @@ void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree)
         {
             if (Vector2Distance(EdMousePosition(), e.dragStartMouse) < CLICK_PIXELS) return;
             e.dragMoved = true;
-            if (e.drag == EditState::DRAG_MOVE || e.drag == EditState::DRAG_EDGES || e.drag == EditState::DRAG_PIVOT) StartMovePlane(editor, e.dragPick.point, ray);
+            LockDraggedTextures(editor);
+            if (e.drag == EditState::DRAG_MOVE || e.drag == EditState::DRAG_EDGES || e.drag == EditState::DRAG_VERTICES || e.drag == EditState::DRAG_PIVOT) StartMovePlane(editor, e.dragPick.point, ray);
             else StartNormalDrag(editor, ray);
         }
         UpdateDragChange(editor, ray);
@@ -987,6 +1120,33 @@ void UpdateModellingMode(EditorState &editor, bool keysFree, bool mouseFree)
             BeginDrag(editor, EditState::DRAG_EDGES, pick, ray);
             break;
         }
+        case TOOL_VERTEX:
+        {
+            if (EdKeyPressed(KEY_DELETE)) e.vertices.clear();
+            if (!pressed) break;
+            GeoVertex vertex;
+            if (!HoveredVertex(editor, vertex))
+            {
+                if (!CtrlDown()) e.vertices.clear();
+                break;
+            }
+            auto found = std::find_if(e.vertices.begin(), e.vertices.end(), [&](const GeoVertex &x) { return SameVertex(x, vertex); });
+            if (CtrlDown())
+            {
+                if (found == e.vertices.end()) e.vertices.push_back(vertex);
+                else e.vertices.erase(found);
+                break;
+            }
+            if (found == e.vertices.end()) e.vertices = { vertex };
+            e.selectedMesh = vertex.mesh;
+
+            // The drag starts from the vertex itself, so the floor plane it moves along is at its height
+            GeoPick pick;
+            pick.mesh = vertex.mesh;
+            pick.point = VertexPoint(editor, vertex);
+            BeginDrag(editor, EditState::DRAG_VERTICES, pick, ray);
+            break;
+        }
         default: break;
     }
 }
@@ -998,7 +1158,13 @@ bool ModellingModeEscape(EditorState &editor)
     if (e.beveling) { FinishBevel(editor, false); return true; }
     if (e.cubeStage != 0 || e.cutStage != 0) { e.cubeStage = e.cutStage = 0; return true; }
     if (e.tool != TOOL_SELECT) { SetTool(editor, TOOL_SELECT); return true; }
-    if (e.selectedMesh >= 0 || !e.edges.empty()) { e.selectedMesh = -1; e.edges.clear(); return true; }
+    if (e.selectedMesh >= 0 || !e.edges.empty() || !e.vertices.empty())
+    {
+        e.selectedMesh = -1;
+        e.edges.clear();
+        e.vertices.clear();
+        return true;
+    }
     return false;
 }
 
@@ -1038,7 +1204,7 @@ void DrawModellingOverlay(const EditorState &editor)
     rlDrawRenderBatchActive();
     rlDisableDepthTest();
 
-    if (ValidPick(editor, e.hover) && e.tool != TOOL_CUBE && e.tool != TOOL_EDGE)
+    if (ValidPick(editor, e.hover) && e.tool != TOOL_CUBE && e.tool != TOOL_EDGE && e.tool != TOOL_VERTEX)
     {
         const GeoShape &shape = geometry.shapes[geometry.meshes[e.hover.mesh].shape];
         std::vector<Vector3> points = GeoFacePoints(shape, shape.faces[e.hover.face], MeshTransform(editor, e.hover.mesh));
@@ -1088,6 +1254,24 @@ void DrawModellingOverlay(const EditorState &editor)
             Vector3 a = Vector3Transform(shape.vertices[hovered.a], transform), b = Vector3Transform(shape.vertices[hovered.b], transform);
             DrawCylinderEx(a, b, Vector3Distance(editor.camera.position, a)*0.002f, Vector3Distance(editor.camera.position, b)*0.002f, 4, WHITE);
         }
+    }
+
+    if (e.tool == TOOL_VERTEX)
+    {
+        auto dot = [&](Vector3 point, float size, Color color)
+        {
+            DrawSphereEx(point, Vector3Distance(editor.camera.position, point)*size, 6, 6, color);
+        };
+
+        // The vertices of the mesh under the mouse and the selected one, so there's something to aim at
+        for (int mesh : { e.hover.mesh, e.selectedMesh })
+        {
+            if (!ValidMesh(editor, mesh)) continue;
+            for (size_t v = 0; v < geometry.shapes[geometry.meshes[mesh].shape].vertices.size(); v++) dot(VertexPoint(editor, { mesh, (int)v }), 0.003f, SKYBLUE);
+        }
+        for (const GeoVertex &vertex : e.vertices) if (ValidVertex(editor, vertex)) dot(VertexPoint(editor, vertex), 0.005f, ORANGE);
+        GeoVertex hovered;
+        if (e.drag == EditState::DRAG_NONE && HoveredVertex(editor, hovered)) dot(VertexPoint(editor, hovered), 0.005f, WHITE);
     }
 
     if (e.tool == TOOL_CUBE)
@@ -1170,7 +1354,7 @@ struct ToolButton
 };
 static const ToolButton TOOL_BUTTONS[] = {
     { TOOL_SELECT, "Select" }, { TOOL_CUBE, "Cube (B)" }, { TOOL_ROTATE, "Rotate (R)" }, { TOOL_CUT, "Cut (C)" },
-    { TOOL_EXTRUDE, "Extrude (Ctrl+Shift)" }, { TOOL_PUSHPULL, "Push/Pull (Alt+Shift)" }, { TOOL_EDGE, "Edge (E)" }, { TOOL_BEVEL, "Bevel (B)" },
+    { TOOL_EXTRUDE, "Extrude (Ctrl+Shift)" }, { TOOL_PUSHPULL, "Push/Pull (Alt+Shift)" }, { TOOL_EDGE, "Edge (E)" }, { TOOL_VERTEX, "Vertex (V)" }, { TOOL_BEVEL, "Bevel (B)" },
 };
 
 static const char *ToolHint(const EditorState &editor)
@@ -1193,6 +1377,7 @@ static const char *ToolHint(const EditorState &editor)
                                                 : "Extrude: drag a face out or in | P: place a pivot at the mouse, to extrude around it";
         case TOOL_PUSHPULL: return "Push/Pull: drag a face out to extrude it, or in to cut its outline into the mesh (through it, if far enough)";
         case TOOL_EDGE: return "Edge: click edges (Ctrl+click: more), drag to move them (Alt: up/down), Ctrl+drag to extrude them | B: bevel the selected edges";
+        case TOOL_VERTEX: return "Vertex: click vertices (Ctrl+click: more), drag to move them (Alt: up/down)";
         case TOOL_BEVEL: return "Bevel: move the mouse right for the width, scroll for steps | Click or Enter applies, Esc cancels";
         default: return "";
     }
@@ -1251,6 +1436,14 @@ void DrawViewportUI(EditorState &editor)
             }
             x += width + 4;
         }
+
+        // Not a tool: it stays on across them
+        x += 8;
+        float lockWidth = MeasureUIText("Texture Lock", 16) + 18;
+        bool locked = editor.edit.textureLock;
+        GuiToggle({ x, y, lockWidth, height }, "Texture Lock", &locked);
+        if (locked != editor.edit.textureLock) ToggleTextureLock(editor);
+        x += lockWidth + 4;
         toolbarRect.width = x - toolbarRect.x;
 
         const char *hint = ToolHint(editor);

@@ -28,9 +28,14 @@ Everything the game and editor use is already in `vendor/`, so there's nothing e
 | [raygui](https://github.com/raysan5/raygui) | 5.1-dev | The editor's UI. Header-only |
 | [nlohmann/json](https://github.com/nlohmann/json) | 3.12.0 | Reading and writing level files. Header-only |
 | [miniz](https://github.com/richgel999/miniz) | 11.3.2 | Reading assets from `gamedata.zip`. Compiled in with the game and editor |
+| [assimp](https://github.com/assimp/assimp) | 6.0.5 | Reading model files. Prebuilt static library for MSVC x64, with only the importers we use |
 | [stb_image](https://github.com/nothings/stb) | 2.30 | Image loading. Header-only |
 
 They also link against these Windows system libraries, which come with the Windows SDK: `opengl32`, `gdi32`, `winmm`, `user32` and `shell32`, plus `comdlg32` for the editor's Open/Save dialogs.
+
+### Testing
+
+Run `tests\run_tests.bat`. It builds the project, then runs `tests/geometry_test.cpp`, which drives the editor's real code in a hidden window. GitHub Actions runs the same script on every push to `master` and every pull request (`.github/workflows/tests.yml`), with Mesa's software OpenGL because its runners have no GPU.
 
 ### Compiling
 

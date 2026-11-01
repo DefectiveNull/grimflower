@@ -16,13 +16,26 @@ struct LevelEntity;
 struct EntityParamInfo
 {
     std::string name;
-    std::string type;          // number, angle, direction, color, radius, vector or text
+    std::string type;          // number, angle, direction, color, radius, vector, text, bool or a file type
     std::string defaultValue;  // As written in the file: "5", or "255 255 255" for colors and vectors
     std::string description;
     bool hasRange;             // The game gave a range for the slider
     float min;
     float max;
 };
+
+// A parameter type that's a path to a file: stored as text, and given a Browse button in the editor.
+// A new kind of file only needs a row in the table in entitylist.cpp
+struct EntityFileType
+{
+    const char *type;
+    const char *dialogTitle;
+    const char *filter;   // For the file dialog: pairs of name and patterns, with \0 between them
+    const char *folder;   // Under the project folder, where the dialog opens
+};
+
+// The file type with this name, or nullptr if the parameter type isn't a file
+const EntityFileType *FindEntityFileType(const std::string &type);
 
 // The slider range for a single number parameter: from the game if it gave one, or a guess from its type and default
 void GetParamRange(const EntityParamInfo &param, float &min, float &max);

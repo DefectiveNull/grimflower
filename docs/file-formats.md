@@ -98,8 +98,10 @@ The level's geometry is a list of **shapes** and a list of **meshes**. A shape i
 **Shapes:**
 
 - `vertices`: points relative to the shape's own origin.
-- `faces`: flat polygons. Each face is kept whole as one polygon, however many triangles it takes to draw.
+- `faces`: flat polygons, exactly as they were built. Each is one polygon, however many triangles it takes to draw, and edges between faces stay even on a flat surface.
   - `corners`: indices into `vertices`, going **counter-clockwise seen from outside**. That's what decides which way a face faces. A shape whose faces all face inwards is a room: it's solid outside its faces.
+  - `uvs`: only on faces with a locked texture (the editor's Texture Lock): one `[u, v]` per entry in `corners`, where 1 is one repeat of the texture. It stretches the texture across the corners, and `uAxis`, `vAxis`, `offset` and `scale` aren't used to draw the face.
+  - `group`: the face's polygroup, a number. Faces of a shape with the same number are one flat surface with one texture, which Texturing mode works on whole. It's worked out from the faces when leaving Modelling mode, and when a level doesn't have it.
   - `material`: the face's texture, as a game data path. Its `.materials` entry applies too.
   - `uAxis`, `vAxis`, `offset`, `scale`: how the texture lies on the face, the way the Valve 220 map format does it (see below).
 
@@ -211,7 +213,7 @@ See [The game](game.md#commands) for the game's commands and cvars, and [The edi
 
 ## Models and textures
 
-- **Models** are Wavefront `.obj` files in `models/`, in subfolders like `props/`, with a `.mtl` file giving each part its texture. They're used for props (`prop_model`) and for importing as level geometry (Edit > Import OBJ as Meshes). Make them in Quake units.
+- **Models** are `.obj`, `.fbx`, `.gltf`, `.glb`, `.dae`, `.3ds`, `.ply` or `.stl` files in `models/`, in subfolders like `props/`, read with assimp. Only their shapes and diffuse textures are used, not skeletons, animations or material colors. Textures sit next to the model or inside it, like in a `.glb`, though faces imported as meshes can't use one inside it. An exporter's units aren't converted: FBX is often in centimeters and glTF in meters, so use `prop_model`'s `scale`. They're used for props (`prop_model`) and for importing as level geometry (Edit > Import OBJ as Meshes). Make them in Quake units.
 - **Textures** go in `textures/`, in subfolders for categories. `.tga`, `.png`, `.jpg` and `.bmp` all work. Name maps for other textures with `_normal`, `_bump`, `_spec`, `_specular`, `_gloss` or `_glossy` at the end, so the Materials tab doesn't list them as textures of their own.
 - **Skyboxes** are environment images, like the `.hdr` in `textures/sky/`, set in the editor's Global World Settings.
 

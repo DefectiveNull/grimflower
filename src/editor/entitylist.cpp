@@ -1,4 +1,5 @@
 #include "entitylist.h"
+#include "filedialog.h"
 #include "level.h"
 
 #include <cctype>
@@ -170,9 +171,24 @@ const EntityParamInfo *FindEntityParamOfType(const EntityClassInfo &entityClass,
     return nullptr;
 }
 
+static const EntityFileType FILE_TYPES[] = {
+    { "model", "Choose Model", MODEL_FILE_FILTER, "models" },
+    { "image", "Choose Image", "Images (*.png;*.tga;*.jpg;*.bmp;*.hdr)\0*.png;*.tga;*.jpg;*.jpeg;*.bmp;*.hdr\0All files (*.*)\0*.*\0", "textures" },
+    { "sound", "Choose Sound", "Sounds (*.ogg;*.mp3;*.wav;*.flac;*.qoa)\0*.ogg;*.mp3;*.wav;*.flac;*.qoa\0All files (*.*)\0*.*\0", "sound" },
+};
+
+const EntityFileType *FindEntityFileType(const std::string &type)
+{
+    for (const EntityFileType &fileType : FILE_TYPES)
+    {
+        if (type == fileType.type) return &fileType;
+    }
+    return nullptr;
+}
+
 nlohmann::ordered_json DefaultParamValue(const EntityParamInfo &param)
 {
-    if (param.type == "text") return param.defaultValue;
+    if (param.type == "text" || FindEntityFileType(param.type)) return param.defaultValue;
 
     std::vector<double> numbers;
     std::istringstream values(param.defaultValue);

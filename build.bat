@@ -17,8 +17,10 @@ if not exist build\obj\editor mkdir build\obj\editor
 rem src\engine is the engine: rendering, the world, game data, the console, cvars, commands and binds.
 rem It knows nothing about the game, which adds its own commands to it.
 rem src\shared is what the editor shares with the game or the engine: the level format and key names
-set INCLUDES=/Isrc\engine /Isrc\shared /Ivendor\raylib\include /Ivendor\raygui /Ivendor\stb /Ivendor\miniz /Ivendor\json
-set LIBS=/LIBPATH:vendor\raylib\lib raylib.lib winmm.lib gdi32.lib user32.lib shell32.lib opengl32.lib
+set INCLUDES=/Isrc\engine /Isrc\shared /Ivendor\raylib\include /Ivendor\raygui /Ivendor\stb /Ivendor\miniz /Ivendor\json /Ivendor\assimp\include
+rem MINIZ_NO_ZLIB_COMPATIBLE_NAMES: assimp has the real zlib, whose functions miniz would otherwise clash with
+set DEFINES=/DMINIZ_NO_ZLIB_COMPATIBLE_NAMES
+set LIBS=/LIBPATH:vendor\raylib\lib /LIBPATH:vendor\assimp\lib raylib.lib assimp.lib zlibstatic.lib winmm.lib gdi32.lib user32.lib shell32.lib opengl32.lib
 
 rem The icon for both programs. rc comes with the same Visual Studio setup as cl
 rc /nologo /fobuild\obj\icon.res icon.rc
@@ -26,7 +28,7 @@ if errorlevel 1 exit /b 1
 
 rem Game: every .cpp in src\game, src\engine and src\shared, so new files get built without editing this
 echo Building game...
-cl /nologo /std:c++17 /EHsc /O2 /MD %INCLUDES% src\game\*.cpp src\engine\*.cpp src\shared\*.cpp vendor\miniz\miniz.c /Fobuild\obj\game\ /Febuild\grimflower.exe ^
+cl /nologo /std:c++17 /EHsc /O2 /MD %DEFINES% %INCLUDES% src\game\*.cpp src\engine\*.cpp src\shared\*.cpp vendor\miniz\miniz.c /Fobuild\obj\game\ /Febuild\grimflower.exe ^
     /link %LIBS% build\obj\icon.res /SUBSYSTEM:CONSOLE
 if errorlevel 1 exit /b 1
 
@@ -38,7 +40,7 @@ if errorlevel 1 (echo Couldn't export entitylist.txt & exit /b 1)
 
 rem Editor: every .cpp in src\editor, src\engine and src\shared. comdlg32 is for the Open/Save file dialogs
 echo Building editor...
-cl /nologo /std:c++17 /EHsc /O2 /MD %INCLUDES% src\editor\*.cpp src\engine\*.cpp src\shared\*.cpp vendor\miniz\miniz.c /Fobuild\obj\editor\ /Febuild\GrimEd.exe ^
+cl /nologo /std:c++17 /EHsc /O2 /MD %DEFINES% %INCLUDES% src\editor\*.cpp src\engine\*.cpp src\shared\*.cpp vendor\miniz\miniz.c /Fobuild\obj\editor\ /Febuild\GrimEd.exe ^
     /link %LIBS% build\obj\icon.res comdlg32.lib /SUBSYSTEM:CONSOLE
 if errorlevel 1 exit /b 1
 

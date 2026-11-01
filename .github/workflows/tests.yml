@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  geometry:
+    # vendor/assimp/lib is built with Visual Studio 2026, so the build needs that version or newer
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tests open a hidden OpenGL window and the runners have no GPU, so Mesa's software renderer
+      # goes next to the test program, where Windows finds its opengl32.dll first
+      - name: Get Mesa
+        shell: cmd
+        run: |
+          mkdir build\tests
+          curl -sSfL -o mesa.7z https://github.com/pal1000/mesa-dist-win/releases/download/26.2.5/mesa3d-26.2.5-release-msvc.7z || exit /b 1
+          mkdir mesa
+          "%SystemRoot%\System32\tar.exe" -xf mesa.7z -C mesa || exit /b 1
+          copy mesa\x64\*.dll build\tests\ || exit /b 1
+
+      - name: Build and run the tests
+        shell: cmd
+        run: tests\run_tests.bat -v

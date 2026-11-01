@@ -11,7 +11,7 @@
 #include <cstdio>
 
 static const char *LEVEL_FILTER = "Level files (*.json)\0*.json\0All files (*.*)\0*.*\0";
-static const float DEFAULT_WORLD_SCALE = 1.0f;  // Imported OBJs are made in Quake units, like the world
+static const float DEFAULT_WORLD_SCALE = 1.0f;  // Imported models are made in Quake units, like the world
 
 // Grid sizes in world units (Quake units), where the player is 32 wide and 56 tall, like Quake's 1 to 256.
 // Powers of two, so every size lines up with all the bigger ones
@@ -272,10 +272,10 @@ bool SaveCurrentLevel(EditorState &editor, bool askForPath)
     return true;
 }
 
-bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale)
+bool ImportModelMeshes(EditorState &editor, const std::string &path, float scale)
 {
     Geometry imported;
-    if (!ImportObjGeometry(path.c_str(), scale, (float)editor.level.info.texelsPerUnit, imported) || imported.meshes.empty())
+    if (!ImportModelGeometry(path.c_str(), scale, (float)editor.level.info.texelsPerUnit, imported) || imported.meshes.empty())
     {
         SetStatus(editor, "Couldn't import %s, see the log for why", path.c_str());
         return false;
@@ -298,12 +298,12 @@ bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale)
     return true;
 }
 
-void ImportObjFromDialog(EditorState &editor)
+void ImportModelFromDialog(EditorState &editor)
 {
     std::string path;
-    if (!ShowOpenFileDialog(GetWindowHandle(), "Import OBJ as Meshes", "OBJ models (*.obj)\0*.obj\0All files (*.*)\0*.*\0", editor.dataRoot + "/models", path)) return;
+    if (!ShowOpenFileDialog(GetWindowHandle(), "Import Model as Meshes", MODEL_FILE_FILTER, editor.dataRoot + "/models", path)) return;
     SetEditorMode(editor, MODE_MODELLING);  // Geometry only changes in Modelling mode
-    ImportObjMeshes(editor, ToDataPath(editor, path), DEFAULT_WORLD_SCALE);
+    ImportModelMeshes(editor, ToDataPath(editor, path), DEFAULT_WORLD_SCALE);
 }
 
 bool RaycastWorld(const EditorState &editor, Ray ray, Vector3 &point, Vector3 *normal)

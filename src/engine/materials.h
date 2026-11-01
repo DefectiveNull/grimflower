@@ -2,7 +2,7 @@
 
 // Materials, the way games did them before PBR (Source, Doom 3, Quake 4): four parts, each its own texture.
 //
-//   Diffuse (color map): the surface's color, the texture a face has (or a model's .mtl gives it). A material is
+//   Diffuse (color map): the surface's color, the texture a face has (or a model's file gives it). A material is
 //                        named after its diffuse texture's path, like "textures/dev/wall128.tga"
 //   Bump map (normal map): which way each texel faces, so flat faces catch the light like they have detail.
 //                        Tangent space, the blue-ish kind. Like Source's $bumpmap: green points down the

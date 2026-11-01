@@ -850,7 +850,7 @@ void DrawViewport(EditorState &editor)
 
     if (editor.level.geometry.meshes.empty() && editor.mode == MODE_OBJECT)
     {
-        const char *hint = "No geometry yet. Press Tab for Modelling mode and B to draw a cube, or File > Import OBJ";
+        const char *hint = "No geometry yet. Press Tab for Modelling mode and B to draw a cube, or File > Import Model";
         DrawUIText(hint, view.x + (view.width - MeasureUIText(hint, 20))/2, view.y + 80, 20, UIMutedTextColor());
     }
 }

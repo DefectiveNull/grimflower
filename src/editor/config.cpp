@@ -227,7 +227,7 @@ static void Cmd_ExitEditor(const Args &) { RequestAction(*current, ACTION_EXIT);
 static void Cmd_DeleteEntity(const Args &) { DeleteSelectedEntity(*current); }
 static void Cmd_Deselect(const Args &) { current->selected = -1; }
 static void Cmd_CreateEntity(const Args &) { ShowCreateEntityList(*current); }
-static void Cmd_ImportObj(const Args &) { ImportObjFromDialog(*current); }
+static void Cmd_ImportModel(const Args &) { ImportModelFromDialog(*current); }
 static void Cmd_WorldSettings(const Args &) { OpenDialog(*current, DIALOG_WORLD_SETTINGS); }
 static void Cmd_EditorInfo(const Args &) { OpenDialog(*current, DIALOG_EDITOR_INFO); }
 static void Cmd_ToggleDarkMode(const Args &) { ToggleDarkMode(); }
@@ -236,6 +236,7 @@ static void Cmd_RotateRight(const Args &) { RotateSelectedEntity(*current, -45.0
 static void Cmd_CycleMode(const Args &) { CycleEditorMode(*current); }
 static void Cmd_GridSmaller(const Args &) { ChangeGridSize(*current, -1); }
 static void Cmd_GridBigger(const Args &) { ChangeGridSize(*current, 1); }
+static void Cmd_TextureLock(const Args &) { ToggleTextureLock(*current); }
 static void Cmd_Undo(const Args &) { Undo(*current); }
 static void Cmd_Redo(const Args &) { Redo(*current); }
 static void Cmd_UndoHistory(const Args &) { OpenDialog(*current, DIALOG_UNDO_HISTORY); }
@@ -279,7 +280,8 @@ static const Command commands[] =
     { "rotate_right", Cmd_RotateRight, "Rotate right 45 degrees" },
     { "grid_smaller", Cmd_GridSmaller, "Smaller grid" },
     { "grid_bigger", Cmd_GridBigger, "Bigger grid" },
-    { "import_obj", Cmd_ImportObj, "Import OBJ as meshes" },
+    { "import_model", Cmd_ImportModel, "Import model as meshes" },
+    { "texture_lock", Cmd_TextureLock, "Toggle texture lock" },
     { "cycle_mode", Cmd_CycleMode, "Next mode: Object, Modelling, Texturing" },
     { "toggle_edit_mode", Cmd_CycleMode, nullptr },  // Its old name, so editor.cfgs that bound it still work
     { "world_settings", Cmd_WorldSettings, "World settings" },

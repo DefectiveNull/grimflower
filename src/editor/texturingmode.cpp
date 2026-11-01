@@ -10,8 +10,8 @@
 //                         right: its edge lines up with the face's
 //   Shift+E               fit the texture to the face: once across each way
 //
-// Nothing here changes the geometry's shape, so faces stay the whole polygons (polygroups) Modelling mode left
-// them as. Like Modelling mode, the world is rebuilt quickly after each change, without the collision, the
+// Nothing here changes the geometry's shape. Everything works on polygroups, the flat surfaces Modelling mode
+// marked, so a surface built from several faces is picked and textured whole. Like Modelling mode, the world is rebuilt quickly after each change, without the collision, the
 // lightmap layout and the bounce bake, which wait for Object mode.
 
 #include "editor.h"
@@ -45,7 +45,33 @@ static bool ValidFace(const EditorState &editor, const GeoPick &pick)
     return shape >= 0 && shape < (int)geometry.shapes.size() && pick.face >= 0 && pick.face < (int)geometry.shapes[shape].faces.size();
 }
 
-static bool SameFace(const GeoPick &a, const GeoPick &b) { return a.mesh == b.mesh && a.face == b.face; }
+static const GeoShape &ShapeOf(const EditorState &editor, const GeoPick &pick)
+{
+    return editor.level.geometry.shapes[editor.level.geometry.meshes[pick.mesh].shape];
+}
+
+// Whether two picks are on one flat surface: the same face, or the same polygroup of the same mesh
+static bool SameFace(const EditorState &editor, const GeoPick &a, const GeoPick &b)
+{
+    if (a.mesh != b.mesh) return false;
+    if (a.face == b.face) return true;
+    const GeoShape &shape = ShapeOf(editor, a);
+    return shape.faces[a.face].group >= 0 && shape.faces[a.face].group == shape.faces[b.face].group;
+}
+
+// Every face of the flat surface a pick is on
+static std::vector<GeoPick> PolygroupOf(const EditorState &editor, const GeoPick &pick)
+{
+    std::vector<GeoPick> faces = { pick };
+    const GeoShape &shape = ShapeOf(editor, pick);
+    for (size_t f = 0; f < shape.faces.size(); f++)
+    {
+        GeoPick other = pick;
+        other.face = (int)f;
+        if (other.face != pick.face && SameFace(editor, pick, other)) faces.push_back(other);
+    }
+    return faces;
+}
 
 static GeoFace &FaceOf(EditorState &editor, const GeoPick &pick)
 {
@@ -83,8 +109,8 @@ static float Wrap(float offset, float size)
     return wrapped;
 }
 
-// The faces a change applies to: the selected ones, or with none selected the one under the mouse. Instances
-// share their shape's faces, so each shape's face is only in once
+// The flat surfaces a change applies to, one pick for each: the selected ones, or with none selected the one
+// under the mouse. Instances share their shape's faces, so each shape's surface is only in once
 static std::vector<GeoPick> TargetFaces(const EditorState &editor)
 {
     const TextureState &t = editor.texturing;
@@ -95,7 +121,9 @@ static std::vector<GeoPick> TargetFaces(const EditorState &editor)
     std::set<std::pair<int, int>> seen;
     for (const GeoPick &pick : faces)
     {
-        if (seen.insert({ editor.level.geometry.meshes[pick.mesh].shape, pick.face }).second) unique.push_back(pick);
+        const GeoFace &face = ShapeOf(editor, pick).faces[pick.face];
+        int surface = (face.group >= 0) ? face.group : -1 - pick.face;  // A face without a polygroup is its own surface
+        if (seen.insert({ editor.level.geometry.meshes[pick.mesh].shape, surface }).second) unique.push_back(pick);
     }
     return unique;
 }
@@ -123,15 +151,19 @@ static void ApplyTexture(EditorState &editor, const GeoPick &clicked)
     if (!PickedTexture(editor, material)) return;
     const TextureState &t = editor.texturing;
     bool inSelection = false;
-    for (const GeoPick &pick : t.faces) inSelection = inSelection || SameFace(pick, clicked);
+    for (const GeoPick &pick : t.faces) inSelection = inSelection || SameFace(editor, pick, clicked);
 
-    std::vector<GeoPick> faces = inSelection ? t.faces : std::vector<GeoPick>{ clicked };
+    std::vector<GeoPick> surfaces = inSelection ? t.faces : std::vector<GeoPick>{ clicked };
     RecordUndo(editor, "Apply texture");
     std::set<std::pair<int, int>> done;
-    for (const GeoPick &pick : faces)
+    for (const GeoPick &surface : surfaces)
     {
-        if (!done.insert({ editor.level.geometry.meshes[pick.mesh].shape, pick.face }).second) continue;
-        FaceOf(editor, pick).material = material;
+        for (const GeoPick &pick : PolygroupOf(editor, surface))
+        {
+            if (!done.insert({ editor.level.geometry.meshes[pick.mesh].shape, pick.face }).second) continue;
+            FaceOf(editor, pick).material = material;
+            FaceOf(editor, pick).lockedUVs.clear();
+        }
     }
     ShowChange(editor);
     SetStatus(editor, "Applied %s to %d face%s", material.c_str(), (int)done.size(), done.size() == 1 ? "" : "s");
@@ -227,7 +259,7 @@ static void ApplyTextureStitched(EditorState &editor, const GeoPick &start)
             Vector3 p = points[k], q = points[(k + 1)%points.size()];
             for (const GeoPick &other : byEdge[KeyOf(p, q)])
             {
-                if (SameFace(other, at) || isDone(other) || FaceOf(editor, other).material != oldMaterial) continue;
+                if ((other.mesh == at.mesh && other.face == at.face) || isDone(other) || FaceOf(editor, other).material != oldMaterial) continue;
                 float bend = 1.0f - Vector3DotProduct(normal, GeoPolygonNormal(WorldPoints(editor, other.mesh, other.face)));
                 if (bend > 1.99f) continue;  // Back to back, like two boxes touching: no way round
                 waiting.push({ bend, found++, at, other, p, q });
@@ -236,6 +268,7 @@ static void ApplyTextureStitched(EditorState &editor, const GeoPick &start)
     };
 
     FaceOf(editor, start).material = material;
+    FaceOf(editor, start).lockedUVs.clear();
     finish(start);
     while (!waiting.empty())
     {
@@ -247,6 +280,7 @@ static void ApplyTextureStitched(EditorState &editor, const GeoPick &start)
                GeoPolygonNormal(WorldPoints(editor, step.to.mesh, step.to.face)), step.p, step.q, width, height,
                (float)editor.level.info.texelsPerUnit);
         to.material = material;
+        to.lockedUVs.clear();
         finish(step.to);
     }
     ShowChange(editor);
@@ -270,21 +304,25 @@ static void AlignFaces(EditorState &editor, Alignment how)
     RecordUndo(editor, names[how]);
     for (const GeoPick &pick : faces)
     {
-        GeoFace &face = FaceOf(editor, pick);
+        GeoFace face = FaceOf(editor, pick);
         float width, height;
         TextureSize(editor, face.material, width, height);
 
-        // Where the face's corners are along the texture's axes, in texels at scale 1 (world units times the level's
-        // texture density)
+        // Where the surface's corners are along the texture's axes, in texels at scale 1 (world units times the
+        // level's texture density)
+        std::vector<GeoPick> surface = PolygroupOf(editor, pick);
         float density = (float)editor.level.info.texelsPerUnit;
         float uMin = FLT_MAX, uMax = -FLT_MAX, vMin = FLT_MAX, vMax = -FLT_MAX;
-        for (Vector3 p : WorldPoints(editor, pick.mesh, pick.face))
+        for (const GeoPick &part : surface)
         {
-            float u = Vector3DotProduct(p, face.uAxis)*density, v = Vector3DotProduct(p, face.vAxis)*density;
-            uMin = fminf(uMin, u);
-            uMax = fmaxf(uMax, u);
-            vMin = fminf(vMin, v);
-            vMax = fmaxf(vMax, v);
+            for (Vector3 p : WorldPoints(editor, part.mesh, part.face))
+            {
+                float u = Vector3DotProduct(p, face.uAxis)*density, v = Vector3DotProduct(p, face.vAxis)*density;
+                uMin = fminf(uMin, u);
+                uMax = fmaxf(uMax, u);
+                vMin = fminf(vMin, v);
+                vMax = fmaxf(vMax, v);
+            }
         }
 
         // In texels a corner is at u/scale + offset. The texture's top and left edge are at 0 (and every repeat
@@ -307,6 +345,14 @@ static void AlignFaces(EditorState &editor, Alignment how)
                     face.offset.y = Wrap(-vMin/face.scale.y, height);
                 }
                 break;
+        }
+
+        // The whole surface lines up as one
+        for (const GeoPick &part : surface)
+        {
+            FaceOf(editor, part).offset = face.offset;
+            FaceOf(editor, part).scale = face.scale;
+            FaceOf(editor, part).lockedUVs.clear();
         }
     }
     ShowChange(editor);
@@ -343,7 +389,7 @@ void UpdateTexturingMode(EditorState &editor, bool keysFree, bool mouseFree)
         }
         else if (CtrlDown())
         {
-            auto found = std::find_if(t.faces.begin(), t.faces.end(), [&](const GeoPick &x) { return SameFace(x, t.hover); });
+            auto found = std::find_if(t.faces.begin(), t.faces.end(), [&](const GeoPick &x) { return SameFace(editor, x, t.hover); });
             if (found != t.faces.end()) t.faces.erase(found);
             else t.faces.push_back(t.hover);
         }
@@ -390,12 +436,21 @@ void DrawTexturingOverlay(const EditorState &editor)
     const TextureState &t = editor.texturing;
 
     // Selected faces tinted, then their outlines and the one under the mouse over everything
-    for (const GeoPick &pick : t.faces) if (ValidFace(editor, pick)) DrawFill(WorldPoints(editor, pick.mesh, pick.face), Fade(ORANGE, 0.25f));
-    if (ValidFace(editor, t.hover)) DrawFill(WorldPoints(editor, t.hover.mesh, t.hover.face), Fade(SKYBLUE, 0.15f));
+    std::vector<GeoPick> selected, hovered;
+    for (const GeoPick &pick : t.faces)
+    {
+        if (!ValidFace(editor, pick)) continue;
+        std::vector<GeoPick> surface = PolygroupOf(editor, pick);
+        selected.insert(selected.end(), surface.begin(), surface.end());
+    }
+    if (ValidFace(editor, t.hover)) hovered = PolygroupOf(editor, t.hover);
+
+    for (const GeoPick &pick : selected) DrawFill(WorldPoints(editor, pick.mesh, pick.face), Fade(ORANGE, 0.25f));
+    for (const GeoPick &pick : hovered) DrawFill(WorldPoints(editor, pick.mesh, pick.face), Fade(SKYBLUE, 0.15f));
     rlDrawRenderBatchActive();
     rlDisableDepthTest();
-    for (const GeoPick &pick : t.faces) if (ValidFace(editor, pick)) DrawOutline(WorldPoints(editor, pick.mesh, pick.face), ORANGE);
-    if (ValidFace(editor, t.hover)) DrawOutline(WorldPoints(editor, t.hover.mesh, t.hover.face), SKYBLUE);
+    for (const GeoPick &pick : selected) DrawOutline(WorldPoints(editor, pick.mesh, pick.face), ORANGE);
+    for (const GeoPick &pick : hovered) DrawOutline(WorldPoints(editor, pick.mesh, pick.face), SKYBLUE);
     rlDrawRenderBatchActive();
     rlEnableDepthTest();
 }

@@ -23,11 +23,22 @@ void GeoDeleteMesh(Geometry &geometry, int mesh);
 // Turns a mesh around its position by degrees around a world space axis
 void GeoRotateMesh(Geometry &geometry, int mesh, Vector3 axis, float degrees);
 
-// Moves a face's vertices along its own normal, resizing the shape that way
-void GeoMoveFace(GeoShape &shape, int face, float distance);
+// What happens to the textures of faces a change moves, and what that needs to know
+struct GeoTextureMove
+{
+    Matrix transform = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };  // The mesh's
+    float texelsPerUnit = 1.0f;  // The level's texture density
+    bool locked = false;         // Texture lock: faces that have lockedUVs (see GeoLockTexture) stretch with their corners. Off: their textures stay on their axes, turned onto any new plane so they don't stretch
+};
 
-// Moves vertices
-void GeoMoveVertices(GeoShape &shape, const std::vector<int> &vertices, Vector3 offset);
+// Moves a face's vertices along its own normal, resizing the shape that way
+void GeoMoveFace(GeoShape &shape, int face, float distance, const GeoTextureMove &texture = GeoTextureMove());
+
+// Moves vertices, with any others on the same spots. Faces this bends are split, see GeoFixBentFaces
+void GeoMoveVertices(GeoShape &shape, const std::vector<int> &vertices, Vector3 offset, const GeoTextureMove &texture = GeoTextureMove());
+
+// The vertices themselves and any others on the same spots: what GeoMoveVertices moves
+std::vector<int> GeoVerticesAt(const GeoShape &shape, const std::vector<int> &vertices);
 
 // Cuts a face in two along a line through point, running along direction (both in the shape's space, on the
 // face). Faces next to it get the new corners on their edges too, so the shape stays closed. Returns false if
@@ -69,5 +80,7 @@ int GeoDeleteFaces(GeoShape &shape, int face);
 // fin. rotation is the mesh's, for world aligning the new faces. Returns the copies, in the same order
 std::vector<std::pair<int, int>> GeoExtrudeEdges(GeoShape &shape, const std::vector<std::pair<int, int>> &edges, Vector3 offset, Quaternion rotation);
 
-// Splits faces that aren't flat any more into triangles
-void GeoFixBentFaces(GeoShape &shape);
+// Splits faces that aren't flat any more. moved is the vertices that bent them: each is folded off as a triangle
+// where that leaves the rest of the face flat, and in one piece. Anything else bent becomes triangles. No vertices
+// are added or renumbered
+void GeoFixBentFaces(GeoShape &shape, const std::vector<int> &moved = {});

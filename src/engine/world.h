@@ -67,7 +67,7 @@ struct WorldCubemap
 // A model props are made from, loaded once however many props use it
 struct PropModel
 {
-    std::string path;                       // The .obj, as a game data path
+    std::string path;                       // The model file, as a game data path
     Model model;                            // meshCount 0 if it couldn't be loaded
     std::vector<WorldMaterial> materials;
     BoundingBox bounds;                     // In the model's own units
@@ -157,9 +157,9 @@ void RenderWorldAO(World &world, Camera camera, int width, int height, bool enab
 // it had. SetWorldGeometry does this with .materials; the editor again after changing a material
 void ApplyMaterials(World &world, const MaterialLibrary &library);
 
-// Props: loads a model for them (once per path, through the game data, with its .mtl textures and
+// Props: loads a model for them (once per path, through the game data, with its textures and
 // .materials). Returns its index in world.propModels, or -1 if it couldn't be loaded
-int LoadPropModel(World &world, const std::string &objPath);
+int LoadPropModel(World &world, const std::string &modelPath);
 
 // Places a prop: scaled from the model's units, turned angle degrees around the vertical axis (like
 // info_player_start's angle) and moved to origin. Props are drawn with the world and cast shadows.
