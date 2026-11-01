@@ -163,7 +163,7 @@ Textures with no entry, or only defaults, have no bump and no shine. The editor 
 
 ## entitylist.txt
 
-Every entity type the game has, for the editor. `build.bat` writes it by running `game.exe -exportentities` after building the game, so **don't edit it**: change the table in `src/game/entities.cpp` instead (see [Adding an entity type](entities.md#adding-an-entity-type)).
+Every entity type the game has, for the editor. `build.bat` writes it by running `grimflower.exe -exportentities` after building the game, so **don't edit it**: change the table in `src/game/entities.cpp` instead (see [Adding an entity type](entities.md#adding-an-entity-type)).
 
 ```
 entity light "Point light with a color and a radius. Up to 32 light the level, and all of them cast shadows"
@@ -201,9 +201,9 @@ sensitivity "3"
 | File | Written by | |
 | --- | --- | --- |
 | `cfg/default.cfg` | You | The game's default binds. Runs first, every time the game starts |
-| `config.cfg` (next to `game.exe`) | The game | Your binds and options, from the Options menu and `cfg_save` |
-| `autoexec.cfg` (next to `game.exe`) | You | Your own commands, run last |
-| `editor.cfg` (next to `editor.exe`) | The editor | The editor's binds and `ed_` settings. Edits made while the editor is open are picked up when you save the file. Editor binds can have `ctrl+`, `shift+` and `alt+` in front of a key, like `bind "ctrl+s" "save_level"` |
+| `config.cfg` (next to `grimflower.exe`) | The game | Your binds and options, from the Options menu and `cfg_save` |
+| `autoexec.cfg` (next to `grimflower.exe`) | You | Your own commands, run last |
+| `editor.cfg` (next to `GrimEd.exe`) | The editor | The editor's binds and `ed_` settings. Edits made while the editor is open are picked up when you save the file. Editor binds can have `ctrl+`, `shift+` and `alt+` in front of a key, like `bind "ctrl+s" "save_level"` |
 
 Key names are letters and numbers, plus `space`, `tab`, `enter`, `escape`, `backspace`, `capslock`, `uparrow`, `downarrow`, `leftarrow`, `rightarrow`, `shift`, `ctrl`, `alt`, `ins`, `del`, `home`, `end`, `pgup`, `pgdn`, `f1` to `f12`, `semicolon`, `mouse1` to `mouse5`, `mwheelup` and `mwheeldown`.
 
@@ -211,7 +211,7 @@ See [The game](game.md#commands) for the game's commands and cvars, and [The edi
 
 ## Models and textures
 
-- **Models** are Wavefront `.obj` files in `model/`, with a `.mtl` file giving each part its texture. They're used for props (`prop_model`) and for importing as level geometry (Edit > Import OBJ as Meshes). Make them in Quake units.
+- **Models** are Wavefront `.obj` files in `models/`, in subfolders like `props/`, with a `.mtl` file giving each part its texture. They're used for props (`prop_model`) and for importing as level geometry (Edit > Import OBJ as Meshes). Make them in Quake units.
 - **Textures** go in `textures/`, in subfolders for categories. `.tga`, `.png`, `.jpg` and `.bmp` all work. Name maps for other textures with `_normal`, `_bump`, `_spec`, `_specular`, `_gloss` or `_glossy` at the end, so the Materials tab doesn't list them as textures of their own.
 - **Skyboxes** are environment images, like the `.hdr` in `textures/sky/`, set in the editor's Global World Settings.
 
@@ -221,9 +221,9 @@ See [The game](game.md#commands) for the game's commands and cvars, and [The edi
 
 - `cfg/*.cfg`
 - `maps/*.json`, and `maps/*_lightmap.png` if there are any
-- `model/*.obj` and `model/*.mtl`
+- `models/`, without Blender files or autosaves
 - `textures/`
 - `.materials`, if it exists
 - `sound/` and `music/`, once they exist
 
-The game reads everything through it, by the same paths. When `game.exe` runs from inside the project (as `build/game.exe` does), the project's own loose files win over the zip, so changes show up without rebuilding. The editor always uses the project folder.
+The game reads everything through it, by the same paths. When `grimflower.exe` runs from inside the project (as `build/grimflower.exe` does), the project's own loose files win over the zip, so changes show up without rebuilding. The editor always uses the project folder.

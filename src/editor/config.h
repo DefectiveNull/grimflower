@@ -1,7 +1,7 @@
 #pragma once
 
 // editor.cfg: the editor's binds and settings, in the same format as the game's .cfg files.
-// It lives next to editor.exe, and is saved automatically whenever a setting changes. Hand edits made
+// It lives next to GrimEd.exe, and is saved automatically whenever a setting changes. Hand edits made
 // while the editor is open are picked up when the file is saved (hotreload.cpp), so they aren't lost.
 //
 //   bind "ctrl+s" "save_level"    Binds can use ctrl+, shift+ and alt+ in front of a key

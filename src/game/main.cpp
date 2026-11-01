@@ -82,7 +82,7 @@ static bool StartLevel(const std::string &path, Level &level, World &world, bool
 
 int main(int argc, char **argv)
 {
-    // game.exe -exportentities [file]: writes the entity table for the editor and quits, without
+    // grimflower.exe -exportentities [file]: writes the entity table for the editor and quits, without
     // opening a window. build.bat runs this after every build
     if (argc >= 2 && strcmp(argv[1], "-exportentities") == 0)
     {
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     ExecConfig("config.cfg", true);
     ExecConfig("autoexec.cfg", true);
 
-    // Then commands from the command line, like Quake's: game.exe +map platforms runs "map platforms".
+    // Then commands from the command line, like Quake's: grimflower.exe +map platforms runs "map platforms".
     // Each + starts a new command, and the words after it are its arguments
     std::string commandLine;
     for (int i = 1; i < argc; i++)

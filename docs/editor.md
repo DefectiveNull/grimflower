@@ -1,6 +1,6 @@
 # The editor
 
-The editor (`build/editor.exe`) builds Grimflower's levels. It edits one level at a time: its geometry (the walls, floors and everything solid), its entities (the player start, lights, doors, water and so on), and some settings for the whole level. Levels are drawn with the game's own lighting, shadows, bounce light and materials, so what you see is what the game shows.
+The editor (`build/GrimEd.exe`) builds Grimflower's levels. It edits one level at a time: its geometry (the walls, floors and everything solid), its entities (the player start, lights, doors, water and so on), and some settings for the whole level. Levels are drawn with the game's own lighting, shadows, bounce light and materials, so what you see is what the game shows.
 
 - [Starting the editor](#starting-the-editor)
 - [The window](#the-window)
@@ -19,7 +19,7 @@ The editor (`build/editor.exe`) builds Grimflower's levels. It edits one level a
 
 ## Starting the editor
 
-Run `build\editor.exe`. It has to be inside the project folder: it looks for the folder with `maps/` and `model/` in it, starting from its own folder and going up to three folders higher, and works from there. Every path it saves (textures, models, skyboxes) is relative to that folder.
+Run `build\GrimEd.exe`. It has to be inside the project folder: it looks for the folder with `maps/` and `models/` in it, starting from its own folder and going up to three folders higher, and works from there. Every path it saves (textures, models, skyboxes) is relative to that folder.
 
 It also needs `entitylist.txt`, which `build.bat` writes from the game's entity table. Without it, no entities can be created. If you rebuild while the editor is open, it notices the new `entitylist.txt` and loads it.
 
@@ -369,7 +369,7 @@ Hidden entities can't be clicked in the view, but can still be picked from the E
 - **View:** field of view, camera speed, show grid, snap to grid, show labels.
 - **Input:** look sensitivity, invert look, and every key bind. Click **Change** next to a command, then press the key (with Ctrl, Shift or Alt if you like). Binding a key takes it from whatever had it. **Clear** removes a command's key, and **Reset to Defaults** puts back the default binds.
 
-Everything is saved as you change it, in `editor.cfg` next to `editor.exe`. It uses the same format as the game's `.cfg` files:
+Everything is saved as you change it, in `editor.cfg` next to `GrimEd.exe`. It uses the same format as the game's `.cfg` files:
 
 ```
 bind "ctrl+s" "save_level"

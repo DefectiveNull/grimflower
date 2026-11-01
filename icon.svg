@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 2 220 220" width="256" height="256">
+  <title>Grimflower</title>
+  <!-- The mark from docs/grimflower-logo.svg without the title, which can't be read at icon sizes.
+       icon.ico is rendered from this by tools/make_icon.ps1, so run that after changing this file -->
+  <defs>
+    <radialGradient id="halo">
+      <stop offset="0" stop-color="#F5A142" stop-opacity="0.75"/>
+      <stop offset="0.5" stop-color="#F5A142" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#F5A142" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="3.5"/>
+    </filter>
+  </defs>
+  <rect x="-10" y="2" width="220" height="220" fill="#15110E"/>
+  <g fill="#A4472F">
+    <circle cx="100" cy="100" r="60" fill="none" stroke="#A4472F" stroke-width="16" stroke-linecap="round" stroke-dasharray="34 28.8 34 28.8 34 28.8 34 28.8 34 91.6" transform="rotate(105 100 100)"/>
+    <path d="M64.1,155.4 L46.5,155.4 L56.7,149.8 Z M34.1,96.5 L25.3,81.4 L35.2,87.4 Z M70.0,41.2 L78.8,26.0 L78.5,37.6 Z M135.9,44.6 L153.5,44.6 L143.3,50.2 Z M165.9,103.5 L174.7,118.6 L164.8,112.6 Z M46.4,106.6 L55.8,108.6 L46.0,99.1 Z M121.1,50.3 L114.7,57.5 L127.8,53.7 Z M96.2,133 L96.3,124 L89,120 Z M103.2,164 L103.1,172 L110,160 Z"/>
+    <path d="M96,113 L104,113 L103,176 L100,198 L97,176 Z"/>
+    <path d="M102,146 C116,140 129,148 133,163 C120,161 109,157 102,154 Z"/>
+    <path d="M150,170 C158,166 168,170 170,178 C162,180 154,177 150,170 Z"/>
+    <ellipse cx="138" cy="191" rx="7" ry="3.5" transform="rotate(-25 138 191)"/>
+    <circle cx="100" cy="100" r="32" fill="url(#halo)"/>
+    <circle cx="100" cy="100" r="11" fill="none" stroke="#F5A142" stroke-width="10" filter="url(#blur)"/>
+    <circle cx="100" cy="100" r="11" fill="none" stroke="#F5A142" stroke-width="7"/>
+    <circle cx="100" cy="100" r="11" fill="none" stroke="#FFE7B3" stroke-width="2.5"/>
+  </g>
+</svg>

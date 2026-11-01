@@ -1,6 +1,6 @@
 # The game
 
-The game (`build/game.exe`) is a first person game with Quake 1 style movement. Right now it's a place to walk around the levels made in the editor: there's movement, swimming, ladders, doors, level changes and ambient sound, but no enemies, weapons or other gameplay yet.
+The game (`build/grimflower.exe`) is a first person game with Quake 1 style movement. Right now it's a place to walk around the levels made in the editor: there's movement, swimming, ladders, doors, level changes and ambient sound, but no enemies, weapons or other gameplay yet.
 
 - [Running the game](#running-the-game)
 - [Menus](#menus)
@@ -16,18 +16,18 @@ The game (`build/game.exe`) is a first person game with Quake 1 style movement. 
 
 ## Running the game
 
-Run `build\game.exe`. It opens on the main menu. **Play** loads `maps/dev.json`.
+Run `build\grimflower.exe`. It opens on the main menu. **Play** loads `maps/dev.json`.
 
 Commands can be given on the command line, Quake style: each `+` starts a command, and the words after it are its arguments. They run after the config files.
 
 ```
-game.exe +map platforms
-game.exe +map rad +r_ssao 0
+grimflower.exe +map platforms
+grimflower.exe +map rad +r_ssao 0
 ```
 
-`game.exe -exportentities [file]` writes the entity table to `entitylist.txt` (or the given file) for the editor, and quits without opening a window. `build.bat` runs this after every build.
+`grimflower.exe -exportentities [file]` writes the entity table to `entitylist.txt` (or the given file) for the editor, and quits without opening a window. `build.bat` runs this after every build.
 
-The game writes `config.cfg` (your binds and options) and `console.log` (see `writelogs`) next to `game.exe`.
+The game writes `config.cfg` (your binds and options) and `console.log` (see `writelogs`) next to `grimflower.exe`.
 
 ## Menus
 
@@ -193,7 +193,7 @@ r_bounce_scale 1.5
 
 The game loads its files (levels, models, textures, `.materials`, configs and sounds) by their path from the project folder, like `maps/dev.json`. It looks for them in two places:
 
-- **The project folder**, when `game.exe` is inside it (as `build/game.exe` is). Its loose files win, so saving a level in the editor or changing a texture shows up the next time the level loads, without rebuilding.
-- **`gamedata.zip`** next to `game.exe`, which `build.bat` packs. A game shipped without the project folder uses only this.
+- **The project folder**, when `grimflower.exe` is inside it (as `build/grimflower.exe` is). Its loose files win, so saving a level in the editor or changing a texture shows up the next time the level loads, without rebuilding.
+- **`gamedata.zip`** next to `grimflower.exe`, which `build.bat` packs. A game shipped without the project folder uses only this.
 
 See [File formats](file-formats.md#gamedatazip) for what goes in the zip.

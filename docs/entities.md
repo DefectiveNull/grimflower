@@ -72,7 +72,7 @@ A model placed in the level, like a crate or a lamp. The model is an `.obj`, wit
 
 | Parameter | Type | Default | Range | |
 | --- | --- | --- | --- | --- |
-| `model` | text | | | The `.obj` to show, as a game data path, like `model/crate.obj` |
+| `model` | text | | | The `.obj` to show, as a game data path, like `models/crate.obj` |
 | `angle` | angle | 0 | 0–360 | Degrees around the vertical axis |
 | `scale` | number | 1 | 0–4 | Size, as a multiple of the model's own. 1 for models made in Quake units, like the world |
 | `static` | bool | true | | **On:** part of the level for good. The player collides with the box around it, and it's in the bounce bake. **Off:** decoration the player walks through |

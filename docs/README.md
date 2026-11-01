@@ -2,8 +2,8 @@
 
 Grimflower is two programs built from one codebase:
 
-- **The game** (`build/game.exe`): a first person game with Quake 1 style movement, played in levels made with the editor.
-- **The editor** (`build/editor.exe`): a level editor where you build a level's geometry, place entities, set up materials and bake its lighting.
+- **The game** (`build/grimflower.exe`): a first person game with Quake 1 style movement, played in levels made with the editor.
+- **The editor** (`build/GrimEd.exe`): a level editor where you build a level's geometry, place entities, set up materials and bake its lighting.
 
 They share the engine (`src/engine/`) and the level format (`src/shared/`), so the editor shows a level lit the same way the game draws it.
 
@@ -36,7 +36,8 @@ Files are referred to by their path from the project folder, with forward slashe
 | --- | --- |
 | `maps/` | Levels (`.json`) and their baked lightmaps (`<level>_lightmap.png`) |
 | `textures/` | Textures, in subfolders by category (`dev/`, `liquids/`, `sky/`). The editor's Materials tab lists them by subfolder |
-| `model/` | `.obj` models with their `.mtl` files, for importing as level geometry or placing as props |
+| `models/` | `.obj` models with their `.mtl` files and textures, in subfolders like `props/`, for importing as level geometry or placing as props |
+| `icon.svg` | The logo as the icon for `grimflower.exe` and `GrimEd.exe`. `icon.ico` is rendered from it by `tools/make_icon.ps1` |
 | `cfg/default.cfg` | The game's default key binds |
 | `.materials` | Bump, specular and gloss maps for each texture, written by the editor's Materials tab |
 | `entitylist.txt` | Every entity type, written by the game during the build, read by the editor. Don't edit it |

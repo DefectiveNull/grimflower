@@ -263,7 +263,7 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
     {
         "prop_model", "A model placed in the level, like a crate or a lamp. Static ones are solid; others are decoration the player walks through",
         {
-            { "model", "text", "", "The .obj to show, as a game data path, like model/crate.obj. Its .mtl textures and .materials apply", 0.0f, 0.0f },
+            { "model", "text", "", "The .obj to show, as a game data path, like models/crate.obj. Its .mtl textures and .materials apply", 0.0f, 0.0f },
             { "angle", "angle", "0", "Degrees around the vertical axis", 0.0f, 360.0f },
             { "scale", "number", "1", "Size, as a multiple of the model's own: 1 for models made in Quake units, like the world", 0.0f, 4.0f },
             { "static", "bool", "1", "Part of the level for good: the player collides with the box around it, and it's in the bounce bake. Off: decoration the player walks through", 0.0f, 0.0f },
@@ -414,7 +414,7 @@ bool ExportEntityList(const char *path)
 {
     std::string text =
         "// entitylist.txt: every entity type the game has, for the editor.\n"
-        "// Written by game.exe -exportentities every time build.bat builds the game, so don't edit it:\n"
+        "// Written by grimflower.exe -exportentities every time build.bat builds the game, so don't edit it:\n"
         "// change the entity table in src/game/entities.cpp instead.\n"
         "//\n"
         "// entity <classname> \"<description>\"\n"

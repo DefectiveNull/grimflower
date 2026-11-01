@@ -178,11 +178,11 @@ bool GameDataFileExists(const char *fileName)
 
 bool UseProjectFolder()
 {
-    // build/game.exe sits inside the project, so look in the game's folder and the ones above it
+    // build/grimflower.exe sits inside the project, so look in the game's folder and the ones above it
     std::string folder = GetApplicationDirectory();
     for (int i = 0; i < 4; i++)
     {
-        if (DirectoryExists((folder + "/maps").c_str()) && DirectoryExists((folder + "/model").c_str()))
+        if (DirectoryExists((folder + "/maps").c_str()) && DirectoryExists((folder + "/models").c_str()))
         {
             projectFolder = folder;
             for (char &c : projectFolder) if (c == '\\') c = '/';

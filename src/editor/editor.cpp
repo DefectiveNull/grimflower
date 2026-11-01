@@ -301,7 +301,7 @@ bool ImportObjMeshes(EditorState &editor, const std::string &path, float scale)
 void ImportObjFromDialog(EditorState &editor)
 {
     std::string path;
-    if (!ShowOpenFileDialog(GetWindowHandle(), "Import OBJ as Meshes", "OBJ models (*.obj)\0*.obj\0All files (*.*)\0*.*\0", editor.dataRoot + "/model", path)) return;
+    if (!ShowOpenFileDialog(GetWindowHandle(), "Import OBJ as Meshes", "OBJ models (*.obj)\0*.obj\0All files (*.*)\0*.*\0", editor.dataRoot + "/models", path)) return;
     SetEditorMode(editor, MODE_MODELLING);  // Geometry only changes in Modelling mode
     ImportObjMeshes(editor, ToDataPath(editor, path), DEFAULT_WORLD_SCALE);
 }

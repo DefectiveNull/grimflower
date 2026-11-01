@@ -43,10 +43,11 @@ They also link against these Windows system libraries, which come with the Windo
 
 `build.bat` then:
 
-1. Compiles every `.cpp` in `src/game/`, `src/engine/` and `src/shared/` into `build/game.exe`
-2. Runs `game.exe -exportentities` to write `entitylist.txt`, the list of entity types the editor reads
-3. Compiles every `.cpp` in `src/editor/`, `src/engine/` and `src/shared/` into `build/editor.exe`
-4. Packs `cfg/`, `maps/`, `model/` and `textures/` into `build/gamedata.zip`
+1. Compiles the icon, `icon.ico`, which both programs use. It's rendered from `icon.svg`: run `tools/make_icon.ps1` after changing that file
+2. Compiles every `.cpp` in `src/game/`, `src/engine/` and `src/shared/` into `build/grimflower.exe`
+3. Runs `grimflower.exe -exportentities` to write `entitylist.txt`, the list of entity types the editor reads
+4. Compiles every `.cpp` in `src/editor/`, `src/engine/` and `src/shared/` into `build/GrimEd.exe`
+5. Packs `cfg/`, `maps/`, `models/` and `textures/` into `build/gamedata.zip`
 
 Everything it makes goes in `build/`. There are no build settings to change. New `.cpp` files in any of these folders are picked up automatically. The source is split into:
 
@@ -57,8 +58,8 @@ Everything it makes goes in `build/`. There are no build settings to change. New
 
 ### Running
 
-- **Game:** run `build\game.exe`. Play loads `maps/dev.json`. When the game is inside the project folder, it loads files straight from `maps/`, `model/`, `textures/` and `cfg/`, so edits show up without rebuilding. Otherwise it reads them from `gamedata.zip` next to it.
-- **Editor:** run `build\editor.exe`. It needs to be inside the project folder, since it looks for `maps/` and `model/` in its own folder and up to three folders above it. It also needs the `entitylist.txt` written by `build.bat`, so run the build after adding or changing entity types in `src/game/entities.cpp`.
+- **Game:** run `build\grimflower.exe`. Play loads `maps/dev.json`. When the game is inside the project folder, it loads files straight from `maps/`, `models/`, `textures/` and `cfg/`, so edits show up without rebuilding. Otherwise it reads them from `gamedata.zip` next to it.
+- **Editor:** run `build\GrimEd.exe`. It needs to be inside the project folder, since it looks for `maps/` and `models/` in its own folder and up to three folders above it. It also needs the `entitylist.txt` written by `build.bat`, so run the build after adding or changing entity types in `src/game/entities.cpp`.
 
 Both write their settings and logs next to the executable (`config.cfg`, `editor.cfg` and `console.log`). Those files are ignored by git.
 

@@ -1,7 +1,7 @@
 #pragma once
 
 // Every entity type the game knows, in one table (entities.cpp). The editor learns about them from
-// entitylist.txt, which build.bat writes from this table by running game.exe -exportentities.
+// entitylist.txt, which build.bat writes from this table by running grimflower.exe -exportentities.
 // To add an entity type, add it to the table: the game and the editor both pick it up from there.
 
 #include "raylib.h"

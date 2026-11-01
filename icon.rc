@@ -1,0 +1,3 @@
+// The icon for grimflower.exe and GrimEd.exe. GLFW uses a resource named GLFW_ICON for its windows,
+// so this one name also sets the title bar and taskbar icon
+GLFW_ICON ICON "icon.ico"

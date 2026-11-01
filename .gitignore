@@ -12,4 +12,4 @@ console.log
 
 # Blender backups and map editor autosaves
 *.blend1
-model/autosave/
+models/autosave/

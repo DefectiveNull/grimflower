@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#define EDITOR_NAME "Grimflower Editor"
+#define EDITOR_NAME "GrimEd"
 #define EDITOR_VERSION "0.1"
 
 // Screen layout
@@ -158,7 +158,7 @@ enum PendingAction
 
 struct EditorState
 {
-    std::string dataRoot;     // Project folder with maps/, model/ and textures/. Also the working directory
+    std::string dataRoot;     // Project folder with maps/, models/ and textures/. Also the working directory
 
     // The level being edited
     Level level;

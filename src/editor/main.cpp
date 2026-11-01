@@ -1,4 +1,4 @@
-// Level editor for Grimflower: a separate program from the game, built to build/editor.exe
+// Level editor for Grimflower: a separate program from the game, built to build/GrimEd.exe
 
 #include "raylib.h"
 #include "rlgl.h"
@@ -10,18 +10,18 @@
 #include "hotreload.h"
 #include "style.h"
 
-// The project folder, which has maps/ and model/ in it. The editor runs from build/, so it looks
+// The project folder, which has maps/ and models/ in it. The editor runs from build/, so it looks
 // in its own folder and then the ones above it
 static std::string FindDataRoot()
 {
     std::string folder = GetApplicationDirectory();
     for (int i = 0; i < 4; i++)
     {
-        if (DirectoryExists((folder + "/maps").c_str()) && DirectoryExists((folder + "/model").c_str())) return folder;
+        if (DirectoryExists((folder + "/maps").c_str()) && DirectoryExists((folder + "/models").c_str())) return folder;
         folder = GetPrevDirectoryPath(folder.c_str());
     }
 
-    TraceLog(LOG_WARNING, "EDITOR: Couldn't find the project folder with maps/ and model/, using the editor's own folder");
+    TraceLog(LOG_WARNING, "EDITOR: Couldn't find the project folder with maps/ and models/, using the editor's own folder");
     return GetApplicationDirectory();
 }
 
