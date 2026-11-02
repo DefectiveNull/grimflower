@@ -7,6 +7,11 @@
 #define MAX_SHADOW_LIGHTS 32  // Point lights that can cast shadows at once. The shader gets it too
 #define MAX_CUBEMAPS 4        // Cubemaps the shader can reflect at once: the ones nearest the camera
 
+// Transparency, the way Ironwail (and Quake's fence textures before it) does it: a texture with see-through
+// texels is a cutout. Texels under this alpha are holes, the rest are drawn fully opaque, in the same pass as
+// everything else, so nothing needs sorting. The shaders get it as ALPHA_CUTOFF
+#define ALPHA_CUTOFF 0.666f
+
 // A directional light, like sunlight: every surface gets light from the same direction. Casts shadows
 struct Sun
 {
@@ -39,6 +44,7 @@ struct Lighting
     Shader shader;           // Assign to the materials of anything that should be lit
     Shader depthShader;      // Renders depth only, for the shadow map
     Material depthMaterial;
+    int depthAlphaTestLoc, pointDepthAlphaTestLoc;
     RenderTexture2D shadowMap;
     Matrix sunViewProjection;   // Takes world positions into the shadow map
     BoundingBox bounds;         // Area the sun's shadow map covers
@@ -69,13 +75,14 @@ struct Lighting
     // Baked sun bounce: a lightmap, read through the mesh's second texture coordinates while SetLightingBounce turns it on
     float bounceScale;       // How strong it is, 0 for none
     unsigned int lightmapTexture;  // 0 for none
-    int bounceEnabledLoc, bounceScaleLoc, lightmapLoc;
+    int bounceEnabledLoc, bounceScaleLoc, lightmapLoc, bounceAtSpotLoc, bounceSpotLoc;
 
     // The material of the mesh drawn next, see SetLightingMaterial
     int bumpMapLoc, specularMapLoc, glossMapLoc, hasBumpMapLoc, bumpGreenUpLoc, hasSpecularMapLoc, hasGlossMapLoc;
     int specularStrengthLoc, glossinessLoc, viewPositionLoc, reflectionLoc;
     bool unlit;              // Textures only, no lighting: the editor's Shaded Unlit and Wireframe views
     int unlitLoc;
+    int alphaTestLoc;
 
     // Cubemaps (env_cubemap) for reflections: every one in the level. BeginLighting picks the MAX_CUBEMAPS
     // nearest the camera. capturingCubemaps turns reflections off while they're being captured
@@ -88,6 +95,11 @@ struct Lighting
 // Loads the shaders and shadow map, and places the sun above a corner of the given area
 void InitLighting(Lighting &lighting, BoundingBox bounds);
 void UnloadLighting(Lighting &lighting);
+
+// Whether a texture is a cutout: it has see-through texels. Whatever loads a texture says which, see
+// FixAlphaEdges (world.h). The shadow maps alpha test cutout meshes by this, and draw them from both sides
+void MarkTextureCutout(unsigned int textureId, bool cutout);
+bool IsTextureCutout(unsigned int textureId);
 
 // Something drawn into the shadow maps: a model, placed by transform (the world mesh, or a prop)
 struct ShadowCaster
@@ -111,6 +123,14 @@ void SetLightingAO(const Lighting &lighting, bool enabled);
 // The same for baked sun bounce: what's drawn next reads the lightmap through its second texture coordinates (only the world
 // mesh, which has them). Its strength is bounceScale
 void SetLightingBounce(const Lighting &lighting, bool enabled);
+
+// While bounce is on: what's drawn next reads all of it from one spot in the lightmap instead, its texture coordinates
+// there, for props with detail lighting (FindPropBounceSpots)
+void SetLightingBounceSpot(const Lighting &lighting, bool enabled, Vector2 spot);
+
+// Between BeginLighting and EndLighting: whether what's drawn next is a cutout (IsTextureCutout), its holes discarded
+// at ALPHA_CUTOFF. BeginLighting turns it off
+void SetLightingAlphaTest(const Lighting &lighting, bool enabled);
 
 // Between BeginLighting and EndLighting: the bump, specular and gloss maps (texture ids, 0 for none) and
 // settings of what's drawn next (materials.h). BeginLighting starts with none: no bump and no shine

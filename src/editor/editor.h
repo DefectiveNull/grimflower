@@ -128,6 +128,25 @@ struct TextureState
     GeoPick hover;
 };
 
+// The Sprinkler (sprinkler.cpp): in Object mode, a click scatters prop_models around it, resting on the surface
+static const int SPRINKLER_PROPS = 3;
+struct SprinklerState
+{
+    bool active = false;
+    std::string props[SPRINKLER_PROPS];  // Model paths to pick from at random. Empty ones are skipped
+    float radius = 64.0f;                // World units around the click
+    int count = 8;                       // Props a click places
+    float scaleMin = 0.8f, scaleMax = 1.2f;  // Each gets a random scale between these
+    bool collision = false;              // What the new props' parameters are set to
+    bool isStatic = false;
+    bool detailLighting = true;
+
+    // The spot under the mouse, for the preview ring
+    bool hovering = false;
+    Vector3 hoverPoint = { 0.0f, 0.0f, 0.0f };
+    Vector3 hoverNormal = { 0.0f, 1.0f, 0.0f };
+};
+
 // A copy of the level from before a change, so the change can be undone
 struct UndoStep
 {
@@ -193,6 +212,7 @@ struct EditorState
     EditorMode mode;
     EditState edit;
     TextureState texturing;
+    SprinklerState sprinkler;
     ViewMode viewMode;
     Sun defaultSun;           // Sun the world gets when the level has no "sun" entity
     Skybox skybox;            // The level's info.skybox
@@ -318,6 +338,12 @@ GeoPick PickGeometry(const EditorState &editor, Ray ray);  // The face a ray hit
 void DrawModellingOverlay(const EditorState &editor);  // Inside BeginMode3D, after the world
 void DrawViewportUI(EditorState &editor);             // Over the 3D view: the mode and tool buttons, and the view menu
 bool IsMouseOverViewportUI();                         // So clicks on them don't reach the level
+
+// sprinkler.cpp: the Sprinkler
+void ToggleSprinkler(EditorState &editor);
+void UpdateSprinkler(EditorState &editor, bool mouseFree);    // While it's on, instead of entity selection
+int SprinkleProps(EditorState &editor, Vector3 center, Vector3 normal);  // One click's worth, as one undo step. Returns how many it placed
+void DrawSprinklerOverlay(const EditorState &editor);         // Inside BeginMode3D, after the world
 
 // texturingmode.cpp: Texturing mode
 void UpdateTexturingMode(EditorState &editor, bool keysFree, bool mouseFree);

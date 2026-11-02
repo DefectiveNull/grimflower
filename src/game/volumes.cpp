@@ -317,9 +317,11 @@ void DrawVolumes(const Volumes &volumes, const World &world, bool showAll)
         {
             BoundingBox box = DoorBox(door);
             SetLightingWorldMaterial(world.lighting, door.material);
+            SetLightingAlphaTest(world.lighting, door.model.materialCount > 0 && IsTextureCutout(door.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture.id));  // Like a portcullis
             DrawModel(door.model, Vector3Scale(Vector3Add(box.min, box.max), 0.5f), 1.0f, WHITE);
         }
         ClearLightingMaterial(world.lighting);
+        SetLightingAlphaTest(world.lighting, false);
     EndLighting();
 
     // Water last, since it's see-through. Both sides of each face, so the surface shows from underwater too,

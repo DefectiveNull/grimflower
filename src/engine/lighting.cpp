@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <unordered_set>
 
 // Two OpenGL 1.1 functions rlgl has no wrapper for, straight from opengl32 (windows.h would clash with raylib)
 extern "C" __declspec(dllimport) void __stdcall glBindTexture(unsigned int target, unsigned int texture);
@@ -68,6 +69,7 @@ in vec4 fragColor;
 
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
+uniform int alphaTest;  // 1: a cutout, like grass. Texels under ALPHA_CUTOFF are holes, the rest fully opaque. See SetLightingAlphaTest
 
 uniform vec3 sunDirection;
 uniform vec3 sunColor;
@@ -101,6 +103,8 @@ uniform float aoDirect;     // How much the AO darkens direct light too, 0 to 1
 uniform sampler2D lightmap;
 uniform int bounceEnabled;
 uniform float bounceScale;
+uniform int bounceAtSpot;  // 1: the whole mesh reads it at bounceSpot instead, the ground under a detail lit prop
+uniform vec2 bounceSpot;
 
 // The mesh's material, besides its diffuse texture (materials.h). SetLightingMaterial sets these per mesh;
 // everything else gets no bump map and no shine
@@ -133,9 +137,10 @@ uniform int cubemapCount;
 // looks the same as none, and bumps facing where the bounce comes from get brighter
 vec3 Bounce(vec3 bump)
 {
-    vec2 uv = vec2(fragTexCoord2.x, fragTexCoord2.y*0.25);
+    vec2 at = (bounceAtSpot == 1) ? bounceSpot : fragTexCoord2;
+    vec2 uv = vec2(at.x, at.y*0.25);
     vec3 headOn = texture(lightmap, uv).rgb;
-    if (hasBumpMap == 0) return headOn;
+    if (hasBumpMap == 0 || bounceAtSpot == 1) return headOn;  // The tilted layers are the ground's directions, not the prop's
 
     const vec3 BASIS0 = vec3(0.81649658, 0.0, 0.57735027);
     const vec3 BASIS1 = vec3(-0.40824829, 0.70710678, 0.57735027);
@@ -258,22 +263,32 @@ float PointShadow(int i, int slot, vec3 fromLight, float facing)
 void main()
 {
     vec4 texel = texture(texture0, fragTexCoord)*colDiffuse*fragColor;
+
+    // The face's own normal decides what's in shadow and what faces away from a light. The bump map's
+    // normal, if there is one, decides how much light each texel catches and where its highlights are.
+    // The texture frame comes from screen space derivatives, so it's worked out before a cutout's discard,
+    // which would leave the pixels around a hole with nothing to compare to (Ironwail does the same)
+    vec3 faceNormal = normalize(fragNormal);
+    mat3 frame = (hasBumpMap == 1) ? TextureFrame(faceNormal, fragPosition, fragTexCoord) : mat3(1.0);
+    if (alphaTest == 1)
+    {
+        if (texel.a < ALPHA_CUTOFF) discard;
+        texel.a = 1.0;  // Drawn opaque, so cutouts never depend on what's drawn after them
+    }
+
     if (unlit == 1)
     {
         finalColor = texel;  // Shaded unlit, the editor's view: textures only
         return;
     }
 
-    // The face's own normal decides what's in shadow and what faces away from a light. The bump map's
-    // normal, if there is one, decides how much light each texel catches and where its highlights are
-    vec3 faceNormal = normalize(fragNormal);
     vec3 normal = faceNormal;
     vec3 bump = vec3(0.0, 0.0, 1.0);  // In the texture's own space: x and y along it, z off the surface
     if (hasBumpMap == 1)
     {
         bump = normalize(texture(bumpMap, fragTexCoord).xyz*2.0 - 1.0);
         if (bumpGreenUp == 1) bump.y = -bump.y;
-        normal = normalize(TextureFrame(faceNormal, fragPosition, fragTexCoord)*bump);
+        normal = normalize(frame*bump);
     }
 
     // Specular, Blinn-Phong: the material's shine, times its specular map, with the gloss setting the
@@ -332,22 +347,29 @@ void main()
 }
 )";
 
-// Only writes depth, for the shadow map
+// Only writes depth, for the shadow map. Cutouts are alpha tested here too, so they cast their shape's shadow
+// InitLighting puts "#version 330" and the ALPHA_CUTOFF define in front of these fragment shaders
 static const char *DEPTH_VS = R"(
 #version 330
 in vec3 vertexPosition;
+in vec2 vertexTexCoord;
 uniform mat4 mvp;
+out vec2 fragTexCoord;
 void main()
 {
+    fragTexCoord = vertexTexCoord;
     gl_Position = mvp*vec4(vertexPosition, 1.0);
 }
 )";
 
 static const char *DEPTH_FS = R"(
-#version 330
+in vec2 fragTexCoord;
+uniform sampler2D texture0;
+uniform int alphaTest;
 out vec4 finalColor;
 void main()
 {
+    if (alphaTest == 1 && texture(texture0, fragTexCoord).a < ALPHA_CUTOFF) discard;
     finalColor = vec4(1.0);
 }
 )";
@@ -357,24 +379,30 @@ void main()
 static const char *POINT_DEPTH_VS = R"(
 #version 330
 in vec3 vertexPosition;
+in vec2 vertexTexCoord;
 uniform mat4 mvp;
 uniform mat4 matModel;
 out vec3 fragPosition;
+out vec2 fragTexCoord;
 void main()
 {
     fragPosition = vec3(matModel*vec4(vertexPosition, 1.0));
+    fragTexCoord = vertexTexCoord;
     gl_Position = mvp*vec4(vertexPosition, 1.0);
 }
 )";
 
 static const char *POINT_DEPTH_FS = R"(
-#version 330
 in vec3 fragPosition;
+in vec2 fragTexCoord;
+uniform sampler2D texture0;
+uniform int alphaTest;
 uniform vec3 lightPosition;
 uniform float lightRadius;
 out vec4 finalColor;
 void main()
 {
+    if (alphaTest == 1 && texture(texture0, fragTexCoord).a < ALPHA_CUTOFF) discard;
     gl_FragDepth = length(fragPosition - lightPosition)/lightRadius;
     finalColor = vec4(1.0);
 }
@@ -434,8 +462,9 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.sun.ambientColor = { 1.0f, 1.0f, 1.0f };
 
     Shader &shader = lighting.shader;
+    std::string cutoff = TextFormat("#define ALPHA_CUTOFF %f\n", ALPHA_CUTOFF);
     std::string fragmentSource = TextFormat("#version 330\n#define MAX_LIGHTS %d\n#define MAX_SHADOW_LIGHTS %d\n", MAX_POINT_LIGHTS, MAX_SHADOW_LIGHTS);
-    fragmentSource += LIGHTING_FS;
+    fragmentSource += cutoff + LIGHTING_FS;
     shader = LoadShaderFromMemory(LIGHTING_VS, fragmentSource.c_str());
     shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
     shader.locs[SHADER_LOC_MATRIX_NORMAL] = GetShaderLocation(shader, "matNormal");
@@ -463,6 +492,8 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.bounceEnabledLoc = GetShaderLocation(shader, "bounceEnabled");
     lighting.bounceScaleLoc = GetShaderLocation(shader, "bounceScale");
     lighting.lightmapLoc = GetShaderLocation(shader, "lightmap");
+    lighting.bounceAtSpotLoc = GetShaderLocation(shader, "bounceAtSpot");
+    lighting.bounceSpotLoc = GetShaderLocation(shader, "bounceSpot");
     lighting.bumpMapLoc = GetShaderLocation(shader, "bumpMap");
     lighting.specularMapLoc = GetShaderLocation(shader, "specularMap");
     lighting.glossMapLoc = GetShaderLocation(shader, "glossMap");
@@ -475,6 +506,7 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.viewPositionLoc = GetShaderLocation(shader, "viewPosition");
     lighting.reflectionLoc = GetShaderLocation(shader, "reflection");
     lighting.unlitLoc = GetShaderLocation(shader, "unlit");
+    lighting.alphaTestLoc = GetShaderLocation(shader, "alphaTest");
     for (int i = 0; i < MAX_CUBEMAPS; i++) lighting.cubemapLocs[i] = GetShaderLocation(shader, TextFormat("cubemap%d", i));
     lighting.cubemapPositionsLoc = GetShaderLocation(shader, "cubemapPositions");
     lighting.cubemapCountLoc = GetShaderLocation(shader, "cubemapCount");
@@ -484,11 +516,15 @@ void InitLighting(Lighting &lighting, BoundingBox bounds)
     lighting.bounceScale = 1.0f;
     lighting.lightmapTexture = 0;
 
-    lighting.depthShader = LoadShaderFromMemory(DEPTH_VS, DEPTH_FS);
+    std::string depthSource = "#version 330\n" + cutoff + DEPTH_FS;
+    lighting.depthShader = LoadShaderFromMemory(DEPTH_VS, depthSource.c_str());
+    lighting.depthAlphaTestLoc = GetShaderLocation(lighting.depthShader, "alphaTest");
     lighting.depthMaterial = LoadMaterialDefault();
     lighting.depthMaterial.shader = lighting.depthShader;
 
-    lighting.pointDepthShader = LoadShaderFromMemory(POINT_DEPTH_VS, POINT_DEPTH_FS);
+    std::string pointDepthSource = "#version 330\n" + cutoff + POINT_DEPTH_FS;
+    lighting.pointDepthShader = LoadShaderFromMemory(POINT_DEPTH_VS, pointDepthSource.c_str());
+    lighting.pointDepthAlphaTestLoc = GetShaderLocation(lighting.pointDepthShader, "alphaTest");
     lighting.pointDepthShader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(lighting.pointDepthShader, "matModel");
     lighting.pointDepthLightPositionLoc = GetShaderLocation(lighting.pointDepthShader, "lightPosition");
     lighting.pointDepthLightRadiusLoc = GetShaderLocation(lighting.pointDepthShader, "lightRadius");
@@ -513,6 +549,45 @@ void UnloadLighting(Lighting &lighting)
     rlUnloadTexture(lighting.pointShadowAtlas.depth.id);
     rlUnloadFramebuffer(lighting.pointShadowAtlas.id);
     lighting.lights.clear();
+}
+
+// Textures with see-through texels, which are drawn as cutouts. Kept by texture id, set every time one is made
+static std::unordered_set<unsigned int> cutoutTextures;
+
+void MarkTextureCutout(unsigned int textureId, bool cutout)
+{
+    if (cutout) cutoutTextures.insert(textureId);
+    else cutoutTextures.erase(textureId);
+}
+
+bool IsTextureCutout(unsigned int textureId)
+{
+    return textureId != 0 && cutoutTextures.count(textureId) > 0;
+}
+
+// The texture of a model's mesh, id 0 for none
+static Texture MeshTexture(const Model &model, int mesh)
+{
+    if (model.materials == nullptr || model.meshMaterial == nullptr) return Texture{ 0 };
+    return model.materials[model.meshMaterial[mesh]].maps[MATERIAL_MAP_DIFFUSE].texture;
+}
+
+// Draws a shadow caster's meshes with a depth material. Cutouts are alpha tested, with their texture, and drawn
+// from both sides, like they're drawn in the view, so a grass card shadows as its blades whichever way it faces
+static void DrawCasterDepth(const ShadowCaster &caster, Material &material, int alphaTestLoc)
+{
+    Texture plain = material.maps[MATERIAL_MAP_DIFFUSE].texture;
+    for (int m = 0; m < caster.model->meshCount; m++)
+    {
+        Texture texture = MeshTexture(*caster.model, m);
+        int cutout = IsTextureCutout(texture.id) ? 1 : 0;
+        SetShaderValue(material.shader, alphaTestLoc, &cutout, SHADER_UNIFORM_INT);
+        material.maps[MATERIAL_MAP_DIFFUSE].texture = cutout ? texture : plain;
+        if (cutout) rlDisableBackfaceCulling();
+        DrawMesh(caster.model->meshes[m], material, caster.transform);
+        if (cutout) rlEnableBackfaceCulling();
+    }
+    material.maps[MATERIAL_MAP_DIFFUSE].texture = plain;  // So unloading the material doesn't unload a model's texture
 }
 
 // Renders each shadowed point light's 6 cube faces into its row of the atlas
@@ -561,10 +636,7 @@ static void RenderPointShadows(Lighting &lighting, const std::vector<ShadowCaste
                 rlViewport(face*POINT_SHADOW_TILE_SIZE, slot*POINT_SHADOW_TILE_SIZE, POINT_SHADOW_TILE_SIZE, POINT_SHADOW_TILE_SIZE);
                 rlSetMatrixProjection(projection);
                 rlSetMatrixModelview(view);
-                for (const ShadowCaster &caster : casters)
-                {
-                    for (int m = 0; m < caster.model->meshCount; m++) DrawMesh(caster.model->meshes[m], lighting.pointDepthMaterial, caster.transform);
-                }
+                for (const ShadowCaster &caster : casters) DrawCasterDepth(caster, lighting.pointDepthMaterial, lighting.pointDepthAlphaTestLoc);
             }
         }
 
@@ -604,10 +676,7 @@ void RenderShadowMap(Lighting &lighting, const std::vector<ShadowCaster> &caster
             // Draw back faces only: the depth stored is then the far side of each surface, so surfaces
             // facing the sun don't shadow themselves (shadow acne)
             rlSetCullFace(RL_CULL_FACE_FRONT);
-            for (const ShadowCaster &caster : casters)
-            {
-                for (int i = 0; i < caster.model->meshCount; i++) DrawMesh(caster.model->meshes[i], lighting.depthMaterial, caster.transform);
-            }
+            for (const ShadowCaster &caster : casters) DrawCasterDepth(caster, lighting.depthMaterial, lighting.depthAlphaTestLoc);
             rlSetCullFace(RL_CULL_FACE_BACK);
         EndMode3D();
     EndTextureMode();
@@ -676,6 +745,7 @@ void BeginLighting(const Lighting &lighting)
     // Bounce: off until SetLightingBounce turns it on
     int bounceEnabled = 0;
     SetShaderValue(shader, lighting.bounceEnabledLoc, &bounceEnabled, SHADER_UNIFORM_INT);
+    SetShaderValue(shader, lighting.bounceAtSpotLoc, &bounceEnabled, SHADER_UNIFORM_INT);
     SetShaderValue(shader, lighting.bounceScaleLoc, &lighting.bounceScale, SHADER_UNIFORM_FLOAT);
     int lightmapSlot = LIGHTMAP_SLOT;
     SetShaderValue(shader, lighting.lightmapLoc, &lightmapSlot, SHADER_UNIFORM_INT);
@@ -692,6 +762,7 @@ void BeginLighting(const Lighting &lighting)
     int unlit = lighting.unlit ? 1 : 0;
     SetShaderValue(shader, lighting.unlitLoc, &unlit, SHADER_UNIFORM_INT);
     ClearLightingMaterial(lighting);
+    SetLightingAlphaTest(lighting, false);
 
     // Cubemaps: the ones nearest the camera, none while capturing them. Every sampler gets its own slot
     // even when unused, since two samplers of different kinds on one slot would stop anything drawing
@@ -744,6 +815,19 @@ void SetLightingBounce(const Lighting &lighting, bool enabled)
 {
     int on = enabled ? 1 : 0;
     SetShaderValue(lighting.shader, lighting.bounceEnabledLoc, &on, SHADER_UNIFORM_INT);
+}
+
+void SetLightingAlphaTest(const Lighting &lighting, bool enabled)
+{
+    int on = enabled ? 1 : 0;
+    SetShaderValue(lighting.shader, lighting.alphaTestLoc, &on, SHADER_UNIFORM_INT);
+}
+
+void SetLightingBounceSpot(const Lighting &lighting, bool enabled, Vector2 spot)
+{
+    int on = enabled ? 1 : 0;
+    SetShaderValue(lighting.shader, lighting.bounceAtSpotLoc, &on, SHADER_UNIFORM_INT);
+    if (enabled) SetShaderValue(lighting.shader, lighting.bounceSpotLoc, &spot, SHADER_UNIFORM_VEC2);
 }
 
 void SetLightingMaterial(const Lighting &lighting, unsigned int bumpMap, unsigned int specularMap, unsigned int glossMap,

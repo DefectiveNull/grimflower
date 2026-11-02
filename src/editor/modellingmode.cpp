@@ -786,6 +786,7 @@ void SetEditorMode(EditorState &editor, EditorMode mode)
         CancelPointAt(editor);
         editor.selected = -1;
         editor.dragging = false;
+        editor.sprinkler.active = false;
     }
     if (from == MODE_MODELLING)
     {
@@ -1418,6 +1419,25 @@ void DrawViewportUI(EditorState &editor)
         float hintWidth = MeasureUIText(hint, 15);
         DrawRectangle((int)view.x + 8, (int)(y + height + 6), (int)hintWidth + 16, 22, Fade(BLACK, 0.6f));
         DrawUIText(hint, view.x + 16, y + height + 9, 15, RAYWHITE);
+    }
+
+    if (editor.mode == MODE_OBJECT)
+    {
+        x = right + 12;
+        const char *label = "Sprinkler (P)";
+        float width = MeasureUIText(label, 16) + 18;
+        bool active = editor.sprinkler.active;
+        GuiToggle({ x, y, width, height }, label, &active);
+        if (active != editor.sprinkler.active) ToggleSprinkler(editor);
+        toolbarRect.width = x + width + 4 - toolbarRect.x;
+
+        if (editor.sprinkler.active)
+        {
+            const char *hint = "Sprinkler: click on the level to scatter props inside the ring | Set them up in the Details tab | Esc: stop";
+            float hintWidth = MeasureUIText(hint, 15);
+            DrawRectangle((int)view.x + 8, (int)(y + height + 6), (int)hintWidth + 16, 22, Fade(BLACK, 0.6f));
+            DrawUIText(hint, view.x + 16, y + height + 9, 15, RAYWHITE);
+        }
     }
 
     if (editor.mode == MODE_MODELLING)

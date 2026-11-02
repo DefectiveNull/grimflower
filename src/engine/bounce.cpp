@@ -479,6 +479,63 @@ void BuildLightmapLayout(World &world)
 
     TraceLog(LOG_INFO, "LIGHTMAP: %d triangles in %d charts (%d static props), %dx%d lightmap, %d texels on the world",
              (int)tris.size(), (int)charts.size(), (int)sources.size() - 1, width, height, (int)world.lightmapTexels.size());
+
+    FindPropBounceSpots(world);  // The world's lightmap coordinates just changed
+}
+
+void FindPropBounceSpots(World &world)
+{
+    const float ABOVE = 8.0f;   // The search starts this far above the origin, for models whose base sits a little in the ground...
+    const float BELOW = 16.0f;  // ...and reaches this far below it, for ones floating a little over it
+
+    for (WorldProp &prop : world.props)
+    {
+        prop.hasBounceSpot = false;
+        if (!prop.detailLighting || prop.isStatic) continue;  // Static ones have their own part of the lightmap
+
+        Vector3 origin = { prop.transform.m12, prop.transform.m13, prop.transform.m14 };
+        Vector3 up = Vector3Normalize({ prop.transform.m4, prop.transform.m5, prop.transform.m6 });  // The model's +Y, as placed
+        Vector3 start = Vector3Add(origin, Vector3Scale(up, ABOVE));
+        Vector3 direction = Vector3Negate(up);
+        float nearest = ABOVE + BELOW;
+
+        // The nearest triangle the line down crosses (Moller-Trumbore), either side facing, and the lightmap
+        // coordinates there
+        for (int m = 0; m < world.model.meshCount; m++)
+        {
+            const Mesh &mesh = world.model.meshes[m];
+            if (mesh.texcoords2 == nullptr) continue;  // Not laid out
+            for (int t = 0; t < mesh.triangleCount; t++)
+            {
+                int index[3];
+                for (int k = 0; k < 3; k++) index[k] = mesh.indices ? mesh.indices[t*3 + k] : t*3 + k;
+                Vector3 corner[3];
+                for (int k = 0; k < 3; k++)
+                {
+                    corner[k] = Vector3Transform({ mesh.vertices[index[k]*3], mesh.vertices[index[k]*3 + 1], mesh.vertices[index[k]*3 + 2] }, world.model.transform);
+                }
+
+                Vector3 edge1 = Vector3Subtract(corner[1], corner[0]), edge2 = Vector3Subtract(corner[2], corner[0]);
+                Vector3 p = Vector3CrossProduct(direction, edge2);
+                float determinant = Vector3DotProduct(edge1, p);
+                if (fabsf(determinant) < 1e-8f) continue;  // Running along it
+                Vector3 toStart = Vector3Subtract(start, corner[0]);
+                float u = Vector3DotProduct(toStart, p)/determinant;
+                if (u < 0.0f || u > 1.0f) continue;
+                Vector3 q = Vector3CrossProduct(toStart, edge1);
+                float v = Vector3DotProduct(direction, q)/determinant;
+                if (v < 0.0f || u + v > 1.0f) continue;
+                float distance = Vector3DotProduct(edge2, q)/determinant;
+                if (distance < 0.0f || distance > nearest) continue;
+
+                nearest = distance;
+                float w = 1.0f - u - v;
+                const float *uv0 = &mesh.texcoords2[index[0]*2], *uv1 = &mesh.texcoords2[index[1]*2], *uv2 = &mesh.texcoords2[index[2]*2];
+                prop.bounceSpot = { uv0[0]*w + uv1[0]*u + uv2[0]*v, uv0[1]*w + uv1[1]*u + uv2[1]*v };
+                prop.hasBounceSpot = true;
+            }
+        }
+    }
 }
 
 unsigned long long LightmapKey(const World &world)

@@ -78,8 +78,7 @@ static void SpawnSoundscape(const LevelEntity &entity, const EntityClass &entity
                   EntityParamNumber(entity, entityClass, "volume"), EntityParamNumber(entity, entityClass, "fade"));
 }
 
-// A model placed in the level. Static ones are solid and part of the bounce bake, there for good; others
-// are decoration the player walks through, which game code can move later
+// A model placed in the level. Static ones are part of the bounce bake, and collision is its own choice
 static void SpawnProp(const LevelEntity &entity, const EntityClass &entityClass, SpawnContext &context)
 {
     std::string path = EntityParamText(entity, entityClass, "model");
@@ -90,8 +89,9 @@ static void SpawnProp(const LevelEntity &entity, const EntityClass &entityClass,
     }
     int model = LoadPropModel(context.world, path);
     if (model < 0) return;  // LoadPropModel said why
-    AddProp(context.world, model, entity.origin, EntityParamNumber(entity, entityClass, "angle"),
-            EntityParamNumber(entity, entityClass, "scale"), EntityParamBool(entity, entityClass, "static"));
+    AddProp(context.world, model, entity.origin, EntityParamVector(entity, entityClass, "up"), EntityParamNumber(entity, entityClass, "angle"),
+            EntityParamNumber(entity, entityClass, "scale"), EntityParamBool(entity, entityClass, "static"), EntityParamBool(entity, entityClass, "collision"),
+            EntityParamBool(entity, entityClass, "detailLighting"));
 }
 
 // A spot the level is captured from for reflections, once when it loads (CaptureCubemaps in main.cpp)
@@ -261,12 +261,15 @@ static const std::vector<EntityClass> ENTITY_CLASSES =
 
     // Props
     {
-        "prop_model", "A model placed in the level, like a crate or a lamp. Static ones are solid; others are decoration the player walks through",
+        "prop_model", "A model placed in the level, like a crate or a lamp. The Sprinkler in Object mode places lots of them at once",
         {
             { "model", "model", "", "The model to show, as a game data path, like models/crate.obj. Its textures and .materials apply", 0.0f, 0.0f },
-            { "angle", "angle", "0", "Degrees around the vertical axis", 0.0f, 360.0f },
+            { "angle", "angle", "0", "Degrees around its own up", 0.0f, 360.0f },
             { "scale", "number", "1", "Size, as a multiple of the model's own: 1 for models made in Quake units, like the world", 0.0f, 4.0f },
-            { "static", "bool", "1", "Part of the level for good: the player collides with the box around it, and it's in the bounce bake. Off: decoration the player walks through", 0.0f, 0.0f },
+            { "up", "vector", "0 1 0", "Which way the model's top points, like a surface's normal to stand it on a slope or a wall", 0.0f, 0.0f },
+            { "static", "bool", "1", "In the bounce bake, so it gets bounced light. Off: lit without it, cheaper for lots of small props", 0.0f, 0.0f },
+            { "collision", "bool", "1", "The player collides with the box around it. Off: the player walks through it", 0.0f, 0.0f },
+            { "detailLighting", "bool", "0", "With static off: gets bounced light from the ground under it, all over, like Half-Life 2's detail props, so grass matches the floor. Off: no bounced light", 0.0f, 0.0f },
         },
         { "box", { -8.0f, -8.0f, -8.0f }, { 8.0f, 8.0f, 8.0f }, 0.0f, { 120, 200, 255, 255 }, nullptr, 0.0f },
         SpawnProp,
@@ -333,6 +336,7 @@ bool SpawnLevel(const Level &level, World &world, Player &player, Volumes &volum
     bool hasStaticProps = false;
     for (const WorldProp &prop : world.props) hasStaticProps = hasStaticProps || prop.isStatic;
     if (hasStaticProps) BuildLightmapLayout(world);
+    else FindPropBounceSpots(world);  // BuildLightmapLayout does this too
 
     if (!context.hasPlayerStart)
     {

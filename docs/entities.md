@@ -73,11 +73,24 @@ A model placed in the level, like a crate or a lamp. The model file's textures a
 | Parameter | Type | Default | Range | |
 | --- | --- | --- | --- | --- |
 | `model` | model | | | The model to show, as a game data path, like `models/crate.obj`. `.obj`, `.fbx`, `.gltf`, `.glb`, `.dae`, `.3ds`, `.ply` or `.stl` |
-| `angle` | angle | 0 | 0–360 | Degrees around the vertical axis |
+| `angle` | angle | 0 | 0–360 | Degrees around its own up |
 | `scale` | number | 1 | 0–4 | Size, as a multiple of the model's own. 1 for models made in Quake units, like the world |
-| `static` | bool | true | | **On:** part of the level for good. The player collides with the box around it, and it's in the bounce bake. **Off:** decoration the player walks through |
+| `up` | vector | 0 1 0 | | Which way the model's top points, like a surface's normal to stand it on a slope or a wall |
+| `static` | bool | true | | **On:** in the bounce bake, so it gets bounced light. **Off:** lit without it, which is cheaper for lots of small props |
+| `collision` | bool | true | | **On:** the player collides with the box around it. **Off:** the player walks through it. Works with `static` on or off |
+| `detailLighting` | bool | false | | With `static` off: the whole prop gets the bounced light of the ground right under its origin, like Half-Life 2's detail props, so grass matches the floor it grows from. **Off:** no bounced light. Static props ignore it, since they have their own |
 
-In the editor, props hide along with the other point entities (View > Point Entities).
+How a prop gets bounced light:
+
+| `static` | `detailLighting` | Bounced light |
+| --- | --- | --- |
+| on | either | Its own part of the lightmap, baked for every point on it. The best looking, and the most lightmap space |
+| off | on | One sample of the ground under its origin (up to 16 units under it, along `up`), for the whole prop. Nearly free. A prop over nothing gets none |
+| off | off | None: only the sun, lights and ambient light |
+
+The box is lined up with the world, around the model as turned and tipped, so a tipped prop's box is bigger than the model.
+
+The [Sprinkler](editor.md#the-sprinkler) places lots of these at once. In the editor, props hide along with the other point entities (View > Point Entities).
 
 ## Volumes
 

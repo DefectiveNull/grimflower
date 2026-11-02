@@ -79,8 +79,11 @@ struct WorldProp
     int model;           // Index into World::propModels
     Matrix transform;    // Its scale, turn and place
     BoundingBox bounds;  // Around it in world space
-    bool isStatic;       // Solid, and part of the bounce bake
+    bool isStatic;       // Part of the bounce bake
     std::vector<Mesh> lightmapMeshes;  // A static prop's own copies of its model's meshes, with lightmap coordinates. Empty until BuildLightmapLayout
+    bool detailLighting = false;       // Not static: gets the bounce from the ground under it all over, like Half-Life 2's detail props
+    bool hasBounceSpot = false;        // ...found there, at this spot in the lightmap. See FindPropBounceSpots
+    Vector2 bounceSpot = { 0.0f, 0.0f };
 };
 
 struct World
@@ -161,12 +164,13 @@ void ApplyMaterials(World &world, const MaterialLibrary &library);
 // .materials). Returns its index in world.propModels, or -1 if it couldn't be loaded
 int LoadPropModel(World &world, const std::string &modelPath);
 
-// Places a prop: scaled from the model's units, turned angle degrees around the vertical axis (like
-// info_player_start's angle) and moved to origin. Props are drawn with the world and cast shadows.
-// A static one is there for good: it blocks movement with the box around it (unless solid is false, like
-// in the editor), and it's part of the bounce bake, with its own part of the lightmap. Lay the lightmap
-// out again (BuildLightmapLayout) after placing static props
-void AddProp(World &world, int model, Vector3 origin, float angle, float scale, bool isStatic, bool solid = true);
+// Places a prop: scaled from the model's units, turned angle degrees around its own up (like
+// info_player_start's angle, with up straight up), tipped so its up points along up, and moved to origin.
+// Props are drawn with the world and cast shadows. A solid one blocks movement with the box around it, which
+// stays where it was placed. A static one is part of the bounce bake, with its own part of the lightmap. Lay
+// the lightmap out again (BuildLightmapLayout) after placing static props. One with detailLighting instead gets the
+// bounce from the ground under it: call FindPropBounceSpots after placing those
+void AddProp(World &world, int model, Vector3 origin, Vector3 up, float angle, float scale, bool isStatic, bool solid, bool detailLighting = false);
 void ClearProps(World &world);  // Removes every prop placed, keeping their models loaded
 
 // A material for something besides the world model and props, like a door: its maps from the library,
@@ -195,6 +199,12 @@ Brush MakeBoxBrush(BoundingBox box);
 // Loads a texture through the game data, so it can come from gamedata.zip. TGAs work too, which the
 // prebuilt raylib can't read. Returns false if it couldn't be loaded
 bool LoadGameTexture(const char *path, Texture &texture);
+
+// Gets an image ready to be a cutout texture, the way Fitzquake and Ironwail do: every fully see-through texel takes
+// the average color of the visible texels next to it, so filtering fades a visible edge out in its own color
+// instead of whatever the hidden part was painted (often black, giving dark outlines). Turns images that can have
+// alpha into RGBA. Returns whether it's a cutout: any texel not fully opaque. Loading textures does this
+bool FixAlphaEdges(Image &image);
 
 // Sweeps a box with the given extents (relative to its origin) from start to end, against the colliders and the movers
 Trace TraceBox(const World &world, Vector3 start, Vector3 end, Vector3 mins, Vector3 maxs);

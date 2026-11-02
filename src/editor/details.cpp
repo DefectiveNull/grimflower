@@ -53,6 +53,100 @@ static Rectangle PanelRect()
              (float)DETAILS_PANEL_WIDTH, (float)(GetScreenHeight() - MENU_BAR_HEIGHT - STATUS_BAR_HEIGHT) };
 }
 
+// The Browse button of a path: asks for a file of that type, and gives it relative to the project folder.
+// False if nothing was picked
+static bool BrowseForFile(EditorState &editor, const EntityFileType &fileType, std::string &chosen)
+{
+    // A folder that doesn't exist yet, like sound/, opens the project folder instead
+    std::string folder = editor.dataRoot + "/" + fileType.folder;
+    if (!DirectoryExists(folder.c_str())) folder = editor.dataRoot;
+
+    if (!ShowOpenFileDialog(GetWindowHandle(), fileType.dialogTitle, fileType.filter, folder, chosen)) return false;
+    chosen = ToDataPath(editor, chosen);
+    if (chosen.size() > 1 && chosen[1] == ':') SetStatus(editor, "%s is outside the project folder, so a shipped game won't find it", chosen.c_str());
+    return true;
+}
+
+// A path typed into a box, with the separators every other path has
+static std::string TypedPath(EditorState &editor)
+{
+    std::string typed = editBuffer;
+    for (char &c : typed) if (c == '\\') c = '/';
+    if (!typed.empty() && !FileExists(typed.c_str())) SetStatus(editor, "There's no %s, check the path", typed.c_str());
+    return typed;
+}
+
+// The Sprinkler's settings. They're the tool's, not the level's, so changing them isn't an undo step
+static void DrawSprinklerDetails(EditorState &editor, Rectangle panel, float y)
+{
+    SprinklerState &s = editor.sprinkler;
+    const float x = panel.x + PADDING;
+    const float width = panel.width - 2*PADDING;
+    const float fieldX = x + LABEL_WIDTH;
+    const float fieldWidth = width - LABEL_WIDTH;
+    const float rowHeight = ROW_HEIGHT - 4;
+
+    GuiLabel({ x, y, width, ROW_HEIGHT }, "Sprinkler");
+    y += ROW_HEIGHT;
+    y += DrawUITextWrapped("Each click on the level places props picked at random from these, resting on the surface and tipped to match it, with random turns. Undo takes back a whole click", x, y, width, 14, UIMutedTextColor());
+    y += 6;
+
+    GuiLine({ x, y, width, 20 }, "Props");
+    y += 24;
+    const EntityFileType *modelFile = FindEntityFileType("model");
+    for (int i = 0; i < SPRINKLER_PROPS; i++)
+    {
+        const float buttonWidth = 64.0f;
+        DrawUIText(TextFormat("Prop %d", i + 1), x, y + (rowHeight - 16)/2, 16, UITextColor());
+        if (EditableField(200 + i, { fieldX, y, fieldWidth - buttonWidth - 6, rowHeight }, s.props[i])) s.props[i] = TypedPath(editor);
+
+        std::string chosen;
+        if (GuiButton({ fieldX + fieldWidth - buttonWidth, y, buttonWidth, rowHeight }, "Browse") && BrowseForFile(editor, *modelFile, chosen)) s.props[i] = chosen;
+        y += ROW_HEIGHT;
+    }
+
+    y += 6;
+    GuiLine({ x, y, width, 20 }, "Scatter");
+    y += 24;
+
+    // A slider, and a box for typing an exact value past its range
+    int id = 210;
+    auto numberRow = [&](const char *name, float &value, float min, float max, bool whole)
+    {
+        const float valueWidth = 64.0f;
+        int fieldId = id++;
+        DrawUIText(name, x, y + (rowHeight - 16)/2, 16, UITextColor());
+        float slider = value;
+        GuiSliderBar({ fieldX, y + 6, fieldWidth - valueWidth - 6, ROW_HEIGHT - 16 }, nullptr, nullptr, &slider, min, max);
+        if (slider != value) value = whole ? roundf(slider) : roundf(slider*100.0f)/100.0f;
+        if (EditableField(fieldId, { fieldX + fieldWidth - valueWidth, y, valueWidth, rowHeight }, TextFormat("%g", value)))
+        {
+            char *end;
+            float typed = strtof(editBuffer, &end);
+            if (end == editBuffer || typed < 0.0f) SetStatus(editor, "\"%s\" isn't a size", editBuffer);
+            else value = whole ? roundf(typed) : typed;
+        }
+        y += ROW_HEIGHT;
+    };
+    float count = (float)s.count;
+    numberRow("Radius", s.radius, 8.0f, 512.0f, true);
+    numberRow("Count", count, 1.0f, 50.0f, true);
+    s.count = (int)count;
+    numberRow("Scale min", s.scaleMin, 0.1f, 4.0f, false);
+    numberRow("Scale max", s.scaleMax, 0.1f, 4.0f, false);
+
+    y += 6;
+    GuiLine({ x, y, width, 20 }, "New props");
+    y += 24;
+    GuiCheckBox({ x, y + 4, 18, 18 }, "Collision: the player can't walk through them", &s.collision);
+    y += ROW_HEIGHT;
+    GuiCheckBox({ x, y + 4, 18, 18 }, "Static: in the bounce bake", &s.isStatic);
+    y += ROW_HEIGHT;
+    if (s.isStatic) GuiDisable();  // Static props have their own bounced light
+    GuiCheckBox({ x, y + 4, 18, 18 }, "Detail lighting: bounce from the ground", &s.detailLighting);
+    GuiEnable();
+}
+
 static void DrawEntityDetails(EditorState &editor, Rectangle panel, float y)
 {
     LevelEntity &entity = editor.level.entities[editor.selected];
@@ -218,28 +312,10 @@ static void DrawEntityDetails(EditorState &editor, Rectangle panel, float y)
             nlohmann::ordered_json current = isSet ? entity.properties[name] : DefaultParamValue(*param);
             std::string text = current.is_string() ? current.get<std::string>() : current.dump();
             const float buttonWidth = 64.0f;
-            if (EditableField(fieldId, { fieldX, y, fieldWidth - buttonWidth - 6, ROW_HEIGHT - 4 }, text))
-            {
-                std::string typed = editBuffer;
-                for (char &c : typed) if (c == '\\') c = '/';
-                if (!typed.empty() && !FileExists(typed.c_str())) SetStatus(editor, "There's no %s, check the path", typed.c_str());
-                setParameter(name, typed, false);
-            }
+            if (EditableField(fieldId, { fieldX, y, fieldWidth - buttonWidth - 6, ROW_HEIGHT - 4 }, text)) setParameter(name, TypedPath(editor), false);
 
-            if (GuiButton({ fieldX + fieldWidth - buttonWidth, y, buttonWidth, ROW_HEIGHT - 4 }, "Browse"))
-            {
-                // A folder that doesn't exist yet, like sound/, opens the project folder instead
-                std::string folder = editor.dataRoot + "/" + fileType->folder;
-                if (!DirectoryExists(folder.c_str())) folder = editor.dataRoot;
-
-                std::string chosen;
-                if (ShowOpenFileDialog(GetWindowHandle(), fileType->dialogTitle, fileType->filter, folder, chosen))
-                {
-                    chosen = ToDataPath(editor, chosen);
-                    if (chosen.size() > 1 && chosen[1] == ':') SetStatus(editor, "%s is outside the project folder, so a shipped game won't find it", chosen.c_str());
-                    setParameter(name, chosen, false);
-                }
-            }
+            std::string chosen;
+            if (GuiButton({ fieldX + fieldWidth - buttonWidth, y, buttonWidth, ROW_HEIGHT - 4 }, "Browse") && BrowseForFile(editor, *fileType, chosen)) setParameter(name, chosen, false);
         }
         else if (EditableField(fieldId, field, shown))
         {
@@ -401,6 +477,9 @@ void DrawDetailsPanel(EditorState &editor)
     static EditorMode lastMode = MODE_OBJECT;
     if (editor.selected >= 0 && editor.selected != lastSelected) tab = 0;
     if (editor.mode == MODE_TEXTURING && lastMode != MODE_TEXTURING) tab = 1;
+    static bool lastSprinkler = false;
+    if (editor.sprinkler.active && !lastSprinkler) tab = 0;
+    lastSprinkler = editor.sprinkler.active;
     lastSelected = editor.selected;
     lastMode = editor.mode;
     float tabWidth = (panel.width - 2*PADDING - 4)/2.0f;
@@ -408,6 +487,7 @@ void DrawDetailsPanel(EditorState &editor)
 
     float y = panel.y + HEADER_HEIGHT + 6 + PADDING;
     if (tab == 1) DrawMaterialsPanel(editor, { panel.x, y, panel.width, panel.y + panel.height - PADDING - y });
+    else if (editor.sprinkler.active) DrawSprinklerDetails(editor, panel, y);
     else if (editor.selected >= 0) DrawEntityDetails(editor, panel, y);
     else DrawLevelDetails(editor, panel, y);
 

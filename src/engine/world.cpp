@@ -30,6 +30,48 @@ static const float DIST_EPSILON = 0.03125f;
 static const float NORMAL_EPSILON = 0.0001f;
 static const float PLANE_DIST_EPSILON = 0.03125f;
 
+bool FixAlphaEdges(Image &image)
+{
+    // Only formats that can store alpha. Compressed ones are left alone
+    int format = image.format;
+    if (format != PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA && format != PIXELFORMAT_UNCOMPRESSED_R5G5B5A1 && format != PIXELFORMAT_UNCOMPRESSED_R4G4B4A4 &&
+        format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 && format != PIXELFORMAT_UNCOMPRESSED_R16G16B16A16 && format != PIXELFORMAT_UNCOMPRESSED_R32G32B32A32) return false;
+    if (format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8) ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
+    unsigned char *pixels = (unsigned char *)image.data;
+    int width = image.width, height = image.height;
+    bool cutout = false;
+    for (int i = 0; i < width*height && !cutout; i++) cutout = pixels[i*4 + 3] != 255;
+    if (!cutout) return false;
+
+    // Read from a copy, so texels filled in here don't spread into the ones after them
+    std::vector<unsigned char> source(pixels, pixels + (size_t)width*height*4);
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            unsigned char *texel = &pixels[((size_t)y*width + x)*4];
+            if (texel[3] != 0) continue;
+
+            int sum[3] = { 0, 0, 0 }, count = 0;
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    // Wrapping round the sides, since textures tile
+                    const unsigned char *neighbour = &source[((size_t)((y + dy + height)%height)*width + (x + dx + width)%width)*4];
+                    if (neighbour[3] == 0) continue;
+                    for (int c = 0; c < 3; c++) sum[c] += neighbour[c];
+                    count++;
+                }
+            }
+            if (count > 0) for (int c = 0; c < 3; c++) texel[c] = (unsigned char)(sum[c]/count);
+        }
+    }
+    return true;
+}
+
 // Makes a texture from an image file in memory. A format of "" means it could be any image file
 static bool DecodeWorldTexture(const unsigned char *fileData, int fileSize, const char *format, const char *name, Texture &texture)
 {
@@ -49,7 +91,9 @@ static bool DecodeWorldTexture(const unsigned char *fileData, int fileSize, cons
     }
     if (image.data == nullptr) return false;
 
+    bool cutout = FixAlphaEdges(image);
     texture = LoadTextureFromImage(image);
+    MarkTextureCutout(texture.id, cutout);
     if (pixels != nullptr) stbi_image_free(pixels);
     else UnloadImage(image);
 
@@ -446,13 +490,22 @@ int LoadPropModel(World &world, const std::string &modelPath)
     return (propModel.model.meshCount > 0) ? (int)world.propModels.size() - 1 : -1;
 }
 
-void AddProp(World &world, int model, Vector3 origin, float angle, float scale, bool isStatic, bool solid)
+// The turn that takes a model's up (+Y) onto up
+static Matrix TurnUpTo(Vector3 up)
+{
+    if (Vector3LengthSqr(up) < 0.000001f) return MatrixIdentity();
+    up = Vector3Normalize(up);
+    if (up.y < -0.9999f) return MatrixRotateX(PI);  // Straight down: any axis across will do, and the quaternion has none to pick
+    return QuaternionToMatrix(QuaternionFromVector3ToVector3({ 0.0f, 1.0f, 0.0f }, up));
+}
+
+void AddProp(World &world, int model, Vector3 origin, Vector3 up, float angle, float scale, bool isStatic, bool solid, bool detailLighting)
 {
     if (model < 0 || model >= (int)world.propModels.size()) return;
 
     WorldProp prop;
     prop.model = model;
-    prop.transform = MatrixMultiply(MatrixMultiply(MatrixScale(scale, scale, scale), MatrixRotateY(angle*DEG2RAD)),
+    prop.transform = MatrixMultiply(MatrixMultiply(MatrixMultiply(MatrixScale(scale, scale, scale), MatrixRotateY(angle*DEG2RAD)), TurnUpTo(up)),
                                     MatrixTranslate(origin.x, origin.y, origin.z));
 
     // The box around its 8 turned corners
@@ -467,8 +520,9 @@ void AddProp(World &world, int model, Vector3 origin, float angle, float scale, 
     }
 
     prop.isStatic = isStatic;
+    prop.detailLighting = detailLighting;
     world.props.push_back(prop);
-    if (isStatic && solid) world.propColliders.push_back(MakeBoxBrush(prop.bounds));
+    if (solid) world.propColliders.push_back(MakeBoxBrush(prop.bounds));
 }
 
 void ClearProps(World &world)
@@ -593,7 +647,8 @@ void DrawWorld(const World &world, bool showColliders)
         SetLightingAO(world.lighting, true);
         SetLightingBounce(world.lighting, world.bounceBaked);
 
-        // A mesh per material, each with its maps
+        // A mesh per material, each with its maps. Cutouts in the level's geometry keep back face culling, like
+        // Ironwail's fence textures: the faces of a solid are only seen from outside
         const Model &model = world.model;
         for (int i = 0; i < model.meshCount; i++)
         {
@@ -602,21 +657,26 @@ void DrawWorld(const World &world, bool showColliders)
             {
                 SetLightingWorldMaterial(world.lighting, world.materials[index]);
             }
+            SetLightingAlphaTest(world.lighting, IsTextureCutout(model.materials[index].maps[MATERIAL_MAP_DIFFUSE].texture.id));
             DrawMesh(model.meshes[i], model.materials[index], model.transform);
         }
         ClearLightingMaterial(world.lighting);
+        SetLightingAlphaTest(world.lighting, false);
 
         SetLightingAO(world.lighting, false);
         SetLightingBounce(world.lighting, false);
 
         // Props, with their own materials. Static ones have their part of the bounce lightmap once the layout
-        // has them. No ambient occlusion, which is worked out for the world mesh only
+        // has them; ones with detail lighting get the bounce from the ground under them all over, like Half-Life
+        // 2's detail props. No ambient occlusion, which is worked out for the world mesh only
         for (const WorldProp &prop : world.props)
         {
             if (world.propsHidden) break;
             const PropModel &propModel = world.propModels[prop.model];
             bool baked = !prop.lightmapMeshes.empty();
-            SetLightingBounce(world.lighting, baked && world.bounceBaked);
+            bool spot = !baked && prop.hasBounceSpot;
+            SetLightingBounce(world.lighting, (baked || spot) && world.bounceBaked);
+            SetLightingBounceSpot(world.lighting, spot, prop.bounceSpot);
             for (int i = 0; i < propModel.model.meshCount; i++)
             {
                 int index = propModel.model.meshMaterial[i];
@@ -624,11 +684,20 @@ void DrawWorld(const World &world, bool showColliders)
                 {
                     SetLightingWorldMaterial(world.lighting, propModel.materials[index]);
                 }
+
+                // A cutout on a model, like a grass card, is often a single plane: drawn from both sides, the way
+                // Ironwail draws model skins with see-through texels
+                bool cutout = IsTextureCutout(propModel.model.materials[index].maps[MATERIAL_MAP_DIFFUSE].texture.id);
+                SetLightingAlphaTest(world.lighting, cutout);
+                if (cutout) rlDisableBackfaceCulling();
                 DrawMesh(baked ? prop.lightmapMeshes[i] : propModel.model.meshes[i], propModel.model.materials[index], prop.transform);
+                if (cutout) rlEnableBackfaceCulling();
             }
         }
         ClearLightingMaterial(world.lighting);
+        SetLightingAlphaTest(world.lighting, false);
         SetLightingBounce(world.lighting, false);
+        SetLightingBounceSpot(world.lighting, false, { 0.0f, 0.0f });
         DrawModelWires(world.model, { 0.0f, 0.0f, 0.0f }, 1.0f, Fade(BLACK, 0.6f));
     EndLighting();
 

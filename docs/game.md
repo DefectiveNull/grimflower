@@ -96,7 +96,7 @@ A level is its **geometry** (every mesh, drawn and collided with) and its **enti
 - **Doors** (`func_door`) slide open when you walk into them, wait, then close again.
 - **Level changes** (`trigger_changelevel`) load another level when you walk in.
 - **Soundscapes** (`trigger_soundscape`) loop a sound while you're inside, fading out towards their sides and panned towards their origin.
-- **Props** (`prop_model`) show a model. Static ones are solid (their bounding box) and part of the bounce bake.
+- **Props** (`prop_model`) show a model. Static ones are part of the bounce bake; others with `detailLighting` on get the bounce of the ground under them. Ones with `collision` on are solid (their bounding box).
 - **Cubemaps** (`env_cubemap`) capture the level for reflections.
 - **Color correction** (`info_colorcorrection`) sets the level's color palette with a gradient map.
 

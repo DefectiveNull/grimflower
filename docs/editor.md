@@ -131,6 +131,24 @@ Parameters the level doesn't set yet are shown greyed out, with the default the 
 
 **Deselect** and **Delete Entity** are at the bottom. **Delete** on the keyboard deletes the selected entity too.
 
+### The Sprinkler
+
+The Sprinkler scatters props like grass and rocks. Click **Sprinkler (P)** in the toolbar or press **P** to turn it on; the Details tab then shows its settings:
+
+| Setting | What it does |
+| --- | --- |
+| Prop 1, 2, 3 | Models to pick from at random, typed or picked with **Browse**. Leave any of them empty |
+| Radius | How far around the click they land. A yellow ring shows it on the surface under the mouse |
+| Count | How many props a click places |
+| Scale min, max | Each prop gets a random `scale` between these |
+| Collision | Sets `collision` on the new props. Off by default |
+| Static | Sets `static` on the new props. Off by default, since baking lots of small props costs lightmap space |
+| Detail lighting | Sets `detailLighting` on the new props: they get the bounced light of the ground under them, like Half-Life 2's detail props. On by default. Greyed out with Static on, since static props have their own |
+
+**Left click** the level to place them. Each prop's origin goes on the surface below its spot, with `up` set to that surface's normal and a random `angle`, so a model's own origin should be where it meets the ground. Spots that land off a ledge, or on a surface turned too far from the clicked one, are tried somewhere else, so a click near an edge may place fewer. Props land on the level's geometry, not on other props, and they don't snap to the grid.
+
+A click is one undo step. The new props are ordinary `prop_model` entities, so they can be selected and changed afterwards. **Esc** or **P** turns the Sprinkler off, and so does leaving Object mode. Its settings last until the editor closes.
+
 ### Props, cubemaps and lights while editing
 
 - `prop_model` entities show their model in the view. Moving one moves the model.
@@ -454,7 +472,7 @@ Every command a key can be bound to:
 | [ / ] | Grid size |
 | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / open / save / save as |
-| Esc | Closes a menu, cancels Point At, backs out of a tool, or deselects |
+| Esc | Closes a menu, cancels Point At, turns the Sprinkler off, backs out of a tool, or deselects |
 
 ### Object mode
 
@@ -465,6 +483,7 @@ Every command a key can be bound to:
 | Drag a volume's face handle | Resize the volume |
 | Alt+Q / Alt+R | Turn it 45 degrees |
 | Delete | Delete it |
+| P | Turn the [Sprinkler](#the-sprinkler) on or off |
 
 ### Modelling mode
 

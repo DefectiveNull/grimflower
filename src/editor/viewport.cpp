@@ -457,6 +457,12 @@ void UpdateViewport(EditorState &editor)
         UpdatePointAt(editor);  // Clicks aim instead of selecting while Point At is on
         return;
     }
+    if (keysFree && EdKeyPressed(KEY_P)) ToggleSprinkler(editor);
+    if (editor.sprinkler.active)
+    {
+        UpdateSprinkler(editor, mouseFree);  // Clicks place props instead of selecting
+        return;
+    }
     UpdateSelection(editor);
     UpdateDrag(editor);
 }
@@ -660,12 +666,13 @@ static void UpdateEditorBounce(EditorState &editor)
 struct PlacedProp
 {
     std::string model;
-    Vector3 origin;
+    Vector3 origin, up;
     float angle, scale;
-    bool isStatic;
+    bool isStatic, detailLighting;
     bool operator==(const PlacedProp &other) const
     {
-        return model == other.model && Vector3Equals(origin, other.origin) && angle == other.angle && scale == other.scale && isStatic == other.isStatic;
+        return model == other.model && Vector3Equals(origin, other.origin) && Vector3Equals(up, other.up) && angle == other.angle && scale == other.scale &&
+               isStatic == other.isStatic && detailLighting == other.detailLighting;
     }
 };
 
@@ -684,8 +691,9 @@ static void SyncProps(EditorState &editor)
     for (const LevelEntity &entity : editor.level.entities)
     {
         if (entity.classname != "prop_model") continue;
-        wanted.push_back({ EntityTextOrDefault(entity, "model", ""), entity.origin, EntityNumberOrDefault(entity, "angle", 0.0f),
-                           EntityNumberOrDefault(entity, "scale", 1.0f), EntityBoolOrDefault(entity, "static", true) });
+        wanted.push_back({ EntityTextOrDefault(entity, "model", ""), entity.origin, EntityVectorOrDefault(entity, "up", { 0.0f, 1.0f, 0.0f }),
+                           EntityNumberOrDefault(entity, "angle", 0.0f), EntityNumberOrDefault(entity, "scale", 1.0f), EntityBoolOrDefault(entity, "static", true),
+                           EntityBoolOrDefault(entity, "detailLighting", false) });
     }
     editor.world.propsHidden = !editorSettings.showPointEntities;
 
@@ -701,8 +709,9 @@ static void SyncProps(EditorState &editor)
         {
             if (prop.model.empty()) continue;
             int model = LoadPropModel(editor.world, prop.model);
-            if (model >= 0) AddProp(editor.world, model, prop.origin, prop.angle, prop.scale, prop.isStatic, false);  // Not solid: the editor has no player to block
+            if (model >= 0) AddProp(editor.world, model, prop.origin, prop.up, prop.angle, prop.scale, prop.isStatic, false, prop.detailLighting);  // Not solid: the editor has no player to block
         }
+        FindPropBounceSpots(editor.world);  // Quick, and doesn't need the layout redone. Only finds them in Object mode's full builds
         placed = wanted;
         placedWorld = editor.world.model.meshes;
 
@@ -827,6 +836,7 @@ void DrawViewport(EditorState &editor)
                 if (IsEntityShown(editor.level.entities[i])) DrawEntityMarker(editor.level.entities[i], (int)i == editor.selected);
             }
             DrawPointAtPreview(editor);
+            DrawSprinklerOverlay(editor);
             if (editor.mode == MODE_OBJECT) DrawResizeHandles(editor);
             DrawModellingOverlay(editor);
             DrawTexturingOverlay(editor);

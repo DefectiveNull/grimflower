@@ -55,6 +55,7 @@ static void HandleKeys(EditorState &editor)
     {
         if (editor.openMenu != MENU_NONE) editor.openMenu = MENU_NONE;
         else if (editor.pointing) CancelPointAt(editor);
+        else if (editor.sprinkler.active) ToggleSprinkler(editor);
         else if (editor.mode == MODE_MODELLING) ModellingModeEscape(editor);  // What the tool's doing, then the tool, then the selection
         else if (editor.mode == MODE_TEXTURING) TexturingModeEscape(editor);
         else editor.selected = -1;

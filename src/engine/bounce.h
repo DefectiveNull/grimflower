@@ -35,6 +35,12 @@ struct BounceStats
 // coordinates. SetWorldGeometry calls this, when it builds everything
 void BuildLightmapLayout(World &world);
 
+// Gives each prop with detail lighting (and not static) a spot in the lightmap: where the world is right under its
+// origin, along its up, like Half-Life 2's detail props. The whole prop gets the bounce from there, so it matches the
+// ground it stands on. Props over nothing get none. Needs the world's lightmap coordinates (BuildLightmapLayout,
+// which calls this too); call it again after placing props
+void FindPropBounceSpots(World &world);
+
 // The level's lightmap settings. luxelSize: world units per lightmap texel, 0 for LIGHTMAP_LUXEL_SIZE. Changing it
 // lays the lightmap out again, so it needs a new bake. filtered: smooth (bilinear) or blocky (nearest) like
 // software Quake, which takes effect right away. Call before SetWorldGeometry, or any time after

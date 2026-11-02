@@ -3,6 +3,7 @@
 // which OpenGL it's using
 
 #include "editor.h"
+#include "bounce.h"
 #include "editinput.h"
 #include "entitylist.h"
 #include "geotools.h"
@@ -572,6 +573,250 @@ int main(int argc, char **argv)
         GeoPushPull(g, 0, 2, -8.0f);
         GeoFinishShape(g.shapes[0]);
         for (const GeoFace &f : g.shapes[0].faces) CHECK(f.lockedUVs.empty() || f.lockedUVs.size() == f.corners.size(), "%d UVs on %d corners", (int)f.lockedUVs.size(), (int)f.corners.size());
+    }
+
+    printf("21 prop_model's up and collision\n");
+    {
+        CHECK(LoadEntityList("entitylist.txt"), "entitylist.txt is missing");
+        CHECK(FindEntityClass("prop_model") && FindEntityParam(*FindEntityClass("prop_model"), "collision") && FindEntityParam(*FindEntityClass("prop_model"), "up"),
+              "entitylist.txt should have collision and up");
+        World &w = e.world;
+        ClearProps(w);
+        int model = LoadPropModel(w, "models/props/foliage/fern_tall.obj");
+        CHECK(model >= 0, "couldn't load the fern");
+        float height = w.propModels[model].bounds.max.y;
+
+        AddProp(w, model, { 0, 0, 0 }, { 0, 1, 0 }, 90.0f, 1.0f, false, false);
+        CHECK(fabsf(w.props[0].bounds.max.y - height) < 0.01f, "upright: top at %f, not %f", w.props[0].bounds.max.y, height);
+        CHECK(w.propColliders.empty(), "no collision should make no collider");
+
+        AddProp(w, model, { 0, 0, 0 }, { 1, 0, 0 }, 0.0f, 1.0f, false, true);
+        CHECK(fabsf(w.props[1].bounds.max.x - height) < 0.01f, "on its side: top at %f, not %f", w.props[1].bounds.max.x, height);
+        CHECK(w.propColliders.size() == 1, "collision shouldn't need static");
+
+        AddProp(w, model, { 0, 0, 0 }, { 0, -1, 0 }, 0.0f, 1.0f, true, false);
+        CHECK(fabsf(w.props[2].bounds.min.y + height) < 0.01f, "hanging: top at %f, not %f", w.props[2].bounds.min.y, -height);
+        CHECK(w.propColliders.size() == 1, "static shouldn't make a collider");
+        ClearProps(w);
+    }
+
+    printf("22 the Sprinkler\n");
+    {
+        // A slab with a tall box standing on it, so a ring near the box reaches its wall and top
+        GeoShape slab = Box(1);
+        for (Vector3 &v : slab.vertices) { v.x *= 4.0f; v.z *= 8.0f; }
+        Reset(e, slab);
+        e.level.entities.clear();
+        SetEditorMode(e, MODE_MODELLING);
+        SetEditorMode(e, MODE_OBJECT);
+        GeometryChanged(e);
+        SyncWorldWithLevel(e);
+        ResetUndoHistory(e);
+
+        SprinklerState &s = e.sprinkler;
+        s = SprinklerState();
+        CHECK(SprinkleProps(e, { 0, 64, 0 }, { 0, 1, 0 }) == 0 && e.level.entities.empty(), "no props picked should place nothing");
+
+        s.props[0] = "models/props/foliage/grass_short.obj";
+        s.props[2] = "models/props/foliage/grass_bushy.obj";
+        s.radius = 40.0f;
+        s.count = 200;
+        int placed = SprinkleProps(e, { 0, 64, 0 }, { 0, 1, 0 });
+        CHECK(placed == 200, "the whole ring is on the slab, placed %d", placed);
+        std::set<std::string> models;
+        std::set<int> angles;
+        float furthest = 0.0f;
+        for (const LevelEntity &entity : e.level.entities)
+        {
+            CHECK(entity.classname == "prop_model", "made a %s", entity.classname.c_str());
+            CHECK(fabsf(entity.origin.y - 64.0f) < 0.02f, "should rest on the surface, at %f", entity.origin.y);
+            float distance = sqrtf(entity.origin.x*entity.origin.x + entity.origin.z*entity.origin.z);
+            CHECK(distance <= 40.02f, "outside the ring by %f", distance - 40.0f);
+            furthest = fmaxf(furthest, distance);
+            CHECK(fabsf(EntityVectorOrDefault(entity, "up", { 0, 0, 0 }).y - 1.0f) < 0.001f, "should be upright on a flat top");
+            CHECK(!EntityBoolOrDefault(entity, "collision", true), "collision should come from the tool");
+            CHECK(!EntityBoolOrDefault(entity, "static", true), "static should come from the tool");
+            float scale = EntityNumberOrDefault(entity, "scale", 0.0f);
+            CHECK(scale >= 0.8f && scale <= 1.2f, "scale %f out of range", scale);
+            models.insert(EntityTextOrDefault(entity, "model", ""));
+            angles.insert((int)EntityNumberOrDefault(entity, "angle", 0.0f));
+        }
+        CHECK(models.size() == 2 && !models.count(""), "should use both props and skip the empty slot, used %d", (int)models.size());
+        CHECK(angles.size() > 50, "angles should vary, got %d", (int)angles.size());
+        CHECK(furthest > 30.0f, "should reach the ring's edge, furthest %f", furthest);
+
+        CHECK(EntityBoolOrDefault(e.level.entities[0], "detailLighting", false), "detail lighting should be on by default");
+
+        // Detail lighting: the spot in the lightmap is the slab's top right under the prop
+        {
+            World &w = e.world;
+            ClearProps(w);
+            int model = LoadPropModel(w, "models/props/foliage/grass_short.obj");
+            Vector3 at = { 100, 64, -60 };
+            AddProp(w, model, at, { 0, 1, 0 }, 0.0f, 1.0f, false, false, true);
+            AddProp(w, model, { 100, 200, -60 }, { 0, 1, 0 }, 0.0f, 1.0f, false, false, true);  // Floating well over it
+            AddProp(w, model, at, { 0, 1, 0 }, 0.0f, 1.0f, false, false, false);
+            AddProp(w, model, at, { 0, 1, 0 }, 0.0f, 1.0f, true, false, true);
+            FindPropBounceSpots(w);
+            CHECK(w.props[0].hasBounceSpot, "should find the ground under it");
+            CHECK(!w.props[1].hasBounceSpot, "floating far over the ground should find none");
+            CHECK(!w.props[2].hasBounceSpot, "detail lighting off should find none");
+            CHECK(!w.props[3].hasBounceSpot, "static ones have their own lightmap");
+
+            // The lightmap texel nearest the spot should be on the top, near the prop
+            Vector2 spot = { w.props[0].bounceSpot.x*w.lightmapWidth, w.props[0].bounceSpot.y*w.lightmapHeight };
+            const LightmapTexel *nearest = nullptr;
+            float best = 1e9f;
+            for (const LightmapTexel &texel : w.lightmapTexels)
+            {
+                float d = Vector2Distance(spot, { texel.x + 0.5f, texel.y + 0.5f });
+                if (d < best) { best = d; nearest = &texel; }
+            }
+            CHECK(nearest && best < 1.5f && nearest->normal.y > 0.99f && Vector3Distance(nearest->position, at) < 24.0f,
+                  "the spot should be the top under the prop, texel %f away, at (%f %f %f)", best,
+                  nearest ? nearest->position.x : 0, nearest ? nearest->position.y : 0, nearest ? nearest->position.z : 0);
+            ClearProps(w);
+        }
+
+        Undo(e);
+        CHECK(e.level.entities.empty(), "one undo should take back the whole click, left %d", (int)e.level.entities.size());
+
+        // Off the edge of the slab: x ends at 256, and spots past it find nothing near
+        s.radius = 64.0f;
+        s.count = 100;
+        placed = SprinkleProps(e, { 256, 64, 0 }, { 0, 1, 0 });
+        CHECK(placed == 100, "attempts should make up for the half that misses, placed %d", placed);
+        for (const LevelEntity &entity : e.level.entities) CHECK(entity.origin.x <= 256.01f && fabsf(entity.origin.y - 64.0f) < 0.02f, "fell off the edge to (%f %f)", entity.origin.x, entity.origin.y);
+        e.level.entities.clear();
+
+        // Clicked on the side: props stand out from it, and nothing lands on the top next to it
+        s.radius = 20.0f;
+        s.count = 50;
+        placed = SprinkleProps(e, { 256, 40, 0 }, { 1, 0, 0 });
+        CHECK(placed > 0, "should place props on a wall");
+        for (const LevelEntity &entity : e.level.entities)
+        {
+            CHECK(fabsf(entity.origin.x - 256.0f) < 0.02f, "should rest on the wall, at x %f", entity.origin.x);
+            CHECK(fabsf(EntityVectorOrDefault(entity, "up", { 0, 0, 0 }).x - 1.0f) < 0.001f, "should stand out from the wall");
+        }
+        e.level.entities.clear();
+
+        // Through the real input: P turns it on, a click on the level places them, a click on the sky doesn't
+        ResetUndoHistory(e);
+        s.radius = 16.0f;
+        s.count = 5;
+        Rectangle view = GetViewportRect();
+        AimCamera(e, { 0, 256, 128 }, { 0, 64, 0 });
+        auto frame = [&](Vector2 mouse, bool pressed, std::set<int> keys = {})
+        {
+            editInputScript.mouse = mouse;
+            editInputScript.leftDown = editInputScript.leftPressed = pressed;
+            editInputScript.keysPressed = keys;
+            e.keysFree = true;
+            UpdateViewport(e);
+        };
+        Vector2 screen = GetWorldToScreenEx({ 0, 64, 0 }, e.camera, (int)view.width, (int)view.height);
+        Vector2 onLevel = { view.x + screen.x, view.y + screen.y };
+        frame(onLevel, true);
+        CHECK(e.level.entities.empty() && !s.active, "clicks shouldn't sprinkle until it's on");
+        frame(onLevel, false, { KEY_P });
+        CHECK(s.active, "P should turn it on");
+        frame(onLevel, false);
+        CHECK(s.hovering && fabsf(s.hoverPoint.y - 64.0f) < 0.01f, "should find the surface under the mouse");
+        frame(onLevel, true);
+        CHECK((int)e.level.entities.size() == 5, "a click should place 5, placed %d", (int)e.level.entities.size());
+        AimCamera(e, { 0, 256, 128 }, { 0, 1024, 128 });
+        frame(onLevel, true);
+        CHECK((int)e.level.entities.size() == 5 && !s.hovering, "clicking the sky shouldn't place anything");
+        frame(onLevel, false, { KEY_P });
+        CHECK(!s.active, "P should turn it off");
+
+        s.props[0] = s.props[2] = "";
+        ToggleSprinkler(e);
+        SetEditorMode(e, MODE_MODELLING);
+        CHECK(!s.active, "leaving Object mode should turn it off");
+        editInputScript.keysPressed.clear();
+        SetEditorMode(e, MODE_OBJECT);
+    }
+
+    printf("23 transparency: cutout textures, their edges, and drawing them\n");
+    {
+        // A red texel in a see-through 3x3: the rest take its color, and stay see-through
+        Image image = GenImageColor(3, 3, BLANK);
+        ImageDrawPixel(&image, 1, 1, RED);
+        CHECK(FixAlphaEdges(image), "should be a cutout");
+        Color *pixels = (Color *)image.data;
+        CHECK(pixels[0].r == 230 && pixels[0].a == 0 && pixels[8].r == 230 && pixels[8].a == 0, "corners should take the red, got %d %d (alpha %d)", pixels[0].r, pixels[8].r, pixels[0].a);
+        CHECK(pixels[4].r == 230 && pixels[4].a == 255, "the visible texel should stay as it was");
+        UnloadImage(image);
+
+        // Half see-through counts too, and only fully see-through texels get filled
+        image = GenImageColor(4, 1, { 0, 0, 255, 255 });
+        ImageDrawPixel(&image, 0, 0, { 0, 255, 0, 100 });
+        ImageDrawPixel(&image, 2, 0, { 0, 0, 0, 0 });
+        CHECK(FixAlphaEdges(image), "partly see-through should be a cutout");
+        pixels = (Color *)image.data;
+        CHECK(pixels[0].g == 255 && pixels[0].a == 100, "a partly see-through texel keeps its color");
+        CHECK(pixels[2].b > 0 && pixels[2].a == 0, "a see-through texel between visible ones takes their colors");
+        UnloadImage(image);
+
+        image = GenImageColor(2, 2, WHITE);
+        CHECK(!FixAlphaEdges(image), "fully opaque isn't a cutout");
+        UnloadImage(image);
+        image = GenImageColor(2, 2, WHITE);
+        ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8);
+        CHECK(!FixAlphaEdges(image) && image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8, "no alpha channel isn't a cutout, and stays as it was");
+        UnloadImage(image);
+
+        Texture grass = { 0 }, wall = { 0 };
+        CHECK(LoadGameTexture("models/props/foliage/TUFTA01.png", grass) && IsTextureCutout(grass.id), "the grass texture should be a cutout");
+        CHECK(LoadGameTexture(MAT, wall) && !IsTextureCutout(wall.id), "the wall texture shouldn't be");
+        UnloadTexture(grass);
+        UnloadTexture(wall);
+
+        // Drawn: a grass card seen edge on to its plane from behind still shows, and its holes show what's behind
+        World &w = e.world;
+        ClearProps(w);
+        int model = LoadPropModel(w, "models/props/foliage/grass_short.obj");
+        CHECK(model >= 0 && IsTextureCutout(w.propModels[model].model.materials[w.propModels[model].model.meshMaterial[0]].maps[MATERIAL_MAP_DIFFUSE].texture.id),
+              "the grass prop's texture should be a cutout");
+        w.propsHidden = false;
+        AddProp(w, model, { 0, 64, 0 }, { 0, 1, 0 }, 0.0f, 4.0f, false, false, false);
+        RenderTexture2D target = LoadRenderTexture(256, 256);
+        auto render = [&](Vector3 from, Vector3 to)
+        {
+            // The game's own drawing, with the slab's meshes hidden so only the grass is in front of the background
+            Camera camera = { from, to, { 0, 1, 0 }, 60.0f, CAMERA_PERSPECTIVE };
+            int meshCount = w.model.meshCount;
+            w.model.meshCount = 0;
+            RenderWorldShadows(w);
+            BeginTextureMode(target);
+                ClearBackground(MAGENTA);
+                BeginMode3D(camera);
+                    DrawWorld(w, false);
+                EndMode3D();
+            EndTextureMode();
+            w.model.meshCount = meshCount;
+            Image shot = LoadImageFromTexture(target.texture);
+            int covered = 0;
+            for (int i = 0; i < shot.width*shot.height; i++)
+            {
+                Color c = ((Color *)shot.data)[i];
+                if (!(c.r == 255 && c.g == 0 && c.b == 255)) covered++;
+            }
+            UnloadImage(shot);
+            return covered;
+        };
+        auto above = render({ 0, 200, 1 }, { 0, 64, 0 });
+        auto below = render({ 0, 20, 1 }, { 0, 64, 0 });  // From under the cards, at their backs
+        printf("    grass covers %d pixels from above, %d from below\n", above, below);
+        // Without cutouts it covered about 22200 from above, since the see-through parts of near cards still hid the
+        // cards behind them, and about 1100 from below, with the backs culled. With them, about 25400 and 54000
+        CHECK(above > 23800, "see-through texels shouldn't hide the cards behind them, covered %d", above);
+        CHECK(above < 256*256*0.9, "its holes should show the background, covered %d", above);
+        CHECK(below > 10000, "should see the grass's back faces too, %d pixels", below);
+        UnloadRenderTexture(target);
+        ClearProps(w);
     }
 
     printf("\n%d checks, %d failed\n", checks, failures);

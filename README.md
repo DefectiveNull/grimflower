@@ -70,7 +70,7 @@ Both write their settings and logs next to the executable (`config.cfg`, `editor
 
 # AI Disclaimer
 
-This project primarily uses AI to write most of the code, this is a hobby project done by someone who would consider themselves more of an artist than a programmer. There is no AI art or any other type of generative AI use other than for programming purposes.
+This project primarily uses AI to write most of the code, this is a hobby project done by someone who would consider themselves more of an artist than a programmer. There is some AI work but most of it is done with high supervision and without stealing people's work online. I care about making critical use of AI of art assets when i do use it and even still there's a wide array of art assets and levels that are made by hand.
 
 # Early Development Disclaimer
 
