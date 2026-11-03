@@ -314,10 +314,12 @@ Autostitch goes over the gentlest bends first. An arch's steps wrap on from one 
 
 The **Materials** tab in the details panel lists every texture in `textures/`, grouped by subfolder. Click a folder's name to fold it away. Textures whose names end in `_normal`, `_bump`, `_spec`, `_specular`, `_gloss` or `_glossy` are treated as maps for other textures, and left out of the list. **Refresh** scans the folder again and reloads `.materials`.
 
+**List** and **Grid** switch how the textures are shown. List gives each one a row: a small picture, its file name, and letters for the parts its material has (**B**ump, **S**pecular, **G**loss, **R**eflection). Grid shows large pictures with short names under them, as many across as fit the panel, with the same letters in a picture's corner. The choice is saved in `editor.cfg` as [`ed_materialsview`](#editor-settings).
+
 Click a texture to **pick** it. That does two things:
 
 - It's the texture right click puts on in Texturing mode, and new cubes get in Modelling mode.
-- Its material settings open under it.
+- Its material settings open under it. In Grid, they open under the row of pictures it's in.
 
 Materials work the way they did before PBR, in games like Half-Life 2 and Doom 3. Each texture can have:
 
@@ -459,6 +461,7 @@ Every command a key can be bound to:
 | `ed_snap` | 1 | Snap to the grid |
 | `ed_showgrid`, `ed_showlabels`, `ed_showpointentities`, `ed_showvolumes` | 1 | View menu items |
 | `ed_showcolliders` | 0 | Collision Brushes in the View menu |
+| `ed_materialsview` | 0 | The Materials tab's view: 0 List, 1 Grid |
 
 ## Keyboard and mouse reference
 

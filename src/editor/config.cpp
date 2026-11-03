@@ -13,7 +13,7 @@
 #include <vector>
 
 CameraButtons cameraButtons = {};
-EditorSettings editorSettings = { 200, 70.0f, 256.0f, true, true, true, true, false, 8.0f, true, 0.003f, false };
+EditorSettings editorSettings = { 200, 70.0f, 256.0f, true, true, true, true, false, 8.0f, true, 0.003f, false, 0 };
 
 static const char *CONFIG_FILE = "editor.cfg";
 
@@ -320,6 +320,7 @@ static const Setting settings[] =
     { "ed_snap", nullptr, &editorSettings.snapToGrid, nullptr },
     { "ed_sensitivity", &editorSettings.lookSensitivity, nullptr, nullptr },
     { "ed_invertlook", nullptr, &editorSettings.invertLook, nullptr },
+    { "ed_materialsview", nullptr, nullptr, &editorSettings.materialsView },
 };
 
 static void Execute(const std::string &text)

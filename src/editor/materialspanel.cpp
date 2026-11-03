@@ -2,6 +2,7 @@
 // picked, its bump map, specular map and gloss map (materials.h). Changes show in the view right away,
 // and are saved to .materials, which the game reads when it loads a world
 
+#include "config.h"
 #include "editor.h"
 #include "filedialog.h"
 #include "materials.h"
@@ -20,6 +21,9 @@ static const float PADDING = 10.0f;
 static const float ROW_HEIGHT = 28.0f;
 static const float LABEL_WIDTH = 96.0f;
 static const float THUMBNAIL_SIZE = 22.0f;
+static const float TILE_SIZE = 88.0f;     // Grid view: about how wide each texture's tile is, stretched to fill the row
+static const float TILE_GAP = 6.0f;
+static const float TILE_LABEL = 16.0f;    // The name under its picture
 
 // Files with these endings are maps, not diffuse textures, so they're left out of the list
 static const char *MAP_SUFFIXES[] = { "_normal", "_bump", "_spec", "_specular", "_gloss", "_glossy" };
@@ -261,6 +265,52 @@ static float DrawMaterialFields(EditorState &editor, float x, float y, float wid
     return y - top;
 }
 
+// Which parts a texture's material has: B(ump), S(pecular), G(loss), R(eflection)
+static std::string MaterialParts(const std::string &path)
+{
+    MaterialDef def = FindMaterial(library, path);
+    std::string parts;
+    if (!def.bumpmap.empty()) parts += "B ";
+    if (!def.specularmap.empty() || def.specular > 0.0f) parts += "S ";
+    if (!def.glossmap.empty()) parts += "G ";
+    if (def.reflection > 0.0f) parts += "R ";
+    if (!parts.empty()) parts.pop_back();
+    return parts;
+}
+
+// text, cut short with "..." to fit in width
+static std::string FitText(const std::string &text, float size, float width)
+{
+    if (MeasureUIText(text.c_str(), size) <= width) return text;
+    std::string cut = text;
+    while (!cut.empty() && MeasureUIText((cut + "...").c_str(), size) > width) cut.pop_back();
+    return cut + "...";
+}
+
+// Draws a texture's picture scaled to fit in box, keeping its shape
+static void DrawThumbnail(const std::string &path, Rectangle box)
+{
+    Texture thumbnail = Thumbnail(path);
+    if (thumbnail.id == 0) return;
+    float scale = fminf(box.width/thumbnail.width, box.height/thumbnail.height);
+    float w = thumbnail.width*scale, h = thumbnail.height*scale;
+    DrawTexturePro(thumbnail, { 0, 0, (float)thumbnail.width, (float)thumbnail.height },
+                   { box.x + (box.width - w)/2, box.y + (box.height - h)/2, w, h }, { 0, 0 }, 0.0f, WHITE);
+}
+
+// Hover highlight and click to pick (or unpick) for a texture's row or tile
+static void PickArea(const std::string &path, Rectangle bounds, bool mouseInList)
+{
+    bool isPicked = (path == picked);
+    bool hovered = mouseInList && CheckCollisionPointRec(GetMousePosition(), bounds);
+    if (isPicked || hovered) DrawRectangleRec(bounds, Fade(GetColor(GuiGetStyle(BUTTON, BASE_COLOR_FOCUSED)), isPicked ? 0.9f : 0.5f));
+    if (hovered && !GuiIsLocked() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        picked = isPicked ? "" : path;
+        activeField = -1;
+    }
+}
+
 void DrawMaterialsPanel(EditorState &editor, Rectangle area)
 {
     if (!libraryLoaded)
@@ -284,6 +334,18 @@ void DrawMaterialsPanel(EditorState &editor, Rectangle area)
         ScanTextures(editor);
         ShowChange(editor, true);
         SetStatus(editor, "Reloaded the textures and %s", MATERIALS_PATH);
+    }
+    // List or grid of large pictures, remembered in editor.cfg (ed_materialsview)
+    const float toggleWidth = 44.0f;
+    int spacing = GuiGetStyle(TOGGLE, GROUP_PADDING);
+    GuiSetStyle(TOGGLE, GROUP_PADDING, 0);
+    int viewMode = (editorSettings.materialsView == 1) ? 1 : 0;
+    GuiToggleGroup({ x + width - 80 - 8 - 2*toggleWidth, y, toggleWidth, ROW_HEIGHT - 4 }, "List;Grid", &viewMode);
+    GuiSetStyle(TOGGLE, GROUP_PADDING, spacing);
+    if (viewMode != editorSettings.materialsView)
+    {
+        editorSettings.materialsView = viewMode;
+        MarkSettingsChanged();
     }
     y += ROW_HEIGHT + 4;
 
@@ -317,6 +379,50 @@ void DrawMaterialsPanel(EditorState &editor, Rectangle area)
         rowY += ROW_HEIGHT;
         if (folder.collapsed) continue;
 
+        if (viewMode == 1)
+        {
+            // Grid: as many tiles across as fit, stretched to fill the row. The picked texture's material
+            // opens under the row of tiles it's in
+            const float gridX = x + 8, gridWidth = width - 8;
+            int columns = std::max(1, (int)((gridWidth + TILE_GAP)/(TILE_SIZE + TILE_GAP)));
+            float tileWidth = (gridWidth - TILE_GAP*(columns - 1))/columns;
+            float tileHeight = tileWidth + TILE_LABEL;
+            for (size_t start = 0; start < folder.textures.size(); start += columns)
+            {
+                bool pickedInRow = false;
+                bool visible = rowY + tileHeight > list.y && rowY < list.y + list.height;
+                for (size_t i = start; i < std::min(start + columns, folder.textures.size()); i++)
+                {
+                    const std::string &path = folder.textures[i];
+                    if (path == picked) pickedInRow = true;
+                    if (!visible) continue;
+                    Rectangle tile = { gridX + (i - start)*(tileWidth + TILE_GAP), rowY, tileWidth, tileHeight };
+                    PickArea(path, tile, mouseInList);
+                    Rectangle picture = { tile.x + 3, tile.y + 3, tile.width - 6, tile.width - 6 };
+                    DrawThumbnail(path, picture);
+
+                    std::string parts = MaterialParts(path);
+                    if (!parts.empty())
+                    {
+                        float partsWidth = MeasureUIText(parts.c_str(), 12) + 6;
+                        Rectangle badge = { picture.x + picture.width - partsWidth, picture.y, partsWidth, 15 };
+                        DrawRectangleRec(badge, Fade(BLACK, 0.6f));
+                        DrawUIText(parts.c_str(), badge.x + 3, badge.y + 1, 12, WHITE);
+                    }
+                    std::string name = FitText(GetFileNameWithoutExt(path.c_str()), 12, tile.width - 4);
+                    DrawUIText(name.c_str(), tile.x + (tile.width - MeasureUIText(name.c_str(), 12))/2, tile.y + tile.width + 1, 12, UITextColor());
+                }
+                rowY += tileHeight + TILE_GAP;
+                if (pickedInRow)
+                {
+                    DrawUIText(GetFileName(picked.c_str()), gridX, rowY, 16, UITextColor());
+                    rowY += 20;
+                    rowY += DrawMaterialFields(editor, gridX, rowY + 2, gridWidth) + 6;
+                }
+            }
+            continue;
+        }
+
         for (const std::string &path : folder.textures)
         {
             bool isPicked = (path == picked);
@@ -324,26 +430,11 @@ void DrawMaterialsPanel(EditorState &editor, Rectangle area)
             Rectangle row = { x + 8, rowY, width - 8, ROW_HEIGHT - 2 };
             if (visible)
             {
-                bool hovered = mouseInList && CheckCollisionPointRec(GetMousePosition(), row);
-                if (isPicked || hovered) DrawRectangleRec(row, Fade(GetColor(GuiGetStyle(BUTTON, BASE_COLOR_FOCUSED)), isPicked ? 0.9f : 0.5f));
-                if (hovered && !GuiIsLocked() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-                {
-                    picked = isPicked ? "" : path;
-                    activeField = -1;
-                }
+                PickArea(path, row, mouseInList);
+                DrawThumbnail(path, { row.x + 2, row.y + (row.height - THUMBNAIL_SIZE)/2, THUMBNAIL_SIZE, THUMBNAIL_SIZE });
+                DrawUIText(GetFileName(path.c_str()), row.x + THUMBNAIL_SIZE + 10, row.y + (row.height - 16)/2, 16, UITextColor());
 
-                Texture thumbnail = Thumbnail(path);
-                Rectangle thumb = { row.x + 2, row.y + (row.height - THUMBNAIL_SIZE)/2, THUMBNAIL_SIZE, THUMBNAIL_SIZE };
-                if (thumbnail.id != 0) DrawTexturePro(thumbnail, { 0, 0, (float)thumbnail.width, (float)thumbnail.height }, thumb, { 0, 0 }, 0.0f, WHITE);
-                DrawUIText(GetFileName(path.c_str()), thumb.x + THUMBNAIL_SIZE + 8, row.y + (row.height - 16)/2, 16, UITextColor());
-
-                // Which parts it has: B(ump), S(pecular), G(loss), R(eflection)
-                MaterialDef def = FindMaterial(library, path);
-                std::string parts;
-                if (!def.bumpmap.empty()) parts += "B ";
-                if (!def.specularmap.empty() || def.specular > 0.0f) parts += "S ";
-                if (!def.glossmap.empty()) parts += "G ";
-                if (def.reflection > 0.0f) parts += "R";
+                std::string parts = MaterialParts(path);
                 if (!parts.empty()) DrawUIText(parts.c_str(), row.x + row.width - MeasureUIText(parts.c_str(), 14) - 6, row.y + (row.height - 14)/2, 14, UIMutedTextColor());
             }
             rowY += ROW_HEIGHT;

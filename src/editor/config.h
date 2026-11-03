@@ -44,6 +44,9 @@ struct EditorSettings
     // Input
     float lookSensitivity;   // Radians per pixel of mouse movement
     bool invertLook;         // Moving the mouse up looks down
+
+    // Panels
+    int materialsView;       // The Materials tab: 0 a list, 1 a grid of large pictures
 };
 
 extern CameraButtons cameraButtons;
